@@ -8,7 +8,6 @@ Team Members
 - Deneth Koralage
 - Shathukshan Jeyakumar
 
-<<<<<<< HEAD
 Ragee testing his branch and push stuff
 
 # Hello World!

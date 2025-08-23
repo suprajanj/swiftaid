@@ -4,7 +4,7 @@ import {
   deleteSOS,
   getAllsos,
   updateSOS,
-} from "../controllers/userController.js";
+} from "../controllers/sosController.js";
 
 const router = express.Router();
 

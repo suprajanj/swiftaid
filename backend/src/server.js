@@ -6,10 +6,12 @@ import connectDB from "./config/db.js";
 dotenv.config();
 
 const app = express();
+const PORT = process.env.PORT || 3000;
 
 connectDB();
 
-const PORT = process.env.PORT || 3000;
+//middleware
+app.use(express.json());
 
 app.use("/api/sos", sosRoute);
 //Can create more routes like this for SOS

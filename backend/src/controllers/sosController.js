@@ -12,8 +12,22 @@ export async function getAllsos(req, res) {
 }
 
 export async function createSOS(req, res) {
-  // Create user acc
-  res.status(200).send("You have created an acc");
+  try {
+    const { name, age, number, location } = req.body;
+    // console.log(name.age, number, location);
+    const sos = new SOS({
+      name,
+      age,
+      number,
+      location,
+    });
+
+    const savedSOS = await sos.save();
+    res.status(201).json(savedSOS);
+  } catch (error) {
+    console.error("Error on getAllsos Controller", error);
+    res.status(500).json({ message: "Internal Server Error!" });
+  }
 }
 
 export async function updateSOS(req, res) {

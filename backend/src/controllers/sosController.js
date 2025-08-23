@@ -14,7 +14,6 @@ export async function getAllsos(req, res) {
 export async function createSOS(req, res) {
   try {
     const { name, age, number, location } = req.body;
-    // console.log(name.age, number, location);
     const sos = new SOS({
       name,
       age,

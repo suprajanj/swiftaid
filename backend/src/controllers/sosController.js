@@ -31,8 +31,23 @@ export async function createSOS(req, res) {
 }
 
 export async function updateSOS(req, res) {
-  // Update user acc
-  res.status(200).send("You have updated an acc");
+  try {
+    const { name, age, number, location } = req.body;
+    const updatedSOS = await SOS.findByIdAndUpdate(req.params.id, {
+      name,
+      age,
+      number,
+      location,
+    });
+
+    if (!updatedSOS) return res.status(404).json({ message: "Note not found" });
+
+    res.status(200).json(updatedSOS);
+    // res.status(200).json({ message: "SOS updated successfully!" });
+  } catch (error) {
+    console.error("Error on getAllsos Controller", error);
+    res.status(500).json({ message: "Internal Server Error!" });
+  }
 }
 
 export async function deleteSOS(req, res) {

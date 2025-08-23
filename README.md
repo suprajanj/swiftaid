@@ -7,5 +7,3 @@ Team Members
 - Vinuji Madalagama
 - Deneth Koralage
 - Shathukshan Jeyakumar
-
-Shathu

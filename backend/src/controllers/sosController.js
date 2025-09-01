@@ -1,7 +1,7 @@
 import SOS from "../model/SOS.js";
 
 export async function getAllsos(req, res) {
-  // Display user accs
+  // Display sos
   try {
     const sos = await SOS.find();
     res.status(200).json(sos);

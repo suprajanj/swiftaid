@@ -1,7 +1,5 @@
 // models/EmergencyReport.js
-
-const mongoose = require("mongoose");
-const { acceptAlert } = require("../controller/controller");
+import mongoose from "mongoose";
 
 const EmergencyReportSchema = new mongoose.Schema({
   reportId: {
@@ -53,8 +51,8 @@ const EmergencyReportSchema = new mongoose.Schema({
     type: String,
     enum: ["low", "medium", "high", "critical"],
     default: "medium"
-  },
-
+  }
 });
 
-module.exports = mongoose.model("EmergencyReport", EmergencyReportSchema);
+const EmergencyReport = mongoose.model("EmergencyReport", EmergencyReportSchema);
+export default EmergencyReport;

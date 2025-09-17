@@ -1,26 +1,39 @@
+import dotenv from "dotenv";
+dotenv.config();
+
 import express from "express";
 import mongoose from "mongoose";
 import cors from "cors";
-import dotenv from "dotenv";
-
-dotenv.config();
+import router from "./routes/route.js";
 
 const app = express();
-const port = process.env.PORT || 5000;
-const host = process.env.HOST || "127.0.0.1";
 
-app.use(cors());
+// Environment variables
+const PORT = process.env.PORT || 5000;
+const HOST = process.env.HOST || "127.0.0.1";
+const MONGO_URI = process.env.MONGO_URI;
+
+// Middleware
+app.use(cors({ origin: "http://localhost:5001" })); // Allow frontend port
 app.use(express.json());
 
-const uri = process.env.MONGO_URI;
-console.log("MongoDB URI:", uri);
+// Debug: Show loaded environment variables
+console.log("Loaded ENV:", {
+  PORT,
+  HOST,
+  MONGO_URI: MONGO_URI ? "[HIDDEN]" : "❌ NOT FOUND",
+});
 
+// Exit if Mongo URI is missing
+if (!MONGO_URI) {
+  console.error("❌ MONGO_URI is undefined. Check your .env file.");
+  process.exit(1);
+}
+
+// MongoDB connection
 const connectDB = async () => {
   try {
-    if (!uri) {
-      throw new Error("MONGO_URI is undefined. Check your .env file.");
-    }
-    await mongoose.connect(uri, {
+    await mongoose.connect(MONGO_URI, {
       serverSelectionTimeoutMS: 5000,
       socketTimeoutMS: 45000,
     });
@@ -31,22 +44,24 @@ const connectDB = async () => {
   }
 };
 
+// Connect to DB
 await connectDB();
 
+// Basic route
 app.get("/", (req, res) => {
   res.json({ message: "Hello from SwiftAid Backend" });
 });
 
-// Use routes
-import apiRoutes from "./route/index.js";
-app.use("/api", apiRoutes);
+// API routes
+app.use("/api", router);
 
-app.listen(port, host, (err) => {
+// Start server
+app.listen(PORT, HOST, (err) => {
   if (err) {
-    console.error("Server failed to start:", err.message);
+    console.error("❌ Server failed to start:", err.message);
     process.exit(1);
   }
-  console.log(`🚀 Node server is listening at http://${host}:${port}`);
+  console.log(`🚀 Node server running at http://${HOST}:${PORT}`);
 });
 
 export default app;

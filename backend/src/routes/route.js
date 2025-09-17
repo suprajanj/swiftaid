@@ -1,10 +1,12 @@
-const express = require('express');
+// backend/src/route/route.js
+import express from "express";
+import * as controller from "../controller/controller.js";
+
 const router = express.Router();
 
-const controller = require('../controller/controller');
+router.get("/alerts", controller.getAllAlerts);
+router.put("/alerts/:id/accept", controller.acceptAlert);
+router.get("/alerts/:id", controller.displayAlertDetails);
+router.post("/alerts", controller.addAlert);
 
-router.get('/alerts', controller.getAllAlerts);
-router.put('/alerts/:id', controller.acceptAlert);
-router.get('/alerts/:id', controller.displayAlertDetails);
-
-module.exports = router;
+export default router;

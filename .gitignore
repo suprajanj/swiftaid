@@ -1,0 +1,11 @@
+# Ignore node_modules
+node_modules/
+
+# Ignore environment variables
+.env
+backend/src/.env
+frontend/.env
+
+# Ignore build artifacts
+dist/
+build/

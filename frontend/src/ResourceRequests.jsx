@@ -494,7 +494,7 @@ export default function ResourceRequests() {
         throw new Error(data.message || "Delete failed");
       }
     } catch (err) {
-      alert(`${err.message}`);
+      alert(`${err.message}`); 
     }
   };
 
@@ -513,8 +513,8 @@ export default function ResourceRequests() {
       style={{
         minHeight: "100vh",
         width: "100vw",
-        background: "#121212",
-        color: "#fff",
+        background: "#fdfafaff",
+        color: "#0a0808ff",
         boxSizing: "border-box"
       }}
     >
@@ -612,10 +612,10 @@ export default function ResourceRequests() {
         {/* Form Card */}
         <div
           style={{
-            background: "linear-gradient(135deg, #1e1e1e 0%, #2a2a2a 100%)",
+            background: "linear-gradient(135deg, #fbfafaff 0%, #ece9e9ff 100%)",
             border: "1px solid #333",
             borderRadius: 14,
-            boxShadow: "0 8px 26px rgba(0,0,0,0.45)",
+            boxShadow: "0 8px 26px rgba(238, 231, 231, 0.45)",
             padding: 26,
             marginBottom: 28
           }}
@@ -968,10 +968,10 @@ export default function ResourceRequests() {
                   <div
                     style={{
                       marginTop: 12,
-                      background: "#242424",
+                      background: "#dfeee6",
                       padding: 12,
                       borderRadius: 8,
-                      border: "1px solid #333"
+                      border: "1px solid #c7c2c2ff"
                     }}
                   >
                     <strong style={{ color: "#FFA726" }}>Description:</strong>
@@ -1051,8 +1051,8 @@ const inputStyle = {
   padding: "12px 14px",
   borderRadius: 10,
   border: "1px solid #444",
-  background: "#272727",
-  color: "#fff",
+  background: "#fff",
+  color: "#080808ff",
   outline: "none",
   fontSize: 15
 };
@@ -1061,7 +1061,7 @@ const labelStyle = {
   display: "block",
   marginBottom: 6,
   fontWeight: 700,
-  color: "#cfcfcf",
+  color: "#000000ff",
   fontSize: 13
 };
 
@@ -1088,17 +1088,17 @@ const secondaryBtn = {
 };
 
 const listCard = {
-  background: "linear-gradient(135deg, #1c1c1c 0%, #252525 100%)",
+  background: "linear-gradient(135deg, #fffbfbff 0%, #efebebff 100%)",
   border: "1px solid #343434",
   borderRadius: 14,
   padding: 20,
-  boxShadow: "0 10px 32px rgba(0,0,0,0.35)"
+  boxShadow: "0 10px 32px rgba(255, 255, 255, 0.64)"
 };
 
 const cardMuted = {
   background: "#1f1f1f",
   border: "1px solid #333",
-  color: "#bbb",
+  color: "#c9b5b5ff",
   borderRadius: 14,
   padding: 26,
   textAlign: "center"

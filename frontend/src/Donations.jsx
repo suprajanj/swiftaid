@@ -479,8 +479,8 @@ export default function Donations() {
   return (
     <div style={{ 
       minHeight: "100vh", 
-      background: "#121212", 
-      color: "#fff", 
+      background: "#f9f9f9", 
+      color: "#222", 
       padding: "0",
       width: "100vw",
       boxSizing: "border-box",
@@ -555,7 +555,7 @@ export default function Donations() {
         {/* User Donation Form */}
         {!adminMode && (
           <div style={{ 
-            background: "#1e1e1e", 
+            background: "#f9f9f9", 
             padding: "30px", 
             borderRadius: "12px", 
             marginBottom: "30px", 
@@ -577,7 +577,7 @@ export default function Donations() {
                 
                 {/* Resource Request Selection */}
                 <div style={{ gridColumn: "1 / -1" }}>
-                  <label style={{ display: "block", marginBottom: "8px", fontWeight: "bold", color: "#ccc" }}>
+                  <label style={{ display: "block", marginBottom: "8px", fontWeight: "bold", color: "#070707ff" }}>
                     Resource Request *
                   </label>
                   <select 
@@ -754,8 +754,8 @@ export default function Donations() {
                     id="flexible"
                     style={{ transform: "scale(1.2)" }}
                   />
-                  <label htmlFor="flexible" style={{ color: "#fff", fontSize: "16px" }}>
-                    ✅ I'm flexible with the timing if needed
+                  <label htmlFor="flexible" style={{ color: "#000000ff", fontSize: "16px" }}>
+                    I'm flexible with the timing if needed
                   </label>
                 </div>
 
@@ -783,7 +783,7 @@ export default function Donations() {
         {/* Admin Status Update Section */}
         {adminMode && editingId && (
           <div style={{ 
-            background: "linear-gradient(135deg, #2a1810 0%, #3a2416 100%)", 
+            background: "linear-gradient(135deg, #f3e2dbff 0%, #c0b9b6ff 100%)", 
             padding: "25px", 
             borderRadius: "12px", 
             marginBottom: "25px", 
@@ -799,7 +799,6 @@ export default function Donations() {
                   <option value="approved">✅ Approved</option>
                   <option value="contacted">📞 Donor Contacted</option>
                   <option value="completed">🎉 Donation Completed</option>
-                  <option value="rejected">❌ Rejected</option>
                   <option value="cancelled">🚫 Cancelled</option>
                 </select>
               </div>
@@ -844,7 +843,7 @@ export default function Donations() {
             <div style={{ 
               textAlign: "center", 
               padding: "60px 20px", 
-              background: "#1e1e1e", 
+              background: "#ffffff", 
               borderRadius: "12px",
               color: "#666" 
             }}>
@@ -892,7 +891,7 @@ export default function Donations() {
                   {/* Status and Actions */}
                   <div style={{ 
                     paddingTop: "20px", 
-                    borderTop: "2px solid #444",
+                    borderTop: "2px solid #ccc",
                     display: "flex",
                     justifyContent: "space-between",
                     alignItems: "center",
@@ -960,8 +959,8 @@ const inputStyle = {
   padding: "14px 16px",
   borderRadius: "8px",
   border: "2px solid #444",
-  background: "#2a2a2a",
-  color: "white",
+  background: "#f9f9f9",
+  color: "#000",
   fontSize: "16px",
   fontFamily: "inherit",
   transition: "border-color 0.2s",
@@ -972,7 +971,7 @@ const labelStyle = {
   display: "block",
   marginBottom: "8px",
   fontWeight: "600",
-  color: "#ccc",
+  color: "#000000ff",
   fontSize: "14px"
 };
 
@@ -1001,11 +1000,11 @@ const cancelButton = {
 };
 
 const cardStyle = {
-  background: "linear-gradient(135deg, #1e1e1e 0%, #2a2a2a 100%)",
+  background: "linear-gradient(135deg, #fdfbfb 0%, #ebedee 100%)",
   padding: "30px",
   borderRadius: "15px",
-  boxShadow: "0 8px 25px rgba(0,0,0,0.4)",
-  border: "1px solid #333",
+  boxShadow: "0 8px 25px rgba(255, 255, 255, 1)",
+  border: "1px solid #ccc",
   transition: "transform 0.2s, box-shadow 0.2s"
 };
 

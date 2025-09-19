@@ -1,8 +1,10 @@
+// Homepage.jsx
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import feather from "feather-icons";
 import AOS from "aos";
 import "aos/dist/aos.css";
+import Navbar from "../components/Navbar";
 
 function Homepage() {
   const [time, setTime] = useState("");
@@ -49,6 +51,9 @@ function Homepage() {
 
   return (
     <div className="min-h-screen bg-gray-50 font-inter">
+      {/* ✅ Navbar */}
+      <Navbar />
+
       <div className="container mx-auto px-4 py-8 max-w-6xl">
         {/* Header Section */}
         <header className="flex flex-col md:flex-row justify-between items-center mb-12">
@@ -71,16 +76,6 @@ function Homepage() {
             <div className="text-sm opacity-80">{date}</div>
           </div>
         </header>
-
-        {/* Temporary Navigation Button */}
-        {/* <div className="mb-8">
-          <button
-            onClick={() => navigate("/form")}
-            className="bg-blue-500 hover:bg-blue-600 text-white py-2 px-4 rounded-lg font-medium"
-          >
-            Go to Form (Temporary Button)
-          </button>
-        </div> */}
 
         {/* Emergency Services Section */}
         <section className="mb-16" data-aos="fade-up">

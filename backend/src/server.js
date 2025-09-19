@@ -1,5 +1,5 @@
 import express from "express";
-import cors from "cors"; // ← import cors
+import cors from "cors";
 import sosRoute from "./routes/sosRoute.js";
 import dotenv from "dotenv";
 import connectDB from "./config/db.js";

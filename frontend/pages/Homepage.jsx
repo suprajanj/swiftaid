@@ -1,12 +1,13 @@
 import React, { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import feather from "feather-icons";
-
 import AOS from "aos";
 import "aos/dist/aos.css";
 
 function Homepage() {
   const [time, setTime] = useState("");
   const [date, setDate] = useState("");
+  const navigate = useNavigate();
 
   // Update clock
   useEffect(() => {
@@ -41,6 +42,11 @@ function Homepage() {
     feather.replace();
   }, [time]);
 
+  // Navigate to form with emergency type
+  const handleEmergencyClick = (type) => {
+    navigate(`/form/${type}`);
+  };
+
   return (
     <div className="min-h-screen bg-gray-50 font-inter">
       <div className="container mx-auto px-4 py-8 max-w-6xl">
@@ -66,6 +72,16 @@ function Homepage() {
           </div>
         </header>
 
+        {/* Temporary Navigation Button */}
+        {/* <div className="mb-8">
+          <button
+            onClick={() => navigate("/form")}
+            className="bg-blue-500 hover:bg-blue-600 text-white py-2 px-4 rounded-lg font-medium"
+          >
+            Go to Form (Temporary Button)
+          </button>
+        </div> */}
+
         {/* Emergency Services Section */}
         <section className="mb-16" data-aos="fade-up">
           <h2 className="text-2xl font-bold text-gray-800 mb-6">
@@ -73,31 +89,46 @@ function Homepage() {
           </h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
             {/* Fire Accident */}
-            <button className="emergency-btn bg-red-500 hover:bg-red-600 text-white p-6 rounded-xl shadow-md flex flex-col items-center transition duration-300">
+            <button
+              onClick={() => handleEmergencyClick("fire")}
+              className="emergency-btn bg-red-500 hover:bg-red-600 text-white p-6 rounded-xl shadow-md flex flex-col items-center transition duration-300"
+            >
               <i data-feather="alert-circle" className="w-10 h-10 mb-3"></i>
               <span className="font-semibold text-lg">Fire Accident</span>
             </button>
 
             {/* Road Accident */}
-            <button className="emergency-btn bg-orange-500 hover:bg-orange-600 text-white p-6 rounded-xl shadow-md flex flex-col items-center transition duration-300">
+            <button
+              onClick={() => handleEmergencyClick("road")}
+              className="emergency-btn bg-orange-500 hover:bg-orange-600 text-white p-6 rounded-xl shadow-md flex flex-col items-center transition duration-300"
+            >
               <i data-feather="alert-octagon" className="w-10 h-10 mb-3"></i>
               <span className="font-semibold text-lg">Road Accident</span>
             </button>
 
-            {/* Theft */}
-            <button className="emergency-btn bg-blue-500 hover:bg-blue-600 text-white p-6 rounded-xl shadow-md flex flex-col items-center transition duration-300">
+            {/* Assault */}
+            <button
+              onClick={() => handleEmergencyClick("assault")}
+              className="emergency-btn bg-blue-500 hover:bg-blue-600 text-white p-6 rounded-xl shadow-md flex flex-col items-center transition duration-300"
+            >
               <i data-feather="user-x" className="w-10 h-10 mb-3"></i>
-              <span className="font-semibold text-lg">Assult</span>
+              <span className="font-semibold text-lg">Assault</span>
             </button>
 
             {/* Medical Emergency */}
-            <button className="emergency-btn bg-green-500 hover:bg-green-600 text-white p-6 rounded-xl shadow-md flex flex-col items-center transition duration-300">
+            <button
+              onClick={() => handleEmergencyClick("medical")}
+              className="emergency-btn bg-green-500 hover:bg-green-600 text-white p-6 rounded-xl shadow-md flex flex-col items-center transition duration-300"
+            >
               <i data-feather="activity" className="w-10 h-10 mb-3"></i>
               <span className="font-semibold text-lg">Medical Emergency</span>
             </button>
 
             {/* Natural Disaster */}
-            <button className="emergency-btn bg-purple-500 hover:bg-purple-600 text-white p-6 rounded-xl shadow-md flex flex-col items-center transition duration-300">
+            <button
+              onClick={() => handleEmergencyClick("natural")}
+              className="emergency-btn bg-purple-500 hover:bg-purple-600 text-white p-6 rounded-xl shadow-md flex flex-col items-center transition duration-300"
+            >
               <i data-feather="wind" className="w-10 h-10 mb-3"></i>
               <span className="font-semibold text-lg">Natural Disaster</span>
             </button>

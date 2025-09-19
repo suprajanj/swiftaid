@@ -9,7 +9,31 @@ createRoot(document.getElementById("root")).render(
   <StrictMode>
     <BrowserRouter>
       <App />
-      <Toaster />
+      <Toaster
+        position="top-right"
+        toastOptions={{
+          success: {
+            style: {
+              background: "#4ade80",
+              color: "#fff",
+            },
+            iconTheme: {
+              primary: "#fff",
+              secondary: "#16a34a",
+            },
+          },
+          error: {
+            style: {
+              background: "#f87171",
+              color: "#fff",
+            },
+            iconTheme: {
+              primary: "#fff",
+              secondary: "#b91c1c",
+            },
+          },
+        }}
+      />
     </BrowserRouter>
   </StrictMode>
 );

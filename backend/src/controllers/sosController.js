@@ -14,7 +14,7 @@ export async function getAllsos(req, res) {
 // Create SOS record (with live location)
 export async function createSOS(req, res) {
   try {
-    const { name, age, number, location } = req.body;
+    const { name, age, number, emergency, location } = req.body;
 
     if (!location || !location.latitude || !location.longitude) {
       return res
@@ -29,6 +29,7 @@ export async function createSOS(req, res) {
       name,
       age,
       number,
+      emergency,
       location: {
         latitude: location.latitude,
         longitude: location.longitude,
@@ -49,7 +50,7 @@ export async function updateSOS(req, res) {
   try {
     const { name, age, number, location } = req.body;
 
-    let updateData = { name, age, number };
+    let updateData = { name, age, number, emergency };
 
     if (location && location.latitude && location.longitude) {
       updateData.location = {

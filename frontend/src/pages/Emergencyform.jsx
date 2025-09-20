@@ -59,7 +59,7 @@ function Emergencyform() {
       name: formData.name,
       age: formData.age,
       number: formData.number,
-      emergency: formData.emergencyType, // map to backend
+      emergency: formData.emergencyType,
       location: {
         latitude: location.lat,
         longitude: location.lng,
@@ -81,7 +81,7 @@ function Emergencyform() {
 
       // Redirect after 2s
       setTimeout(() => {
-        navigate("/");
+        navigate("/homepage");
       }, 2000);
     } catch (error) {
       console.error(error);
@@ -95,6 +95,15 @@ function Emergencyform() {
         onSubmit={handleSubmit}
         className="bg-white shadow-md rounded-xl p-6 w-full max-w-md space-y-4"
       >
+        {/* Back Button */}
+        <button
+          type="button"
+          onClick={() => navigate("/homepage")} // Redirect to Homepage
+          className="text-blue-600 hover:text-blue-800 mb-2"
+        >
+          &larr; Back
+        </button>
+
         <h2 className="text-2xl font-bold text-gray-800 mb-4">
           Report {type.charAt(0).toUpperCase() + type.slice(1)} Emergency
         </h2>
@@ -141,7 +150,9 @@ function Emergencyform() {
           <label className="text-sm text-gray-500">Live Location</label>
           <p className="text-gray-700">
             {location.lat && location.lng
-              ? `Latitude: ${location.lat.toFixed(5)}, Longitude: ${location.lng.toFixed(5)}`
+              ? `Latitude: ${location.lat.toFixed(
+                  5
+                )}, Longitude: ${location.lng.toFixed(5)}`
               : "Fetching location..."}
           </p>
 

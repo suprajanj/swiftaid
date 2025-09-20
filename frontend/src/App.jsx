@@ -4,6 +4,7 @@ import Homepage from "./pages/Homepage";
 import Emergencyform from "./pages/Emergencyform";
 import Userprofile from "./pages/Userprofile";
 import UserEmergencyRequest from "./pages/UserEmergencyRequest";
+import LoginandSignup from "./pages/LoginandSignuo";
 
 function App() {
   return (
@@ -13,6 +14,7 @@ function App() {
         <Route path="/form/:type" element={<Emergencyform />} />
         <Route path="/profile" element={<Userprofile />} />
         <Route path="/userRequests" element={<UserEmergencyRequest />} />
+        <Route path="/login" element={<LoginandSignup />} />
       </Routes>
     </div>
   );

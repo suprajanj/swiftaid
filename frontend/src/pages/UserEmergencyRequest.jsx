@@ -1,12 +1,20 @@
 import React, { useEffect, useState } from "react";
 import axios from "axios";
-import { Trash2, MapPin, Loader2, ArrowLeft } from "lucide-react";
-import { useNavigate } from "react-router-dom"; // ✅ Import useNavigate
+import { Trash2, MapPin, Loader2, ArrowLeft, Edit3, Save } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
 function UserEmergencyRequest() {
   const [requests, setRequests] = useState([]);
   const [loading, setLoading] = useState(true);
-  const navigate = useNavigate(); // ✅ Initialize navigate
+  const [editingId, setEditingId] = useState(null);
+  const [editForm, setEditForm] = useState({
+    name: "",
+    age: "",
+    number: "",
+    emergency: "",
+  });
+
+  const navigate = useNavigate();
 
   // Fetch SOS requests
   useEffect(() => {
@@ -33,6 +41,34 @@ function UserEmergencyRequest() {
       setRequests(requests.filter((req) => req._id !== id));
     } catch (error) {
       console.error("Error deleting SOS request:", error);
+    }
+  };
+
+  // Start editing
+  const handleEdit = (req) => {
+    setEditingId(req._id);
+    setEditForm({
+      name: req.name,
+      age: req.age,
+      number: req.number,
+      emergency: req.emergency,
+    });
+  };
+
+  // Update request
+  const handleUpdate = async (id) => {
+    try {
+      const res = await axios.put(
+        `http://localhost:3000/api/sos/${id}`,
+        editForm
+      );
+
+      setRequests(requests.map((req) => (req._id === id ? res.data : req)));
+
+      setEditingId(null);
+      setEditForm({ name: "", age: "", number: "", emergency: "" });
+    } catch (error) {
+      console.error("Error updating SOS request:", error);
     }
   };
 
@@ -63,40 +99,101 @@ function UserEmergencyRequest() {
               key={req._id}
               className="bg-white shadow-md rounded-lg p-6 flex justify-between items-center"
             >
-              <div>
-                <h2 className="text-lg font-semibold text-gray-800">
-                  {req.emergency}
-                </h2>
-                <p className="text-gray-600">
-                  <span className="font-medium">Name:</span> {req.name}
-                </p>
-                <p className="text-gray-600">
-                  <span className="font-medium">Age:</span> {req.age}
-                </p>
-                <p className="text-gray-600">
-                  <span className="font-medium">Phone:</span> {req.number}
-                </p>
-                <a
-                  href={req.location?.mapLink}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center gap-1 text-blue-600 hover:underline mt-2"
-                >
-                  <MapPin size={16} /> View Location
-                </a>
-                <p className="text-gray-500 text-sm mt-1">
-                  Created: {new Date(req.createdAt).toLocaleString()}
-                </p>
-              </div>
+              {editingId === req._id ? (
+                // Edit Form
+                <div className="flex-1">
+                  <input
+                    type="text"
+                    value={editForm.name}
+                    onChange={(e) =>
+                      setEditForm({ ...editForm, name: e.target.value })
+                    }
+                    placeholder="Name"
+                    className="border p-2 rounded w-full mb-2"
+                  />
+                  <input
+                    type="number"
+                    value={editForm.age}
+                    onChange={(e) =>
+                      setEditForm({ ...editForm, age: e.target.value })
+                    }
+                    placeholder="Age"
+                    className="border p-2 rounded w-full mb-2"
+                  />
+                  <input
+                    type="text"
+                    value={editForm.number}
+                    onChange={(e) =>
+                      setEditForm({ ...editForm, number: e.target.value })
+                    }
+                    placeholder="Phone"
+                    className="border p-2 rounded w-full mb-2"
+                  />
+                  <input
+                    type="text"
+                    value={editForm.emergency}
+                    onChange={(e) =>
+                      setEditForm({ ...editForm, emergency: e.target.value })
+                    }
+                    placeholder="Emergency Type"
+                    className="border p-2 rounded w-full mb-2"
+                  />
 
-              {/* Delete Button */}
-              <button
-                onClick={() => handleDelete(req._id)}
-                className="text-red-600 hover:bg-red-100 p-2 rounded-full"
-                title="Delete Request"
-              >
-                <Trash2 size={20} />
-              </button>
+                  <button
+                    onClick={() => handleUpdate(req._id)}
+                    className="flex items-center gap-2 bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700"
+                  >
+                    <Save size={18} /> Save
+                  </button>
+                </div>
+              ) : (
+                // Normal View
+                <div>
+                  <h2 className="text-lg font-semibold text-gray-800">
+                    {req.emergency}
+                  </h2>
+                  <p className="text-gray-600">
+                    <span className="font-medium">Name:</span> {req.name}
+                  </p>
+                  <p className="text-gray-600">
+                    <span className="font-medium">Age:</span> {req.age}
+                  </p>
+                  <p className="text-gray-600">
+                    <span className="font-medium">Phone:</span> {req.number}
+                  </p>
+                  <a
+                    href={req.location?.mapLink}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-1 text-blue-600 hover:underline mt-2"
+                  >
+                    <MapPin size={16} /> View Location
+                  </a>
+                  <p className="text-gray-500 text-sm mt-1">
+                    Created: {new Date(req.createdAt).toLocaleString()}
+                  </p>
+                </div>
+              )}
+
+              {/* Actions */}
+              <div className="flex gap-3">
+                <button
+                  onClick={() =>
+                    editingId === req._id ? setEditingId(null) : handleEdit(req)
+                  }
+                  className="text-blue-600 hover:bg-blue-100 p-2 rounded-full"
+                  title="Edit Request"
+                >
+                  <Edit3 size={20} />
+                </button>
+                <button
+                  onClick={() => handleDelete(req._id)}
+                  className="text-red-600 hover:bg-red-100 p-2 rounded-full"
+                  title="Delete Request"
+                >
+                  <Trash2 size={20} />
+                </button>
+              </div>
             </div>
           ))}
         </div>

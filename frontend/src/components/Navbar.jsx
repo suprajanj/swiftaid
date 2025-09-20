@@ -25,15 +25,23 @@ function Navbar() {
         </Link>
       </div>
 
-      {/* Right: Profile Icon */}
-      <div>
-        {/* Whole profile area is a link to /profile */}
+      {/* Right: Profile + Temp Login Button */}
+      <div className="flex items-center space-x-4">
+        {/* Profile link */}
         <Link
           to="/profile"
           className="flex items-center text-gray-700 hover:text-red-600"
         >
           <User className="w-6 h-6 mr-2" />
           <span className="hidden sm:inline font-medium">View Profile</span>
+        </Link>
+
+        {/* ✅ Temp Login Button */}
+        <Link
+          to="/login"
+          className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg font-medium transition duration-300"
+        >
+          Login & Signup
         </Link>
       </div>
     </nav>

@@ -263,7 +263,36 @@ export default function LoginandSignup() {
                     required
                   />
                 </div>
+              </>
+            )}
 
+            {/* Email + Password fields */}
+            <div>
+              <label className="block mb-1 font-medium">Email</label>
+              <input
+                type="email"
+                name="email"
+                value={formData.email}
+                onChange={handleChange}
+                className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring focus:ring-blue-400"
+                required
+              />
+            </div>
+            <div>
+              <label className="block mb-1 font-medium">Password</label>
+              <input
+                type="password"
+                name="password"
+                value={formData.password}
+                onChange={handleChange}
+                className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring focus:ring-blue-400"
+                required
+              />
+            </div>
+
+            {/* ✅ Confirm Password + Terms now above Register button */}
+            {!isLogin && (
+              <>
                 <div>
                   <label className="block mb-1 font-medium">
                     Confirm Password
@@ -295,30 +324,6 @@ export default function LoginandSignup() {
                 </div>
               </>
             )}
-
-            {/* Email + Password fields */}
-            <div>
-              <label className="block mb-1 font-medium">Email</label>
-              <input
-                type="email"
-                name="email"
-                value={formData.email}
-                onChange={handleChange}
-                className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring focus:ring-blue-400"
-                required
-              />
-            </div>
-            <div>
-              <label className="block mb-1 font-medium">Password</label>
-              <input
-                type="password"
-                name="password"
-                value={formData.password}
-                onChange={handleChange}
-                className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring focus:ring-blue-400"
-                required
-              />
-            </div>
 
             <button
               type="submit"

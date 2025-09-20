@@ -167,30 +167,34 @@ function Userprofile() {
 
             {editSection === "personal" && (
               <>
+                <label className="block mb-1 font-medium">Full Name</label>
                 <input
                   type="text"
                   name="fullName"
                   value={formData.fullName}
                   onChange={handleChange}
-                  placeholder="Full Name"
                   className="w-full border p-2 rounded mb-3"
                 />
+
+                <label className="block mb-1 font-medium">Email</label>
                 <input
                   type="email"
                   name="email"
                   value={formData.email}
                   onChange={handleChange}
-                  placeholder="Email"
                   className="w-full border p-2 rounded mb-3"
                 />
+
+                <label className="block mb-1 font-medium">Phone</label>
                 <input
                   type="text"
                   name="phone"
                   value={formData.phone}
                   onChange={handleChange}
-                  placeholder="Phone"
                   className="w-full border p-2 rounded mb-3"
                 />
+
+                <label className="block mb-1 font-medium">Date of Birth</label>
                 <input
                   type="date"
                   name="dob"
@@ -203,28 +207,32 @@ function Userprofile() {
 
             {editSection === "health" && (
               <>
+                <label className="block mb-1 font-medium">Blood Type</label>
                 <input
                   type="text"
                   name="bloodType"
                   value={formData.bloodType}
                   onChange={handleChange}
-                  placeholder="Blood Type"
                   className="w-full border p-2 rounded mb-3"
                 />
+
+                <label className="block mb-1 font-medium">Allergies</label>
                 <input
                   type="text"
                   name="allergies"
                   value={formData.allergies}
                   onChange={handleChange}
-                  placeholder="Allergies"
                   className="w-full border p-2 rounded mb-3"
                 />
+
+                <label className="block mb-1 font-medium">
+                  Medical Conditions
+                </label>
                 <input
                   type="text"
                   name="conditions"
                   value={formData.conditions}
                   onChange={handleChange}
-                  placeholder="Medical Conditions"
                   className="w-full border p-2 rounded mb-3"
                 />
               </>

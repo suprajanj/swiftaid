@@ -43,7 +43,7 @@ function Userprofile() {
       <aside className="w-72 bg-white shadow-md p-4 flex flex-col">
         {/* Back Button */}
         <button
-          onClick={() => navigate("/")}
+          onClick={() => navigate("/homepage")}
           className="flex items-center gap-2 p-2 mb-4 text-gray-700 hover:bg-gray-200 rounded-lg transition"
         >
           <ArrowLeft size={20} />

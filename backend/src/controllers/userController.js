@@ -1,5 +1,6 @@
 import bcrypt from "bcryptjs";
 import User from "../model/User.js";
+import nodemailer from "nodemailer";
 
 // @desc    Create new user (Sign Up)
 export const createUser = async (req, res) => {
@@ -134,5 +135,92 @@ export const updateUser = async (req, res) => {
   } catch (error) {
     console.error("Error updating user:", error);
     res.status(500).json({ message: "Error updating user" });
+  }
+};
+
+// LOGIN PART
+
+// In-memory OTP store
+const otpStore = {}; // { userId: { otp: 123456, expires: Date } }
+
+// Login user and send OTP
+export const loginUser = async (req, res) => {
+  try {
+    const { email, password } = req.body;
+
+    if (!email || !password)
+      return res.status(400).json({ message: "Email and password required" });
+
+    // 1️⃣ Find user in DB
+    const user = await User.findOne({ email });
+    if (!user) return res.status(404).json({ message: "User not found" });
+
+    // 2️⃣ Compare password
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch) return res.status(401).json({ message: "Invalid password" });
+
+    // 3️⃣ Generate OTP
+    const otp = Math.floor(100000 + Math.random() * 900000);
+    const expires = new Date(Date.now() + 5 * 60 * 1000); // 5 min
+    otpStore[user._id] = { otp, expires };
+
+    // 4️⃣ Send OTP via email
+    const transporter = nodemailer.createTransport({
+      service: "gmail",
+      auth: {
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASS,
+      },
+    });
+
+    await transporter.sendMail({
+      from: process.env.EMAIL_USER,
+      to: user.email,
+      subject: "Your OTP Code",
+      text: `Your OTP is ${otp}. It expires in 5 minutes.`,
+    });
+
+    res.status(200).json({ message: "OTP sent to email", userId: user._id });
+  } catch (error) {
+    console.error("Login error:", error);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+// Verify OTP
+export const verifyOTP = (req, res) => {
+  try {
+    const { userId, otp } = req.body;
+
+    if (!userId || !otp) {
+      return res.status(400).json({ message: "User ID and OTP required" });
+    }
+
+    const record = otpStore[userId];
+    if (!record)
+      return res
+        .status(400)
+        .json({ message: "No OTP found. Please login again." });
+
+    const now = new Date();
+    if (record.expires < now) {
+      delete otpStore[userId]; // remove expired OTP
+      return res
+        .status(400)
+        .json({ message: "OTP expired. Please login again." });
+    }
+
+    if (parseInt(otp) !== record.otp) {
+      return res.status(400).json({ message: "Invalid OTP" });
+    }
+
+    // OTP is correct, delete from store
+    delete otpStore[userId];
+
+    // You can now create JWT or session
+    res.status(200).json({ message: "OTP verified successfully", userId });
+  } catch (error) {
+    console.error("OTP verification error:", error);
+    res.status(500).json({ message: "Server error" });
   }
 };

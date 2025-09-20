@@ -35,14 +35,6 @@ function Navbar() {
           <User className="w-6 h-6 mr-2" />
           <span className="hidden sm:inline font-medium">View Profile</span>
         </Link>
-
-        {/* ✅ Temp Login Button */}
-        <Link
-          to="/login"
-          className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg font-medium transition duration-300"
-        >
-          Login & Signup
-        </Link>
       </div>
     </nav>
   );

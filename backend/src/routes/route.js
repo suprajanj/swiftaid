@@ -1,6 +1,5 @@
-// backend/src/route/route.js
 import express from "express";
-import * as controller from "../controller/controller.js";
+import * as controller from "../controller/controller.js"; // must be * as controller
 
 const router = express.Router();
 

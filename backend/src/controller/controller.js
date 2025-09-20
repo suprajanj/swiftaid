@@ -1,95 +1,57 @@
-import express from "express";
-import cors from "cors";
-import mongoose from "mongoose";
-import alert from "../model/emergencymodel.js"; // Your Mongoose model
+import Alert from "../model/alertModel.js";
+import AcceptedAlert from "../model/acceptedAlertModel.js"; // correct relative path
 
-const app = express();
-
-app.use(cors());
-app.use(express.json());
-
-// 📌 Get all alerts
 const getAllAlerts = async (req, res) => {
   try {
-    const alerts = await alert.find().select("-__v").sort({ timestamp: -1 });
-    if (!alerts || alerts.length === 0) {
-      return res.status(404).json({ message: "No alerts found" });
-    }
+    const alerts = await Alert.find().sort({ timestamp: -1 });
     res.json(alerts);
   } catch (error) {
-    res.status(500).json({ message: "Server Error", error: error.message });
+    res.status(500).json({ message: "Server error", error: error.message });
   }
 };
-
-// 📌 Accept an alert (set status = "Accepted")
-import Alert from "../models/alertModel.js"; // make sure you import your model
 
 const acceptAlert = async (req, res) => {
   try {
     const { id } = req.params;
 
-    const updatedAlert = await Alert.findByIdAndUpdate(
-      id,
-      { status: "Accepted" },
-      { new: true, runValidators: true }
-    );
+    // Get the alert to move it to accepted collection
+    const alert = await Alert.findById(id);
+    if (!alert) return res.status(404).json({ message: "Alert not found" });
 
-    if (!updatedAlert) {
-      return res.status(404).json({ message: "Alert not found" });
-    }
+    // Save to acceptedAlerts collection
+    const accepted = new AcceptedAlert({ ...alert.toObject(), status: "Accepted" });
+    await accepted.save();
 
-    res.status(200).json({
-      message: "Alert accepted successfully",
-      alert: updatedAlert,
-    });
+    // Optionally update the status in original alert
+    alert.status = "Accepted";
+    await alert.save();
+
+    res.json({ message: "Alert accepted successfully", accepted });
   } catch (error) {
-    console.error("Error accepting alert:", error);
-    res.status(500).json({ message: "Server Error", error: error.message });
+    res.status(500).json({ message: "Server error", error: error.message });
   }
 };
 
-
-// 📌 Update alert status (PATCH)
 const displayAlertDetails = async (req, res) => {
-  const { id } = req.params;
-  const { status } = req.body;
-  const validStatuses = ["pending", "Accepted", "resolved", "cancelled"];
-  if (!validStatuses.includes(status)) {
-    return res.status(400).json({ message: "Invalid status value" });
-  }
   try {
-    const updatedAlert = await alert.findByIdAndUpdate(id, { status }, { new: true });
-    if (!updatedAlert) return res.status(404).json({ message: "Alert not found" });
-
-    res.json(updatedAlert);
+    const { id } = req.params;
+    const alert = await Alert.findById(id);
+    if (!alert) return res.status(404).json({ message: "Alert not found" });
+    res.json(alert);
   } catch (error) {
-    res.status(500).json({ message: "Server Error", error: error.message });
+    res.status(500).json({ message: "Server error", error: error.message });
   }
 };
 
-// 📌 Add a new alert
 const addAlert = async (req, res) => {
   try {
-    const { reportId, userId, NIC, contactNumber, emergencyType, liveLocation, address, priorityLevel } = req.body;
-
-    const newAlert = new alert({
-      reportId,
-      userId,
-      NIC,
-      contactNumber,
-      emergencyType,
-      liveLocation,
-      address,
-      priorityLevel,
-      createdAt: new Date()
-    });
-
-    const savedAlert = await newAlert.save();
-    res.status(201).json(savedAlert);
+    const newAlert = new Alert(req.body);
+    await newAlert.save();
+    res.status(201).json(newAlert);
   } catch (error) {
-    res.status(500).json({ message: "Server Error", error: error.message });
+    res.status(500).json({ message: "Server error", error: error.message });
   }
 };
 
-// ✅ Proper named exports (ES Modules)
+// ✅ Export all functions
 export { getAllAlerts, acceptAlert, displayAlertDetails, addAlert };

@@ -4,7 +4,7 @@ import Homepage from "./pages/Homepage";
 import Emergencyform from "./pages/Emergencyform";
 import Userprofile from "./pages/Userprofile";
 import UserEmergencyRequest from "./pages/UserEmergencyRequest";
-import LoginandSignup from "./pages/LoginandSignuo";
+import LoginandSignup from "./pages/LoginandSignup";
 
 function App() {
   return (

@@ -1,5 +1,6 @@
 // LoginandSignup.jsx
 import React, { useState } from "react";
+import axios from "axios";
 
 export default function LoginandSignup() {
   const [isLogin, setIsLogin] = useState(true); // toggle state
@@ -29,11 +30,12 @@ export default function LoginandSignup() {
     }));
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
 
     if (!isLogin) {
+      // Signup validations
       if (!passwordRegex.test(formData.password)) {
         setError(
           "Password must be at least 8 characters, include one uppercase letter, one number, and one special character."
@@ -48,8 +50,47 @@ export default function LoginandSignup() {
         setError("You must agree to the terms and conditions.");
         return;
       }
-      console.log("Signup successful:", formData);
+
+      try {
+        const response = await axios.post("http://localhost:3000/api/user", {
+          firstName: formData.firstName,
+          lastName: formData.lastName,
+          nic: formData.nic,
+          email: formData.email,
+          password: formData.password,
+          confirmPassword: formData.confirmPassword,
+          mobile: formData.mobile,
+          address: formData.address,
+          gender: formData.gender,
+          dob: formData.dob,
+          termsAccepted: formData.terms,
+        });
+
+        alert(response.data.message);
+        setIsLogin(true); // switch to login after signup
+        setFormData({
+          firstName: "",
+          lastName: "",
+          nic: "",
+          email: "",
+          password: "",
+          confirmPassword: "",
+          mobile: "",
+          address: "",
+          gender: "",
+          dob: "",
+          terms: false,
+        });
+      } catch (error) {
+        console.error(error);
+        if (error.response && error.response.data.message) {
+          setError(error.response.data.message);
+        } else {
+          setError("Something went wrong. Try again!");
+        }
+      }
     } else {
+      // Login (for now, just console.log)
       console.log("Login successful with:", {
         email: formData.email,
         password: formData.password,

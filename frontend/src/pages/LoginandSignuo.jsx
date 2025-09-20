@@ -6,6 +6,7 @@ export default function LoginandSignup() {
   const [formData, setFormData] = useState({
     firstName: "",
     lastName: "",
+    nic: "",
     email: "",
     password: "",
     confirmPassword: "",
@@ -17,7 +18,6 @@ export default function LoginandSignup() {
   });
   const [error, setError] = useState("");
 
-  // Password validation regex
   const passwordRegex =
     /^(?=.*[A-Z])(?=.*[0-9])(?=.*[!@#$%^&*])[A-Za-z\d!@#$%^&*]{8,}$/;
 
@@ -34,7 +34,6 @@ export default function LoginandSignup() {
     setError("");
 
     if (!isLogin) {
-      // Signup validation
       if (!passwordRegex.test(formData.password)) {
         setError(
           "Password must be at least 8 characters, include one uppercase letter, one number, and one special character."
@@ -51,7 +50,6 @@ export default function LoginandSignup() {
       }
       console.log("Signup successful:", formData);
     } else {
-      // Login validation
       console.log("Login successful with:", {
         email: formData.email,
         password: formData.password,
@@ -74,101 +72,135 @@ export default function LoginandSignup() {
           {!isLogin && (
             <>
               <div className="flex gap-2">
+                <div className="w-1/2">
+                  <label className="block mb-1 font-medium">First Name</label>
+                  <input
+                    type="text"
+                    name="firstName"
+                    value={formData.firstName}
+                    onChange={handleChange}
+                    className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring focus:ring-blue-400"
+                    required
+                  />
+                </div>
+                <div className="w-1/2">
+                  <label className="block mb-1 font-medium">Last Name</label>
+                  <input
+                    type="text"
+                    name="lastName"
+                    value={formData.lastName}
+                    onChange={handleChange}
+                    className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring focus:ring-blue-400"
+                    required
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block mb-1 font-medium">NIC Number</label>
                 <input
                   type="text"
-                  name="firstName"
-                  placeholder="First Name"
-                  value={formData.firstName}
+                  name="nic"
+                  value={formData.nic}
                   onChange={handleChange}
-                  className="w-1/2 px-4 py-2 border rounded-lg focus:outline-none focus:ring focus:ring-blue-400"
-                  required
-                />
-                <input
-                  type="text"
-                  name="lastName"
-                  placeholder="Last Name"
-                  value={formData.lastName}
-                  onChange={handleChange}
-                  className="w-1/2 px-4 py-2 border rounded-lg focus:outline-none focus:ring focus:ring-blue-400"
+                  className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring focus:ring-blue-400"
                   required
                 />
               </div>
 
-              <input
-                type="tel"
-                name="mobile"
-                placeholder="Mobile Number"
-                value={formData.mobile}
-                onChange={handleChange}
-                className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring focus:ring-blue-400"
-                required
-              />
+              <div>
+                <label className="block mb-1 font-medium">Mobile Number</label>
+                <input
+                  type="tel"
+                  name="mobile"
+                  value={formData.mobile}
+                  onChange={handleChange}
+                  className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring focus:ring-blue-400"
+                  required
+                />
+              </div>
 
-              <input
-                type="text"
-                name="address"
-                placeholder="Address"
-                value={formData.address}
-                onChange={handleChange}
-                className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring focus:ring-blue-400"
-                required
-              />
+              <div>
+                <label className="block mb-1 font-medium">Address</label>
+                <input
+                  type="text"
+                  name="address"
+                  value={formData.address}
+                  onChange={handleChange}
+                  className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring focus:ring-blue-400"
+                  required
+                />
+              </div>
 
-              <select
-                name="gender"
-                value={formData.gender}
-                onChange={handleChange}
-                className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring focus:ring-blue-400"
-                required
-              >
-                <option value="">Select Gender</option>
-                <option value="male">Male</option>
-                <option value="female">Female</option>
-                <option value="prefer-not">Prefer not to say</option>
-              </select>
+              <div>
+                <label className="block mb-1 font-medium">Gender</label>
+                <select
+                  name="gender"
+                  value={formData.gender}
+                  onChange={handleChange}
+                  className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring focus:ring-blue-400"
+                  required
+                >
+                  <option value="">Select Gender</option>
+                  <option value="male">Male</option>
+                  <option value="female">Female</option>
+                  <option value="prefer-not">Prefer not to say</option>
+                </select>
+              </div>
 
-              <input
-                type="date"
-                name="dob"
-                value={formData.dob}
-                onChange={handleChange}
-                className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring focus:ring-blue-400"
-                required
-              />
+              <div>
+                <label className="block mb-1 font-medium">Date of Birth</label>
+                <input
+                  type="date"
+                  name="dob"
+                  value={formData.dob}
+                  onChange={handleChange}
+                  className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring focus:ring-blue-400"
+                  required
+                />
+              </div>
             </>
           )}
 
-          <input
-            type="email"
-            name="email"
-            placeholder="Email"
-            value={formData.email}
-            onChange={handleChange}
-            className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring focus:ring-blue-400"
-            required
-          />
+          <div>
+            <label className="block mb-1 font-medium">Email</label>
+            <input
+              type="email"
+              name="email"
+              value={formData.email}
+              onChange={handleChange}
+              className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring focus:ring-blue-400"
+              required
+            />
+          </div>
 
-          <input
-            type="password"
-            name="password"
-            placeholder="Password"
-            value={formData.password}
-            onChange={handleChange}
-            className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring focus:ring-blue-400"
-            required
-          />
+          <div>
+            <label className="block mb-1 font-medium">Password</label>
+            <input
+              type="password"
+              name="password"
+              value={formData.password}
+              onChange={handleChange}
+              className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring focus:ring-blue-400"
+              required
+            />
+          </div>
 
           {!isLogin && (
             <>
-              <input
-                type="password"
-                name="confirmPassword"
-                placeholder="Confirm Password"
-                value={formData.confirmPassword}
-                onChange={handleChange}
-                className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring focus:ring-blue-400"
-                required
-              />
+              <div>
+                <label className="block mb-1 font-medium">
+                  Confirm Password
+                </label>
+                <input
+                  type="password"
+                  name="confirmPassword"
+                  value={formData.confirmPassword}
+                  onChange={handleChange}
+                  className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring focus:ring-blue-400"
+                  required
+                />
+              </div>
 
               <div className="flex items-center gap-2">
                 <input
@@ -196,7 +228,6 @@ export default function LoginandSignup() {
           </button>
         </form>
 
-        {/* Toggle button */}
         <p className="mt-4 text-center text-sm">
           {isLogin ? "Don’t have an account?" : "Already have an account?"}{" "}
           <button

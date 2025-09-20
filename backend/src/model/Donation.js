@@ -1,4 +1,4 @@
-// models/Donation.js
+// model/Donation.js
 import mongoose from "mongoose";
 
 const donationSchema = new mongoose.Schema({
@@ -39,10 +39,17 @@ const donationSchema = new mongoose.Schema({
         }
     },
     donationDetails: {
+        // For regular donations
         quantity: {
             type: Number,
-            required: true,
-            min: 1
+            min: 1,
+            // Remove required: true to make it conditional
+        },
+        // For fundraiser donations
+        amount: {
+            type: Number,
+            min: 0.01,
+            // Remove required: true to make it conditional
         },
         // For blood donations
         bloodGroup: {
@@ -99,6 +106,14 @@ const donationSchema = new mongoose.Schema({
     }
 }, {
     timestamps: true
+});
+
+// Pre-save validation to ensure either quantity or amount is provided
+donationSchema.pre('save', function(next) {
+    if (!this.donationDetails.quantity && !this.donationDetails.amount) {
+        return next(new Error('Either quantity or amount must be provided'));
+    }
+    next();
 });
 
 // Index for better query performance

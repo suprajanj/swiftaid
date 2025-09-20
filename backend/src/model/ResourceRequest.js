@@ -1,4 +1,4 @@
-// models/ResourceRequest.js
+// model/ResourceRequest.js
 import mongoose from "mongoose";
 
 const resourceRequestSchema = new mongoose.Schema({
@@ -16,7 +16,7 @@ const resourceRequestSchema = new mongoose.Schema({
         type: String,
         enum: ['fire', 'medical', 'accident', 'natural_disaster', 'crime', 'search_rescue', 'hazmat', 'other'],
         required: true
-    }, // Fixed: Added missing closing brace and comma
+    },
     organizationType: {
         type: String,
         enum: ['hospital', 'fire_department', 'police_station', 'ambulance_service', 'ngo', 'disaster_relief', 'emergency_service', 'government_agency', 'military', 'other'],
@@ -54,7 +54,7 @@ const resourceRequestSchema = new mongoose.Schema({
         type: String,
         enum: [
             // Medical
-            'blood', 'medical_supplies', 'medicine', 'oxygen', 'medical_equipment',
+            'blood', 'medical_supplies', 'medicine', 'oxygen', 'medical_equipment', 'fundraiser',
             // Fire & Rescue
             'firefighting_equipment', 'rescue_tools', 'protective_gear', 'water_supply',
             // Police & Security
@@ -119,6 +119,17 @@ const resourceRequestSchema = new mongoose.Schema({
     smsNotificationSent: {
         type: Boolean,
         default: false
+    },
+    // Fixed: Only one fundraiser field definition
+    fundraiser: {
+        targetAmount: { 
+            type: Number, 
+            required: function() { return this.resourceType === 'fundraiser'; } 
+        },
+        collectedAmount: { 
+            type: Number, 
+            default: 0 
+        }
     },
     notificationSentAt: {
         type: Date

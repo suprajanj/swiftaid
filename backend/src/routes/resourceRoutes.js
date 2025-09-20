@@ -1,6 +1,7 @@
 // routes/resourceRoutes.js
 import express from 'express';
 import ResourceRequest from '../model/ResourceRequest.js';
+import { updateFundraiserAmount } from '../controllers/resourceRequestController.js';
 
 const router = express.Router();
 
@@ -73,6 +74,11 @@ router.put('/requests/:id', async (req, res) => {
 });
 
 /* ================================
+   PUT update fundraiser amount - NEW ENDPOINT
+================================ */
+router.put('/requests/:id/fundraiser', updateFundraiserAmount);
+
+/* ================================
    PATCH update status only
 ================================ */
 router.patch('/requests/:id/status', async (req, res) => {
@@ -116,4 +122,3 @@ router.delete('/requests/:id', async (req, res) => {
 });
 
 export default router;
- 

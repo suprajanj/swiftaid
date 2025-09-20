@@ -18,18 +18,13 @@ router.use('/resources', resourceRoutes);
 router.use('/donations', donationRoutes);
 
 // 404 handler for API routes
-router.use('*', (req, res) => {
-    res.status(404).json({
-        success: false,
-        message: 'API endpoint not found',
-        availableEndpoints: [
-            'GET /api/health',
-            'GET /api/resources/requests',
-            'POST /api/resources/requests',
-            'GET /api/donations/donations',
-            'POST /api/donations/donations'
-        ]
-    });
+// ✅ Correct catch-all for Express 5
+router.use((req, res) => {
+  res.status(404).json({
+    success: false,
+    message: 'Route not found',
+  });
 });
+
 
 export default router;

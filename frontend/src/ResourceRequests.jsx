@@ -34,7 +34,8 @@ export default function ResourceRequests() {
 
     // Backend-valid status enum
     status: "pending", // pending | in_progress | completed | cancelled
-    additionalNotes: ""
+    additionalNotes: "",
+
   });
 
   // Map emergencyType -> category as backend expects
@@ -106,7 +107,11 @@ export default function ResourceRequests() {
       requiredBy: "",
 
       status: "pending",
-      additionalNotes: ""
+      additionalNotes: "",
+
+       
+    fundraiserTarget: 0,
+    fundraiserCollected: 0
     });
     setEditingId(null);
     setError(null);
@@ -239,6 +244,11 @@ export default function ResourceRequests() {
         await new Promise(resolve => setTimeout(resolve, 500));
       }
 
+      // If fundraiser, attach fundraiser info
+ 
+
+
+
       // Verify jsPDF is available
       if (!window.jspdf || !window.jspdf.jsPDF) {
         throw new Error('jsPDF not properly loaded');
@@ -339,6 +349,10 @@ export default function ResourceRequests() {
 
       console.log('Saving PDF...');
       
+
+
+
+
       // Save PDF
       doc.save(`SwiftAid_Resource_Requests_Report_${new Date().toISOString().split('T')[0]}.pdf`);
       
@@ -393,6 +407,15 @@ export default function ResourceRequests() {
       requiredBy: form.requiredBy ? new Date(form.requiredBy) : new Date(),
       additionalNotes: form.additionalNotes?.trim() || ""
     };
+
+    // If fundraiser, attach fundraiser details
+if (form.resourceType === "fundraiser") {
+  payload.fundraiser = {
+    targetAmount: Number(form.fundraiserTarget),
+    collectedAmount: Number(form.fundraiserCollected) || 0
+  };
+}
+
 
     try {
       const method = editingId ? "PUT" : "POST";
@@ -772,6 +795,7 @@ export default function ResourceRequests() {
                   <option value="blood">Blood</option>
                   <option value="medical_supplies">Medical supplies</option>
                   <option value="medicine">Medicine</option>
+                  <option value="fundraiser">Fundraiser</option>
                   <option value="oxygen">Oxygen</option>
                   <option value="medical_equipment">Medical Equipment</option>
                   <option value="firefighting_equipment">Firefighting Eq.</option>
@@ -783,13 +807,35 @@ export default function ResourceRequests() {
                   <option value="shelter_materials">Shelter Materials</option>
                   <option value="volunteers">Volunteers</option>
                   <option value="transport_vehicles">Transport Vehicles</option>
-                  <option value="generators">Generators</option>
-                  <option value="batteries">Batteries</option>
                   <option value="lighting_equipment">Lighting</option>
                   <option value="other">Other</option>
                 </select>
               </Input>
 
+              {form.resourceType === "fundraiser" && (
+  <>
+    <label>🎯 Target Amount (USD) *</label>
+    <input
+      type="number"
+      name="fundraiserTarget"
+      value={form.fundraiserTarget}
+      onChange={onChange}
+      required
+      style={inputStyle}
+    />
+
+{/* <label>💰 Collected Amount</label>
+    <input
+      type="number"
+      name="fundraiserCollected"
+      value={form.fundraiserCollected}
+      onChange={onChange}
+      style={inputStyle}
+      disabled
+    /> */}
+    
+  </>
+)}
               {form.resourceType === "blood" && (
                 <Input label="Blood Group *">
                   <select
@@ -960,6 +1006,13 @@ export default function ResourceRequests() {
                     <p style={{ margin: "4px 0" }}>
                       <strong>Created:</strong> {new Date(r.createdAt).toLocaleDateString()}
                     </p>
+
+                    {r.resourceType === "fundraiser" && (
+  <p style={{ margin: "4px 0", color: "#4CAF50", fontWeight: "bold" }}>
+    🎯 Target: ${r.fundraiser?.targetAmount || 0} | 💰 Collected: ${r.fundraiser?.collectedAmount || 0}
+  </p>
+)}
+
                   </div>
                 </div>
 

@@ -1,10 +1,15 @@
+// routes/donationRoutes.js
 import express from 'express';
 import Donation from '../model/Donation.js';
 import ResourceRequest from '../model/ResourceRequest.js';
+import { createPaymentIntent } from '../controllers/donationController.js';
 
 const router = express.Router();
 
-// GET all donations
+// Stripe - Create Payment Intent (Fundraiser Donations)
+router.post('/create-payment-intent', createPaymentIntent);
+
+// ===================== GET all donations =====================
 router.get('/', async (req, res) => {
     try {
         const { status, district, resourceRequest } = req.query;
@@ -24,7 +29,7 @@ router.get('/', async (req, res) => {
     }
 });
 
-// GET single donation
+// ===================== GET single donation =====================
 router.get('/:id', async (req, res) => {
     try {
         const donation = await Donation.findById(req.params.id).populate('resourceRequest');
@@ -35,7 +40,7 @@ router.get('/:id', async (req, res) => {
     }
 });
 
-// POST create donation
+// ===================== POST create donation =====================
 router.post('/', async (req, res) => {
     try {
         const resourceRequest = await ResourceRequest.findById(req.body.resourceRequest);
@@ -45,7 +50,7 @@ router.post('/', async (req, res) => {
             return res.status(400).json({ success: false, message: 'Resource request is not active' });
         }
 
-        // Check for duplicate donations (same NIC for same request)
+        // Prevent duplicate donations (same NIC for same request)
         const existingDonation = await Donation.findOne({
             resourceRequest: req.body.resourceRequest,
             'donor.nic': req.body.donor.nic,
@@ -69,7 +74,7 @@ router.post('/', async (req, res) => {
     }
 });
 
-// PUT update full donation
+// ===================== PUT update donation =====================
 router.put('/:id', async (req, res) => {
     try {
         const donation = await Donation.findByIdAndUpdate(req.params.id, req.body, {
@@ -85,7 +90,7 @@ router.put('/:id', async (req, res) => {
     }
 });
 
-// PUT update donation STATUS only (Admin only)
+// ===================== PUT update donation STATUS =====================
 router.put('/:id/status', async (req, res) => {
     try {
         const { status, adminNotes, rejectionReason } = req.body;
@@ -118,7 +123,7 @@ router.put('/:id/status', async (req, res) => {
     }
 });
 
-// DELETE donation
+// ===================== DELETE donation =====================
 router.delete('/:id', async (req, res) => {
     try {
         const donation = await Donation.findByIdAndDelete(req.params.id);

@@ -2,12 +2,13 @@
 import React, { useState } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
+import toast, { Toaster } from "react-hot-toast";
 
 export default function LoginandSignup() {
-  const navigate = useNavigate(); // initialize navigate
-  const [isLogin, setIsLogin] = useState(true); // toggle state
-  const [isOTPStep, setIsOTPStep] = useState(false); // new OTP step
-  const [userId, setUserId] = useState(""); // store userId from login
+  const navigate = useNavigate();
+  const [isLogin, setIsLogin] = useState(true);
+  const [isOTPStep, setIsOTPStep] = useState(false);
+  const [userId, setUserId] = useState("");
   const [formData, setFormData] = useState({
     firstName: "",
     lastName: "",
@@ -22,7 +23,6 @@ export default function LoginandSignup() {
     terms: false,
     otp: "",
   });
-  const [error, setError] = useState("");
 
   const passwordRegex =
     /^(?=.*[A-Z])(?=.*[0-9])(?=.*[!@#$%^&*])[A-Za-z\d!@#$%^&*]{8,}$/;
@@ -38,22 +38,21 @@ export default function LoginandSignup() {
   // -------------------- Handle Signup / Login --------------------
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setError("");
 
     if (!isLogin) {
-      // -------------------- SIGNUP --------------------
+      // SIGNUP
       if (!passwordRegex.test(formData.password)) {
-        setError(
+        toast.error(
           "Password must be at least 8 characters, include one uppercase letter, one number, and one special character."
         );
         return;
       }
       if (formData.password !== formData.confirmPassword) {
-        setError("Passwords do not match.");
+        toast.error("Passwords do not match.");
         return;
       }
       if (!formData.terms) {
-        setError("You must agree to the terms and conditions.");
+        toast.error("You must agree to the terms and conditions.");
         return;
       }
 
@@ -72,8 +71,8 @@ export default function LoginandSignup() {
           termsAccepted: formData.terms,
         });
 
-        alert(response.data.message);
-        setIsLogin(true); // switch to login after signup
+        toast.success(response.data.message);
+        setIsLogin(true);
         setFormData({
           firstName: "",
           lastName: "",
@@ -90,26 +89,27 @@ export default function LoginandSignup() {
         });
       } catch (error) {
         if (error.response && error.response.data.message) {
-          setError(error.response.data.message);
+          toast.error(error.response.data.message);
         } else {
-          setError("Something went wrong. Try again!");
+          toast.error("Something went wrong. Try again!");
         }
       }
     } else {
-      // -------------------- LOGIN --------------------
+      // LOGIN
       try {
         const res = await axios.post("http://localhost:3000/api/user/login", {
           email: formData.email,
           password: formData.password,
         });
 
-        setUserId(res.data.userId); // store userId for OTP
-        setIsOTPStep(true); // show OTP input
+        setUserId(res.data.userId);
+        setIsOTPStep(true);
+        toast.success("OTP has been sent to your email.");
       } catch (err) {
         if (err.response && err.response.data.message) {
-          setError(err.response.data.message);
+          toast.error(err.response.data.message);
         } else {
-          setError("Something went wrong during login");
+          toast.error("Something went wrong during login");
         }
       }
     }
@@ -118,7 +118,6 @@ export default function LoginandSignup() {
   // -------------------- Handle OTP Verification --------------------
   const handleVerifyOTP = async (e) => {
     e.preventDefault();
-    setError("");
 
     try {
       const res = await axios.post(
@@ -129,12 +128,9 @@ export default function LoginandSignup() {
         }
       );
 
-      alert(res.data.message + " — You are now logged in!");
+      toast.success(res.data.message + " — You are now logged in!");
+      navigate("/homepage");
 
-      // redirect to Homepage.jsx
-      navigate("/homepage"); // make sure your route exists
-
-      // Optional: reset form state
       setIsOTPStep(false);
       setFormData({
         firstName: "",
@@ -153,9 +149,9 @@ export default function LoginandSignup() {
       setIsLogin(true);
     } catch (err) {
       if (err.response && err.response.data.message) {
-        setError(err.response.data.message);
+        toast.error(err.response.data.message);
       } else {
-        setError("OTP verification failed");
+        toast.error("OTP verification failed");
       }
     }
   };
@@ -163,14 +159,12 @@ export default function LoginandSignup() {
   // -------------------- JSX --------------------
   return (
     <div className="flex items-center justify-center min-h-screen bg-gray-100">
+      <Toaster position="top-right" reverseOrder={false} />{" "}
+      {/* toast container */}
       <div className="w-full max-w-md bg-white shadow-lg rounded-2xl p-6">
         <h2 className="text-2xl font-bold text-center mb-6">
           {!isOTPStep ? (isLogin ? "Login" : "Sign Up") : "Enter OTP"}
         </h2>
-
-        {error && (
-          <p className="text-red-500 text-sm text-center mb-3">{error}</p>
-        )}
 
         {!isOTPStep ? (
           <form onSubmit={handleSubmit} className="space-y-4">
@@ -302,7 +296,7 @@ export default function LoginandSignup() {
               </>
             )}
 
-            {/* Login / Signup email + password */}
+            {/* Email + Password fields */}
             <div>
               <label className="block mb-1 font-medium">Email</label>
               <input

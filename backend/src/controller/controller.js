@@ -3,7 +3,6 @@ import Alert from "../model/alertModel.js";
 import AcceptedAlert from "../model/acceptedAlertModel.js";
 import CompletedTask from "../model/completedTaskModel.js";
 
-
 const getAllAlerts = async (req, res) => {
   try {
     const alerts = await Alert.find().sort({ timestamp: -1 });
@@ -13,18 +12,15 @@ const getAllAlerts = async (req, res) => {
   }
 };
 
-
 const acceptAlert = async (req, res) => {
   try {
     const { id } = req.params;
     const alert = await Alert.findById(id);
     if (!alert) return res.status(404).json({ message: "Alert not found" });
 
-    // Store in accepted collection
     const accepted = new AcceptedAlert({ ...alert.toObject(), status: "accepted" });
     await accepted.save();
 
-    // Update original alert
     alert.status = "accepted";
     await alert.save();
 
@@ -34,7 +30,6 @@ const acceptAlert = async (req, res) => {
   }
 };
 
-
 const getAcceptedAlerts = async (req, res) => {
   try {
     const acceptedAlerts = await AcceptedAlert.find().sort({ timestamp: -1 });
@@ -43,7 +38,6 @@ const getAcceptedAlerts = async (req, res) => {
     res.status(500).json({ message: "Server error", error: error.message });
   }
 };
-
 
 const displayAlertDetails = async (req, res) => {
   try {
@@ -56,7 +50,6 @@ const displayAlertDetails = async (req, res) => {
   }
 };
 
-
 const addAlert = async (req, res) => {
   try {
     const newAlert = new Alert(req.body);
@@ -67,12 +60,9 @@ const addAlert = async (req, res) => {
   }
 };
 
-
 const updateAcceptedAlertAndMoveToCompleted = async (req, res) => {
   try {
     const { reportId } = req.body;
-
-    // handle uploaded files
     const photos = req.files?.photos?.map((file) => file.path) || [];
     const videos = req.files?.videos?.map((file) => file.path) || [];
 
@@ -86,7 +76,6 @@ const updateAcceptedAlertAndMoveToCompleted = async (req, res) => {
       return res.status(404).json({ message: "Accepted alert not found" });
     }
 
-    // move to completed tasks
     const completedTask = new CompletedTask(updatedAcceptedAlert.toObject());
     await completedTask.save();
 

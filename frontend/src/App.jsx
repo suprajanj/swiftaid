@@ -12,11 +12,11 @@ function App() {
     <div className="App">
       <Routes>
         <Route path="/" element={<LandingPage />} />
+        <Route path="/login" element={<LoginandSignup />} />
         <Route path="/homepage" element={<Homepage />} />
         <Route path="/form/:type" element={<Emergencyform />} />
         <Route path="/profile" element={<Userprofile />} />
         <Route path="/userRequests" element={<UserEmergencyRequest />} />
-        <Route path="/login" element={<LoginandSignup />} />
       </Routes>
     </div>
   );

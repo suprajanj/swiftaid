@@ -1,26 +1,28 @@
 import express from "express";
-
 import {
   createUser,
-  deleteUser,
+  loginUser,
+  verifyOTP,
+  logoutUser,
   getAllUsers,
   getUserById,
   updateUser,
-  loginUser,
-  verifyOTP,
+  deleteUser,
 } from "../controllers/userController.js";
-import { get } from "mongoose";
+// No authMiddleware needed for now
 
 const router = express.Router();
 
+// Public routes
 router.post("/", createUser);
-router.get("/:id", getUserById);
+router.post("/login", loginUser);
+router.post("/verify-otp", verifyOTP);
+router.post("/logout", logoutUser); // no protect
+
+// User management routes
 router.get("/", getAllUsers);
+router.get("/:id", getUserById);
 router.put("/:id", updateUser);
 router.delete("/:id", deleteUser);
-router.post("/login", loginUser);
-
-//Verify OTP
-router.post("/verify-otp", verifyOTP);
 
 export default router;

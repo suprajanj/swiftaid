@@ -45,7 +45,6 @@ const userSchema = new mongoose.Schema(
     },
     gender: {
       type: String,
-      enum: ["male", "female", "prefer-not"],
       required: true,
     },
     dob: {
@@ -55,6 +54,10 @@ const userSchema = new mongoose.Schema(
     termsAccepted: {
       type: Boolean,
       required: true,
+    },
+    role: {
+      type: String,
+      default: "customer",
     },
   },
   { timestamps: true }
@@ -86,5 +89,4 @@ userSchema.pre("save", async function (next) {
 });
 
 const User = mongoose.model("User", userSchema);
-
 export default User;

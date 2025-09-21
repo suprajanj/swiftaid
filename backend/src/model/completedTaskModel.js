@@ -1,7 +1,7 @@
-// backend/src/model/completedTasksModel.js
+// backend/model/completedTaskModel.js
 import mongoose from "mongoose";
 
-const completedTasksSchema = new mongoose.Schema({
+const completedTaskSchema = new mongoose.Schema({
   reportId: { type: String, required: true, unique: true },
   userId: { type: String, required: true },
   NIC: { type: String, required: true },
@@ -9,23 +9,23 @@ const completedTasksSchema = new mongoose.Schema({
   emergencyType: {
     type: String,
     enum: ["medical", "fire", "accident", "assault", "natural_disaster", "other"],
-    required: true
+    required: true,
   },
   liveLocation: {
     link: { type: String, required: true },
-    coordinates: { type: [Number], required: true } // [longitude, latitude]
+    coordinates: { type: [Number], required: true }, // [longitude, latitude]
   },
   address: { type: String, required: true },
   timestamp: { type: Date, default: Date.now },
   status: {
     type: String,
     enum: ["pending", "accepted", "resolved", "cancelled"],
-    default: "pending"
+    default: "resolved",
   },
   priorityLevel: {
     type: String,
     enum: ["low", "medium", "high", "critical"],
-    default: "medium"
+    default: "medium",
   },
   responderType: {
     type: String,
@@ -36,17 +36,15 @@ const completedTasksSchema = new mongoose.Schema({
       "rescue_team",
       "Hospital",
       "Media",
-      "Insurance"
+      "Insurance",
     ],
-    default: "ambulance"
+    default: "ambulance",
   },
-  description: { type: String, required: true },
-  photos: { type: [String], required: true },
-  videos: { type: [String], required: true }
+  photos: { type: [String], default: [] },
+  videos: { type: [String], default: [] },
 });
 
-// ✅ Proper DB connection usage
 const dbConnection = global.completedTasksDB || mongoose;
-const CompletedTask = dbConnection.model("CompletedTask", completedTasksSchema);
+const CompletedTask = dbConnection.model("CompletedTask", completedTaskSchema);
 
 export default CompletedTask;

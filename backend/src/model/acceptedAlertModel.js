@@ -1,3 +1,4 @@
+// backend/model/acceptedAlertModel.js
 import mongoose from "mongoose";
 
 const acceptedAlertSchema = new mongoose.Schema({
@@ -8,25 +9,26 @@ const acceptedAlertSchema = new mongoose.Schema({
   emergencyType: {
     type: String,
     enum: ["medical", "fire", "accident", "assault", "natural_disaster", "other"],
-    required: true
+    required: true,
   },
   liveLocation: {
     link: { type: String, required: true },
-    coordinates: { type: [Number], required: true } // [longitude, latitude]
+    coordinates: { type: [Number], required: true }, // [longitude, latitude]
   },
   address: { type: String, required: true },
   timestamp: { type: Date, default: Date.now },
   status: {
     type: String,
-    enum: ["pending", "Accepted", "resolved", "cancelled"],
-    default: "pending"
+    enum: ["pending", "accepted", "resolved", "cancelled"],
+    default: "pending",
   },
   priorityLevel: {
     type: String,
     enum: ["low", "medium", "high", "critical"],
-    default: "medium"
+    default: "medium",
   },
-  respoderType: {
+  responderType: {
+    // Fixed typo: respoderType -> responderType
     type: String,
     enum: [
       "ambulance",
@@ -35,13 +37,14 @@ const acceptedAlertSchema = new mongoose.Schema({
       "rescue_team",
       "Hospital",
       "Media",
-      "Insurance"
+      "Insurance",
     ],
-    default: "ambulance"
-  }
+    default: "ambulance",
+  },
+  photos: { type: [String], default: [] },
+  videos: { type: [String], default: [] },
 });
 
-// ✅ FIX: Fallback to mongoose connection if global.acceptedAlertsDB is undefined
 const dbConnection = global.acceptedAlertsDB || mongoose;
 const AcceptedAlert = dbConnection.model("AcceptedAlert", acceptedAlertSchema);
 

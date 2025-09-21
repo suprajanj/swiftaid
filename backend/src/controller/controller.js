@@ -18,9 +18,17 @@ const acceptAlert = async (req, res) => {
     const alert = await Alert.findById(id);
     if (!alert) return res.status(404).json({ message: "Alert not found" });
 
+    // ✅ Check if already accepted
+    const alreadyAccepted = await AcceptedAlert.findOne({ reportId: alert.reportId });
+    if (alreadyAccepted) {
+      return res.status(400).json({ message: "This alert is already accepted" });
+    }
+
+    // ✅ Create Accepted Alert
     const accepted = new AcceptedAlert({ ...alert.toObject(), status: "accepted" });
     await accepted.save();
 
+    // ✅ Update original alert status
     alert.status = "accepted";
     await alert.save();
 
@@ -52,6 +60,10 @@ const displayAlertDetails = async (req, res) => {
 
 const addAlert = async (req, res) => {
   try {
+    if (!req.body || !req.body.reportId) {
+      return res.status(400).json({ message: "Invalid alert data" });
+    }
+
     const newAlert = new Alert(req.body);
     await newAlert.save();
     res.status(201).json(newAlert);
@@ -62,13 +74,15 @@ const addAlert = async (req, res) => {
 
 const updateAcceptedAlertAndMoveToCompleted = async (req, res) => {
   try {
-    const { reportId } = req.body;
-    const photos = req.files?.photos?.map((file) => file.path) || [];
-    const videos = req.files?.videos?.map((file) => file.path) || [];
+    const { reportId, updateData } = req.body;
+
+    if (!reportId) {
+      return res.status(400).json({ message: "reportId is required" });
+    }
 
     const updatedAcceptedAlert = await AcceptedAlert.findOneAndUpdate(
       { reportId },
-      { $set: { photos, videos, status: "resolved" } },
+      { $set: { ...updateData, status: "completed" } },
       { new: true }
     );
 
@@ -76,12 +90,15 @@ const updateAcceptedAlertAndMoveToCompleted = async (req, res) => {
       return res.status(404).json({ message: "Accepted alert not found" });
     }
 
+    // ✅ Move to CompletedTask collection
     const completedTask = new CompletedTask(updatedAcceptedAlert.toObject());
     await completedTask.save();
 
+    // ✅ Remove from AcceptedAlert to keep DB clean
+    await AcceptedAlert.deleteOne({ reportId });
+
     res.status(200).json({
-      message: "✅ Task completed and moved to CompletedTasks",
-      updatedAcceptedAlert,
+      message: "✅ Accepted alert updated, moved to completed tasks and removed from active list",
       completedTask,
     });
   } catch (error) {

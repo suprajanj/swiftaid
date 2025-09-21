@@ -1,7 +1,8 @@
-// ProfilePage.jsx
 import React, { useState } from "react";
 import { Bell, LogOut, ArrowLeft } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import axios from "axios";
+import toast, { Toaster } from "react-hot-toast";
 
 function Userprofile() {
   const [isEditing, setIsEditing] = useState(false);
@@ -37,8 +38,31 @@ function Userprofile() {
     closeEdit();
   };
 
+  const handleLogout = async () => {
+    const confirmLogout = window.confirm("Are you sure you want to log out?");
+    if (confirmLogout) {
+      try {
+        // Optional: call backend logout route
+        await axios.post("http://localhost:3000/api/user/logout");
+
+        // Remove JWT from localStorage
+        localStorage.removeItem("token");
+
+        // Show success notification
+        toast.success("Logged out successfully!");
+
+        // Redirect to landing page
+        navigate("/"); // assuming LandingPage.jsx is at "/"
+      } catch (err) {
+        console.error(err);
+        toast.error("Logout failed. Please try again.");
+      }
+    }
+  };
+
   return (
     <div className="flex min-h-screen bg-gray-100">
+      <Toaster position="top-right" />
       {/* Sidebar */}
       <aside className="w-72 bg-white shadow-md p-4 flex flex-col">
         {/* Back Button */}
@@ -79,7 +103,10 @@ function Userprofile() {
         </div>
 
         {/* Logout button */}
-        <button className="flex items-center gap-2 p-2 mt-6 text-red-600 bg-red-50 hover:bg-red-100 rounded-lg">
+        <button
+          onClick={handleLogout}
+          className="flex items-center gap-2 p-2 mt-6 text-red-600 bg-red-50 hover:bg-red-100 rounded-lg"
+        >
           <LogOut size={20} />
           Logout
         </button>

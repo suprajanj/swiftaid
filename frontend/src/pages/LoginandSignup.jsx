@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import toast, { Toaster } from "react-hot-toast";
+import Homepage from "./Homepage";
 
 export default function LoginandSignup() {
   const navigate = useNavigate();
@@ -113,11 +114,15 @@ export default function LoginandSignup() {
         { userId, otp: formData.otp }
       );
 
+      // ✅ Store JWT in localStorage
+      localStorage.setItem("token", res.data.token);
+
       toast.success(res.data.message + " — Logged in successfully!");
 
-      // ✅ Navigate immediately
+      // ✅ Navigate immediately to homepage
       navigate("/homepage");
 
+      // Reset form and states
       setIsOTPStep(false);
       setIsLogin(true);
       setFormData({

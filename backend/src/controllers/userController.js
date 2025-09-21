@@ -1,7 +1,13 @@
 import bcrypt from "bcryptjs";
 import nodemailer from "nodemailer";
+import jwt from "jsonwebtoken";
 import User from "../model/User.js";
 import Otp from "../model/Otp.js";
+
+// -------------------- JWT HELPER --------------------
+const generateToken = (id) => {
+  return jwt.sign({ id }, process.env.JWT_SECRET, { expiresIn: "1d" });
+};
 
 // -------------------- SIGNUP --------------------
 export const createUser = async (req, res) => {
@@ -20,7 +26,6 @@ export const createUser = async (req, res) => {
       termsAccepted,
     } = req.body;
 
-    // Validate required fields
     if (
       !firstName ||
       !lastName ||
@@ -90,7 +95,7 @@ export const loginUser = async (req, res) => {
 
     // Generate OTP
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
-    const expiresAt = new Date(Date.now() + 5 * 60 * 1000); // 5 min expiry
+    const expiresAt = new Date(Date.now() + 5 * 60 * 1000);
 
     await Otp.findOneAndUpdate(
       { userId: user._id },
@@ -118,7 +123,7 @@ export const loginUser = async (req, res) => {
   }
 };
 
-// -------------------- VERIFY OTP --------------------
+// -------------------- VERIFY OTP → ISSUE JWT --------------------
 export const verifyOTP = async (req, res) => {
   try {
     const { userId, otp } = req.body;
@@ -139,7 +144,14 @@ export const verifyOTP = async (req, res) => {
 
     await Otp.deleteOne({ userId });
 
-    res.status(200).json({ message: "OTP verified successfully", userId });
+    // ✅ Generate JWT after successful OTP
+    const token = generateToken(userId);
+
+    res.status(200).json({
+      message: "OTP verified successfully",
+      userId,
+      token, // send JWT to frontend
+    });
   } catch (error) {
     console.error("OTP verification error:", error);
     res.status(500).json({ message: "Server error" });
@@ -149,9 +161,10 @@ export const verifyOTP = async (req, res) => {
 // -------------------- LOGOUT --------------------
 export const logoutUser = async (req, res) => {
   try {
+    // Just send success; client deletes the token
     res.status(200).json({ message: "Logged out successfully" });
-  } catch (error) {
-    res.status(500).json({ message: "Logout error" });
+  } catch (err) {
+    res.status(500).json({ message: "Logout failed" });
   }
 };
 
@@ -203,5 +216,16 @@ export const deleteUser = async (req, res) => {
     res.status(200).json({ message: "User deleted successfully" });
   } catch (error) {
     res.status(500).json({ message: "Error deleting user" });
+  }
+};
+
+// GET current logged-in user
+export const getMe = async (req, res) => {
+  try {
+    // req.user is set in the protect middleware
+    if (!req.user) return res.status(404).json({ message: "User not found" });
+    res.status(200).json(req.user);
+  } catch (error) {
+    res.status(500).json({ message: "Server error" });
   }
 };

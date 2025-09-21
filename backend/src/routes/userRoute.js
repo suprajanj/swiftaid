@@ -1,4 +1,5 @@
 import express from "express";
+import { protect } from "../middleware/authMiddleware.js";
 import {
   createUser,
   loginUser,
@@ -8,8 +9,8 @@ import {
   getUserById,
   updateUser,
   deleteUser,
+  getMe,
 } from "../controllers/userController.js";
-// No authMiddleware needed for now
 
 const router = express.Router();
 
@@ -18,6 +19,8 @@ router.post("/", createUser);
 router.post("/login", loginUser);
 router.post("/verify-otp", verifyOTP);
 router.post("/logout", logoutUser); // no protect
+
+router.get("/me", protect, getMe);
 
 // User management routes
 router.get("/", getAllUsers);

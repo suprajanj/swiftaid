@@ -4,13 +4,39 @@ import feather from "feather-icons";
 import AOS from "aos";
 import "aos/dist/aos.css";
 import Navbar from "../components/Navbar";
+import axios from "axios";
 
 function Homepage() {
   const [time, setTime] = useState("");
   const [date, setDate] = useState("");
+  const [user, setUser] = useState(null);
   const navigate = useNavigate();
 
-  // Update clock
+  // -------------------- Check JWT & Fetch User --------------------
+  useEffect(() => {
+    const token = localStorage.getItem("token");
+    if (!token) {
+      navigate("/login");
+      return;
+    }
+
+    const fetchUser = async () => {
+      try {
+        const res = await axios.get("http://localhost:3000/api/user/me", {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        setUser(res.data);
+      } catch (err) {
+        console.error(err);
+        localStorage.removeItem("token");
+        navigate("/login");
+      }
+    };
+
+    fetchUser();
+  }, [navigate]);
+
+  // -------------------- Clock --------------------
   useEffect(() => {
     function updateClock() {
       const now = new Date();
@@ -37,20 +63,19 @@ function Homepage() {
     return () => clearInterval(timer);
   }, []);
 
-  // Initialize AOS + Feather Icons
+  // -------------------- Initialize AOS + Feather --------------------
   useEffect(() => {
     AOS.init();
     feather.replace();
   }, [time]);
 
-  // Navigate to form with emergency type
+  // -------------------- Navigate to Emergency Form --------------------
   const handleEmergencyClick = (type) => {
     navigate(`/form/${type}`);
   };
 
   return (
     <div className="min-h-screen bg-gray-50 font-inter">
-      {/* ✅ Navbar */}
       <Navbar />
 
       <div className="container mx-auto px-4 py-8 max-w-6xl">
@@ -67,7 +92,11 @@ function Homepage() {
               <h1 className="text-3xl font-bold text-red-600">
                 SwiftAid Emergency Dashboard
               </h1>
-              <p className="text-gray-600">Your safety is our priority</p>
+              <p className="text-gray-600">
+                {user
+                  ? `Welcome, ${user.firstName} ${user.lastName}`
+                  : "Your safety is our priority"}
+              </p>
             </div>
           </div>
           <div className="bg-gray-900 text-white px-6 py-3 rounded-lg shadow-md">
@@ -82,7 +111,6 @@ function Homepage() {
             Emergency Services
           </h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-            {/* Fire Accident */}
             <button
               onClick={() => handleEmergencyClick("fire")}
               className="emergency-btn bg-red-500 hover:bg-red-600 text-white p-6 rounded-xl shadow-md flex flex-col items-center transition duration-300"
@@ -91,7 +119,6 @@ function Homepage() {
               <span className="font-semibold text-lg">Fire Accident</span>
             </button>
 
-            {/* Road Accident */}
             <button
               onClick={() => handleEmergencyClick("road")}
               className="emergency-btn bg-orange-500 hover:bg-orange-600 text-white p-6 rounded-xl shadow-md flex flex-col items-center transition duration-300"
@@ -100,7 +127,6 @@ function Homepage() {
               <span className="font-semibold text-lg">Road Accident</span>
             </button>
 
-            {/* Assault */}
             <button
               onClick={() => handleEmergencyClick("assault")}
               className="emergency-btn bg-blue-500 hover:bg-blue-600 text-white p-6 rounded-xl shadow-md flex flex-col items-center transition duration-300"
@@ -109,7 +135,6 @@ function Homepage() {
               <span className="font-semibold text-lg">Assault</span>
             </button>
 
-            {/* Medical Emergency */}
             <button
               onClick={() => handleEmergencyClick("medical")}
               className="emergency-btn bg-green-500 hover:bg-green-600 text-white p-6 rounded-xl shadow-md flex flex-col items-center transition duration-300"
@@ -118,7 +143,6 @@ function Homepage() {
               <span className="font-semibold text-lg">Medical Emergency</span>
             </button>
 
-            {/* Natural Disaster */}
             <button
               onClick={() => handleEmergencyClick("natural")}
               className="emergency-btn bg-purple-500 hover:bg-purple-600 text-white p-6 rounded-xl shadow-md flex flex-col items-center transition duration-300"
@@ -148,11 +172,13 @@ function Homepage() {
               <div className="space-y-3">
                 <div>
                   <p className="text-sm text-gray-500">Name</p>
-                  <p className="font-medium">John Doe</p>
+                  <p className="font-medium">
+                    {user ? `${user.firstName} ${user.lastName}` : "John Doe"}
+                  </p>
                 </div>
                 <div>
                   <p className="text-sm text-gray-500">Blood Group</p>
-                  <p className="font-medium">O+</p>
+                  <p className="font-medium">{user?.bloodGroup || "O+"}</p>
                 </div>
                 <button className="w-full bg-blue-500 hover:bg-blue-600 text-white py-2 px-4 rounded-lg font-medium transition duration-300">
                   Update Personal Details
@@ -176,12 +202,15 @@ function Homepage() {
               <div className="space-y-3">
                 <div>
                   <p className="text-sm text-gray-500">Phone Number</p>
-                  <p className="font-medium">+1 (555) 123-4567</p>
+                  <p className="font-medium">
+                    {user?.mobile || "+1 (555) 123-4567"}
+                  </p>
                 </div>
                 <div>
                   <p className="text-sm text-gray-500">Emergency Contact</p>
                   <p className="font-medium">
-                    Jane Doe (Spouse) +1 (555) 987-6543
+                    {user?.emergencyContact ||
+                      "Jane Doe (Spouse) +1 (555) 987-6543"}
                   </p>
                 </div>
                 <button className="w-full bg-blue-500 hover:bg-blue-600 text-white py-2 px-4 rounded-lg font-medium transition duration-300">
@@ -206,7 +235,9 @@ function Homepage() {
               <div className="space-y-4">
                 <div>
                   <p className="text-sm text-gray-500">Current Location</p>
-                  <p className="font-medium">123 Main St, Anytown, USA</p>
+                  <p className="font-medium">
+                    {user?.address || "123 Main St, Anytown, USA"}
+                  </p>
                 </div>
                 <button className="w-full bg-blue-500 hover:bg-blue-600 text-white py-2 px-4 rounded-lg font-medium transition duration-300">
                   Update Location

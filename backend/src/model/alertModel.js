@@ -44,7 +44,7 @@ const EmergencyReportSchema = new mongoose.Schema({
   },
   status: {
     type: String,
-    enum: ["pending", "accepted", "resolved", "cancelled"],
+    enum: ["pending", "accepted", "in-progress", "resolved", "cancelled"],
     default: "pending"
   },
   priorityLevel: {

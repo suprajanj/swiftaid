@@ -21,6 +21,6 @@ import "@fontsource/roboto-slab/700.css";
 createRoot(document.getElementById("root")).render(
   <Routes>
     <Route path="/" element={<NotificationDashboard />} />
-    <Route path="/accepted-tasks" element={<AcceptedTasks />} />
+    <Route path="./AcceptedTasks" element={<AcceptedTasks />} />
   </Routes>
 );

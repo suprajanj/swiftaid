@@ -1,20 +1,21 @@
 import dotenv from "dotenv";
+console.log(".env file path:", process.cwd() + "/.env");
+dotenv.config();
 import express from "express";
 import mongoose from "mongoose";
 import cors from "cors";
 import router from "./routes/route.js";
-
-dotenv.config();
 
 const app = express();
 
 // 🌍 Environment variables
 const PORT = process.env.PORT || 3000;
 const HOST = process.env.HOST || "127.0.0.1";
-const { MONGO_URI_ALL, MONGO_URI_ACCEPTED, MONGO_URI_COMPLETED } = process.env;
+const MONGO_URI_ALL = process.env.MONGO_URI_ALL;
+const MONGO_URI_ACCEPTED = process.env.MONGO_URI_ACCEPTED;
 
 // 🛡 Middleware
-app.use(cors({ origin: "http://localhost:5001" })); // Adjust if needed
+app.use(cors({ origin: "http://localhost:5001" })); // Adjust to match your frontend
 app.use(express.json());
 
 // 🛠 Debugging logs
@@ -23,11 +24,10 @@ console.log("Loaded ENV:", {
   HOST,
   MONGO_URI_ALL: MONGO_URI_ALL ? "[HIDDEN]" : "❌ NOT FOUND",
   MONGO_URI_ACCEPTED: MONGO_URI_ACCEPTED ? "[HIDDEN]" : "❌ NOT FOUND",
-  MONGO_URI_COMPLETED: MONGO_URI_COMPLETED ? "[HIDDEN]" : "❌ NOT FOUND",
 });
 
 // ❌ Exit if environment variables are missing
-if (!MONGO_URI_ALL || !MONGO_URI_ACCEPTED || !MONGO_URI_COMPLETED) {
+if (!MONGO_URI_ALL || !MONGO_URI_ACCEPTED) {
   console.error("❌ Missing Mongo URIs. Check your .env file.");
   process.exit(1);
 }
@@ -35,7 +35,7 @@ if (!MONGO_URI_ALL || !MONGO_URI_ACCEPTED || !MONGO_URI_COMPLETED) {
 // ✅ MongoDB Connections
 const connectDatabases = async () => {
   try {
-    // Main DB (all alerts)
+    // Primary connection (allAlerts)
     await mongoose.connect(MONGO_URI_ALL, {
       family: 4,
       serverSelectionTimeoutMS: 5000,
@@ -43,38 +43,26 @@ const connectDatabases = async () => {
     });
     console.log("✅ Connected to allAlerts database");
 
-    // Accepted Alerts DB
+    // Secondary connection (acceptedAlerts)
     const acceptedAlertsDB = mongoose.createConnection(MONGO_URI_ACCEPTED, {
       family: 4,
       serverSelectionTimeoutMS: 5000,
       socketTimeoutMS: 45000,
     });
 
-    acceptedAlertsDB.on("connected", () => {
+    acceptedAlertsDB.once("open", () => {
       console.log("✅ Connected to acceptedAlerts database");
     });
 
-    // Completed Alerts DB
-    const completedAlertsDB = mongoose.createConnection(MONGO_URI_COMPLETED, {
-      family: 4,
-      serverSelectionTimeoutMS: 5000,
-      socketTimeoutMS: 45000,
-    });
-
-    completedAlertsDB.on("connected", () => {
-      console.log("✅ Connected to completedAlerts database");
-    });
-
-    // Export connections globally (or via modules)
+    // Export secondary connection globally
     global.acceptedAlertsDB = acceptedAlertsDB;
-    global.completedAlertsDB = completedAlertsDB;
   } catch (error) {
-    console.error("❌ MongoDB connection error:", error.message);
+    console.error("❌ MongoDB connection error:", error);
     process.exit(1);
   }
 };
 
-// Connect to all DBs first, then start server
+// Connect to both databases
 await connectDatabases();
 
 // ✅ Root route

@@ -1,5 +1,4 @@
-// frontend/src/App.jsx
-import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import { createRoot } from "react-dom/client";
 import "./index.css";
 import NotificationDashboard from "./NotificationDashboard.jsx";
 import AcceptedTasks from "./AcceptedTasks.jsx";
@@ -19,15 +18,9 @@ import "@fontsource/roboto-slab/400.css";
 import "@fontsource/roboto-slab/500.css";
 import "@fontsource/roboto-slab/700.css";
 
-function App() {
-  return (
-    <Router>
-      <Routes>
-        <Route path="/" element={<NotificationDashboard />} />
-        <Route path="/accepted-tasks" element={<AcceptedTasks />} />
-      </Routes>
-    </Router>
-  );
-}
-
-export default App;
+createRoot(document.getElementById("root")).render(
+  <Routes>
+    <Route path="/" element={<NotificationDashboard />} />
+    <Route path="/accepted-tasks" element={<AcceptedTasks />} />
+  </Routes>
+);

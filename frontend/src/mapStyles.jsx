@@ -1,50 +1,25 @@
-// frontend/src/mapStyles.jsx
+// src/mapStyles.jsx
 const mapStyles = [
   {
     featureType: "all",
-    elementType: "all",
-    stylers: [{ visibility: "on" }],
-  },
-  {
-    featureType: "administrative",
     elementType: "labels.text.fill",
-    stylers: [{ color: "#444444" }],
-  },
-  {
-    featureType: "landscape",
-    elementType: "all",
-    stylers: [{ color: "#f2f2f2" }],
-  },
-  {
-    featureType: "poi",
-    elementType: "all",
-    stylers: [{ visibility: "off" }],
+    stylers: [{ color: "#ffffff" }]
   },
   {
     featureType: "road",
-    elementType: "all",
-    stylers: [{ saturation: -100 }, { lightness: 45 }],
+    elementType: "geometry",
+    stylers: [{ color: "#212a37" }]
   },
   {
-    featureType: "road.highway",
-    elementType: "all",
-    stylers: [{ visibility: "simplified" }],
+    featureType: "water", elementType: "geometry", stylers: [{ color: "#17263c" }]
   },
-  {
-    featureType: "road.arterial",
-    elementType: "labels.icon",
-    stylers: [{ visibility: "off" }],
-  },
-  {
-    featureType: "transit",
-    elementType: "all",
-    stylers: [{ visibility: "off" }],
-  },
-  {
-    featureType: "water",
-    elementType: "all",
-    stylers: [{ color: "#46bcec" }, { visibility: "on" }],
-  },
+  { featureType: "poi", elementType: "geometry", stylers: [{ color: "#1e3a8a" }] },
+  { featureType: "poi", elementType: "labels.text.fill", stylers: [{ color: "#ffffff" }] },
+  { featureType: "road", elementType: "labels.text.fill", stylers: [{ color: "#ffffff" }] },
+  { featureType: "road.highway", elementType: "geometry", stylers: [{ color: "#746855" }] },
+  { featureType: "road.highway", elementType: "labels.text.fill", stylers: [{ color: "#ffffff" }] },
+  { featureType: "transit", elementType: "geometry", stylers: [{ color: "#1e3a8a" }] },
+  { featureType: "transit", elementType: "labels.text.fill", stylers: [{ color: "#ffffff" }] }
 ];
 
 export default mapStyles;

@@ -1,57 +1,42 @@
+// models/EmergencyReport.js
 import mongoose from "mongoose";
 
-// ✅ Use the default mongoose connection (main alerts DB)
 const EmergencyReportSchema = new mongoose.Schema({
   reportId: {
     type: String,
     required: true,
-    unique: true,
-    trim: true,
-    index: true
+    unique: true
   },
   userId: {
     type: String,
-    required: true,
-    trim: true,
-    index: true
+    required: true
   },
   NIC: {
     type: String,
-    required: true,
-    trim: true
+    required: true
   },
   contactNumber: {
     type: String,
-    required: true,
-    trim: true
+    required: true
   },
   emergencyType: {
     type: String,
     enum: ["medical", "fire", "accident", "assault", "natural_disaster", "other"],
-    required: true,
-    trim: true
+    required: true
   },
   liveLocation: {
     link: {
       type: String,
-      required: true,
-      trim: true
+      required: true
     },
     coordinates: {
       type: [Number], // [longitude, latitude]
-      required: true,
-      validate: {
-        validator: function (arr) {
-          return arr.length === 2;
-        },
-        message: "Coordinates must contain [longitude, latitude]"
-      }
+      required: true
     }
   },
   address: {
     type: String,
-    required: true,
-    trim: true
+    required: true
   },
   timestamp: {
     type: Date,
@@ -59,17 +44,15 @@ const EmergencyReportSchema = new mongoose.Schema({
   },
   status: {
     type: String,
-    enum: ["pending", "accepted", "resolved", "cancelled"], // ✅ all lowercase
-    default: "pending",
-    index: true
+    enum: ["pending", "accepted", "resolved", "cancelled"],
+    default: "pending"
   },
   priorityLevel: {
     type: String,
     enum: ["low", "medium", "high", "critical"],
-    default: "medium",
-    trim: true
+    default: "medium"
   }
-}, { versionKey: false });
+});
 
 const EmergencyReport = mongoose.model("EmergencyReport", EmergencyReportSchema);
 export default EmergencyReport;

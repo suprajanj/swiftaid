@@ -1,4 +1,5 @@
 import { createRoot } from "react-dom/client";
+import { BrowserRouter, Routes, Route } from "react-router-dom";
 import "./index.css";
 import NotificationDashboard from "./NotificationDashboard.jsx";
 import AcceptedTasks from "./AcceptedTasks.jsx";
@@ -19,8 +20,10 @@ import "@fontsource/roboto-slab/500.css";
 import "@fontsource/roboto-slab/700.css";
 
 createRoot(document.getElementById("root")).render(
-  <Routes>
-    <Route path="/" element={<NotificationDashboard />} />
-    <Route path="./AcceptedTasks" element={<AcceptedTasks />} />
-  </Routes>
+  <BrowserRouter>
+    <Routes>
+      <Route path="/" element={<NotificationDashboard />} />
+      <Route path="/accepted-tasks" element={<AcceptedTasks />} />
+    </Routes>
+  </BrowserRouter>
 );

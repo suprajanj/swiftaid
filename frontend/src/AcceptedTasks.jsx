@@ -1,7 +1,8 @@
+// frontend/src/AcceptedTasks.jsx
 import { useState, useEffect } from "react";
 import axios from "axios";
 import { GoogleMap, useLoadScript, MarkerF } from "@react-google-maps/api";
-import mapStyles from "./mapStyles.jsx"; // ✅ Correct import
+import mapStyles from "./mapStyles.jsx"; // Correct import
 import { useNavigate } from "react-router-dom";
 
 const libraries = ["places"];
@@ -18,12 +19,12 @@ export default function AcceptedTasks() {
   const [acceptedAlerts, setAcceptedAlerts] = useState([]);
   const [selectedAlert, setSelectedAlert] = useState(null);
   const [responderLocation, setResponderLocation] = useState(defaultCenter);
-  const [error, setError] = useState(null); // Added for error handling
+  const [error, setError] = useState(null);
   const navigate = useNavigate();
 
   // Load Google Maps script
   const { isLoaded, loadError } = useLoadScript({
-    googleMapsApiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY || "", // Fallback to empty string
+    googleMapsApiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY || "",
     libraries,
   });
 
@@ -31,9 +32,8 @@ export default function AcceptedTasks() {
   const fetchAcceptedAlerts = async () => {
     try {
       const res = await axios.get("http://localhost:3000/api/alerts/accepted", {
-        timeout: 5000, // Add timeout to prevent hanging
+        timeout: 5000,
       });
-      // Validate response data
       if (Array.isArray(res.data)) {
         setAcceptedAlerts(res.data);
         setError(null);
@@ -68,14 +68,14 @@ export default function AcceptedTasks() {
     }
   };
 
-  // Fetch alerts and location with optimized interval
+  // Fetch alerts and location
   useEffect(() => {
     fetchAcceptedAlerts();
     getResponderLocation();
     const interval = setInterval(() => {
       fetchAcceptedAlerts();
       getResponderLocation();
-    }, 10000); // Increased to 10 seconds to reduce load
+    }, 10000); // 10-second polling
     return () => clearInterval(interval);
   }, []);
 
@@ -141,7 +141,7 @@ export default function AcceptedTasks() {
                   <text x="0" y="30" font-size="30">🦺</text>
                 </svg>
               `)}`,
-              scaledSize: new window.google.maps.Size(40, 40), // Use window.google.maps
+              scaledSize: new window.google.maps.Size(40, 40),
             }}
           />
 
@@ -156,6 +156,9 @@ export default function AcceptedTasks() {
                     lng: alert.liveLocation.coordinates[0],
                   }}
                   onClick={() => setSelectedAlert(alert)}
+                  icon={{
+                    url: "http://maps.google.com/mapfiles/ms/icons/yellow-dot.png",
+                  }}
                 />
               )
           )}

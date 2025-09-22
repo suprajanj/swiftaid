@@ -5,18 +5,20 @@ import {
   getAllsos,
   updateSOS,
   getSOSByID,
+  getSOSByUser,
 } from "../controllers/sosController.js";
+import { protect } from "../middleware/authMiddleware.js";
 
 const router = express.Router();
 
-router.get("/", getAllsos);
+// Public routes
+router.get("/", getAllsos); // Get all SOS
+router.get("/user/:userId", protect, getSOSByUser); // ✅ must come before /:id
+router.get("/:id", getSOSByID); // Get SOS by ID
 
-router.get("/:id", getSOSByID);
-
-router.post("/", createSOS);
-
-router.put("/:id", updateSOS);
-
-router.delete("/:id", deleteSOS);
+// Protected routes
+router.post("/", protect, createSOS); // Create new SOS
+router.put("/:id", protect, updateSOS); // Update SOS
+router.delete("/:id", deleteSOS); // Delete SOS
 
 export default router;

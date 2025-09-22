@@ -3,7 +3,10 @@ import SOS from "../model/SOS.js";
 // Get all SOS records
 export async function getAllsos(req, res) {
   try {
-    const sos = await SOS.find();
+    const sos = await SOS.find().populate(
+      "user",
+      "firstName lastName email mobile"
+    );
     res.status(200).json(sos);
   } catch (error) {
     console.error("Error on getAllsos Controller", error);
@@ -11,7 +14,7 @@ export async function getAllsos(req, res) {
   }
 }
 
-// Create SOS record (with live location)
+// Create SOS record (with live location) linked to user
 export async function createSOS(req, res) {
   try {
     const { name, age, number, emergency, location } = req.body;
@@ -22,10 +25,14 @@ export async function createSOS(req, res) {
         .json({ message: "Location (lat/lng) is required" });
     }
 
-    // Generate Google Maps link
+    if (!req.user || !req.user._id) {
+      return res.status(401).json({ message: "Unauthorized: User not found" });
+    }
+
     const mapLink = `https://www.google.com/maps?q=${location.latitude},${location.longitude}`;
 
     const sos = new SOS({
+      user: req.user._id, // <-- link SOS to the logged-in user
       name,
       age,
       number,
@@ -45,10 +52,30 @@ export async function createSOS(req, res) {
   }
 }
 
+// Get SOS by specific user (only logged-in user can fetch their own)
+export async function getSOSByUser(req, res) {
+  try {
+    // only allow logged-in user to access their SOS
+    if (!req.user || req.user._id.toString() !== req.params.userId) {
+      return res.status(403).json({ message: "Forbidden: Not your data" });
+    }
+
+    const userSOS = await SOS.find({ user: req.user._id }).populate(
+      "user",
+      "firstName lastName email mobile"
+    );
+
+    res.status(200).json(userSOS);
+  } catch (error) {
+    console.error("Error on getSOSByUser Controller", error);
+    res.status(500).json({ message: "Internal Server Error!" });
+  }
+}
+
 // Update SOS record
 export async function updateSOS(req, res) {
   try {
-    const { name, age, number, location } = req.body;
+    const { name, age, number, emergency, location } = req.body;
 
     let updateData = { name, age, number, emergency };
 
@@ -89,7 +116,10 @@ export async function deleteSOS(req, res) {
 // Get SOS by ID
 export async function getSOSByID(req, res) {
   try {
-    const sos = await SOS.findById(req.params.id);
+    const sos = await SOS.findById(req.params.id).populate(
+      "user",
+      "firstName lastName email mobile"
+    );
     if (!sos) return res.status(404).json({ message: "SOS not found" });
 
     res.json(sos);

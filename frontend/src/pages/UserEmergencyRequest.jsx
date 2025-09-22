@@ -16,11 +16,28 @@ function UserEmergencyRequest() {
 
   const navigate = useNavigate();
 
-  // Fetch SOS requests
+  // ✅ Fetch only logged-in user's SOS requests
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const res = await axios.get("http://localhost:3000/api/sos");
+        const token = localStorage.getItem("token");
+        if (!token) {
+          navigate("/login");
+          return;
+        }
+
+        // 1. Get logged-in user
+        const userRes = await axios.get("http://localhost:3000/api/user/me", {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+
+        const userId = userRes.data._id;
+
+        const res = await axios.get(
+          `http://localhost:3000/api/sos/user/${userId}`,
+          { headers: { Authorization: `Bearer ${token}` } } // ✅ include token
+        );
+
         setRequests(res.data);
       } catch (error) {
         console.error("Error fetching SOS requests:", error);
@@ -29,9 +46,9 @@ function UserEmergencyRequest() {
       }
     };
     fetchData();
-  }, []);
+  }, [navigate]);
 
-  // Delete request
+  // Delete request (public – no token required)
   const handleDelete = async (id) => {
     if (!window.confirm("Are you sure you want to delete this request?"))
       return;
@@ -161,14 +178,16 @@ function UserEmergencyRequest() {
                   <p className="text-gray-600">
                     <span className="font-medium">Phone:</span> {req.number}
                   </p>
-                  <a
-                    href={req.location?.mapLink}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center gap-1 text-blue-600 hover:underline mt-2"
-                  >
-                    <MapPin size={16} /> View Location
-                  </a>
+                  {req.location && (
+                    <a
+                      href={`https://www.google.com/maps?q=${req.location.latitude},${req.location.longitude}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-1 text-blue-600 hover:underline mt-2"
+                    >
+                      <MapPin size={16} /> View Location
+                    </a>
+                  )}
                   <p className="text-gray-500 text-sm mt-1">
                     Created: {new Date(req.createdAt).toLocaleString()}
                   </p>

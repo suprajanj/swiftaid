@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 import { GoogleMap, Marker, useLoadScript } from "@react-google-maps/api";
+import axios from "axios";
 
 function Emergencyform() {
   const { type } = useParams(); // emergency type from URL
@@ -20,7 +21,54 @@ function Emergencyform() {
     googleMapsApiKey: "AIzaSyBdD_eg0KYT3Lqovnm9FWJVZnWXrOi6klg", // 🔑 Replace with your key
   });
 
-  // Fetch live GPS location
+  // -------------------- Fetch logged-in user data --------------------
+  useEffect(() => {
+    const fetchUserData = async () => {
+      const token = localStorage.getItem("token");
+      if (!token) {
+        navigate("/login");
+        return;
+      }
+
+      try {
+        const res = await axios.get("http://localhost:3000/api/user/me", {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+
+        const user = res.data;
+
+        // Pre-fill form fields
+        setFormData((prev) => ({
+          ...prev,
+          name: `${user.firstName} ${user.lastName}`,
+          number: user.mobile,
+          age: calculateAge(user.dob),
+        }));
+      } catch (err) {
+        console.error(err);
+        toast.error("Failed to fetch user info. Please login again.");
+        localStorage.removeItem("token");
+        navigate("/login");
+      }
+    };
+
+    fetchUserData();
+  }, [navigate]);
+
+  // -------------------- Calculate age from DOB --------------------
+  const calculateAge = (dob) => {
+    if (!dob) return "";
+    const birthDate = new Date(dob);
+    const today = new Date();
+    let age = today.getFullYear() - birthDate.getFullYear();
+    const m = today.getMonth() - birthDate.getMonth();
+    if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
+      age--;
+    }
+    return age;
+  };
+
+  // -------------------- Fetch live GPS location --------------------
   useEffect(() => {
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
@@ -40,17 +88,24 @@ function Emergencyform() {
     }
   }, []);
 
-  // Handle form input changes
+  // -------------------- Handle form input changes --------------------
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
-  // Handle form submission
+  // -------------------- Handle form submission --------------------
   const handleSubmit = async (e) => {
     e.preventDefault();
 
     if (!location.lat || !location.lng) {
       toast.error("Please allow location access before submitting");
+      return;
+    }
+
+    const token = localStorage.getItem("token");
+    if (!token) {
+      toast.error("You must be logged in to submit SOS");
+      navigate("/login");
       return;
     }
 
@@ -68,12 +123,16 @@ function Emergencyform() {
     try {
       const response = await fetch("http://localhost:3000/api/sos", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`, // 🔑 send token to backend
+        },
         body: JSON.stringify(dataToSubmit),
       });
 
       if (!response.ok) {
-        throw new Error("Failed to submit SOS");
+        const errData = await response.json();
+        throw new Error(errData.message || "Failed to submit SOS");
       }
 
       toast.success("🚨 Emergency submitted successfully!");
@@ -84,7 +143,7 @@ function Emergencyform() {
       }, 2000);
     } catch (error) {
       console.error(error);
-      toast.error("Failed to submit emergency SOS");
+      toast.error(error.message || "Failed to submit emergency SOS");
     }
   };
 
@@ -97,7 +156,7 @@ function Emergencyform() {
         {/* Back Button */}
         <button
           type="button"
-          onClick={() => navigate("/homepage")} // Redirect to Homepage
+          onClick={() => navigate("/homepage")}
           className="text-blue-600 hover:text-blue-800 mb-2"
         >
           &larr; Back
@@ -155,7 +214,6 @@ function Emergencyform() {
               : "Fetching location..."}
           </p>
 
-          {/* Google Map */}
           <div className="mt-3 w-full h-60 rounded-lg overflow-hidden">
             {isLoaded && location.lat && location.lng ? (
               <GoogleMap

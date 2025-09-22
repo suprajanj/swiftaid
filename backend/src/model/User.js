@@ -59,6 +59,25 @@ const userSchema = new mongoose.Schema(
       type: String,
       default: "customer",
     },
+
+    // 🔹 New optional fields
+    blood: {
+      type: String,
+      default: null,
+    },
+    condition: {
+      type: String,
+      default: null,
+    },
+    allergy: {
+      type: String,
+      default: null,
+    },
+    emergencyNumber: {
+      type: String,
+      default: null,
+      trim: true,
+    },
   },
   { timestamps: true }
 );

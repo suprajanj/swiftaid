@@ -1,4 +1,5 @@
-import React, { useState } from "react";
+// Userprofile.jsx
+import React, { useState, useEffect } from "react";
 import { Bell, LogOut, ArrowLeft } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
@@ -10,14 +11,44 @@ function Userprofile() {
   const navigate = useNavigate();
 
   const [formData, setFormData] = useState({
-    fullName: "John Doe",
-    email: "john.doe@example.com",
-    phone: "+1 (555) 123-4567",
-    dob: "1990-05-15",
-    bloodType: "O+",
-    allergies: "Peanuts, Shellfish",
-    conditions: "None",
+    firstName: "",
+    lastName: "",
+    email: "",
+    mobile: "",
+    dob: "",
+    blood: "",
+    allergy: "",
+    condition: "",
+    emergencyNumber: "",
   });
+
+  // change this if your API runs elsewhere or use env var
+  const BASE_USER_API = "http://localhost:3000/api/user";
+
+  // ✅ Fetch user data
+  useEffect(() => {
+    const fetchUserData = async () => {
+      try {
+        const token = localStorage.getItem("token");
+        if (!token) {
+          navigate("/login");
+          return;
+        }
+
+        const res = await axios.get(`${BASE_USER_API}/me`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+
+        setFormData(res.data);
+      } catch (err) {
+        console.error(err);
+        toast.error("Failed to load profile. Please login again.");
+        navigate("/login");
+      }
+    };
+
+    fetchUserData();
+  }, [navigate]);
 
   const openEdit = (section) => {
     setEditSection(section);
@@ -30,33 +61,76 @@ function Userprofile() {
   };
 
   const handleChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
+    const { name, value } = e.target;
+    setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
-  const handleSave = () => {
-    console.log("Updated:", formData);
-    closeEdit();
+  // ✅ Save updates (fixed endpoint)
+  const handleSave = async () => {
+    try {
+      const token = localStorage.getItem("token");
+      if (!token) {
+        toast.error("Not authenticated");
+        navigate("/login");
+        return;
+      }
+
+      if (!formData._id) {
+        toast.error("Missing user ID");
+        return;
+      }
+
+      const res = await axios.put(
+        `${BASE_USER_API}/${formData._id}`,
+        formData,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+
+      // update local form state with returned user
+      if (res.data && res.data.user) {
+        setFormData(res.data.user);
+      }
+
+      toast.success(res.data?.message || "Profile updated!");
+      closeEdit();
+    } catch (err) {
+      console.error(err);
+      const msg = err?.response?.data?.message || "Update failed. Try again.";
+      toast.error(msg);
+    }
   };
 
   const handleLogout = async () => {
     const confirmLogout = window.confirm("Are you sure you want to log out?");
     if (confirmLogout) {
       try {
-        // Optional: call backend logout route
-        await axios.post("http://localhost:3000/api/user/logout");
+        const token = localStorage.getItem("token");
+        // send token too (server doesn't require it now, but good practice)
+        await axios.post(
+          `${BASE_USER_API}/logout`,
+          {},
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
 
-        // Remove JWT from localStorage
         localStorage.removeItem("token");
-
-        // Show success notification
         toast.success("Logged out successfully!");
-
-        // Redirect to landing page
-        navigate("/"); // assuming LandingPage.jsx is at "/"
+        navigate("/");
       } catch (err) {
         console.error(err);
         toast.error("Logout failed. Please try again.");
       }
+    }
+  };
+
+  // ✅ Format DOB for display
+  const formatDate = (dateString) => {
+    if (!dateString) return "";
+    try {
+      return new Date(dateString).toISOString().split("T")[0]; // YYYY-MM-DD
+    } catch {
+      return dateString;
     }
   };
 
@@ -65,7 +139,6 @@ function Userprofile() {
       <Toaster position="top-right" />
       {/* Sidebar */}
       <aside className="w-72 bg-white shadow-md p-4 flex flex-col">
-        {/* Back Button */}
         <button
           onClick={() => navigate("/homepage")}
           className="flex items-center gap-2 p-2 mb-4 text-gray-700 hover:bg-gray-200 rounded-lg transition"
@@ -74,16 +147,13 @@ function Userprofile() {
           Back to Home
         </button>
 
-        {/* Profile heading */}
         <h2 className="text-xl font-semibold text-gray-800 mb-6">Profile</h2>
 
-        {/* Notifications button */}
         <button className="flex items-center gap-2 p-2 mb-6 bg-red-100 text-red-600 rounded-lg hover:bg-red-200 transition">
           <Bell size={20} />
           Notifications
         </button>
 
-        {/* Sidebar buttons */}
         <div className="flex flex-col gap-3 flex-grow">
           <button
             onClick={() => navigate("/userRequests")}
@@ -91,18 +161,8 @@ function Userprofile() {
           >
             View My Emergency Requests
           </button>
-          <button className="p-2 text-gray-700 hover:bg-gray-200 rounded text-left">
-            Button 2
-          </button>
-          <button className="p-2 text-gray-700 hover:bg-gray-200 rounded text-left">
-            Button 3
-          </button>
-          <button className="p-2 text-gray-700 hover:bg-gray-200 rounded text-left">
-            Button 4
-          </button>
         </div>
 
-        {/* Logout button */}
         <button
           onClick={handleLogout}
           className="flex items-center gap-2 p-2 mt-6 text-red-600 bg-red-50 hover:bg-red-100 rounded-lg"
@@ -122,7 +182,9 @@ function Userprofile() {
             <div className="w-20 h-20 rounded-full bg-gray-200 flex items-center justify-center">
               <span className="text-gray-500 text-3xl">👤</span>
             </div>
-            <h2 className="text-xl font-semibold mt-3">{formData.fullName}</h2>
+            <h2 className="text-xl font-semibold mt-3">
+              {formData.firstName} {formData.lastName}
+            </h2>
             <p className="text-gray-500">{formData.email}</p>
           </div>
 
@@ -140,17 +202,17 @@ function Userprofile() {
             <div className="grid grid-cols-2 gap-4 text-gray-700">
               <p>
                 <span className="font-medium">Full Name:</span>{" "}
-                {formData.fullName}
+                {formData.firstName} {formData.lastName}
               </p>
               <p>
                 <span className="font-medium">Email:</span> {formData.email}
               </p>
               <p>
-                <span className="font-medium">Phone:</span> {formData.phone}
+                <span className="font-medium">Phone:</span> {formData.mobile}
               </p>
               <p>
                 <span className="font-medium">Date of Birth:</span>{" "}
-                {formData.dob}
+                {formatDate(formData.dob)}
               </p>
             </div>
           </div>
@@ -169,15 +231,19 @@ function Userprofile() {
             <div className="grid grid-cols-2 gap-4 text-gray-700">
               <p>
                 <span className="font-medium">Blood Type:</span>{" "}
-                {formData.bloodType}
+                {formData.blood}
               </p>
               <p>
                 <span className="font-medium">Allergies:</span>{" "}
-                {formData.allergies}
+                {formData.allergy}
               </p>
               <p>
                 <span className="font-medium">Medical Conditions:</span>{" "}
-                {formData.conditions}
+                {formData.condition}
+              </p>
+              <p>
+                <span className="font-medium">Emergency Contact:</span>{" "}
+                {formData.emergencyNumber}
               </p>
             </div>
           </div>
@@ -189,16 +255,31 @@ function Userprofile() {
         <div className="fixed inset-0 bg-white/30 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="bg-white p-6 rounded-lg shadow-lg w-full max-w-md">
             <h2 className="text-xl font-semibold mb-4">
-              Edit {editSection === "personal" ? "Personal" : "Health"} Details
+              Edit{" "}
+              {editSection === "personal"
+                ? "Personal"
+                : editSection === "health"
+                  ? "Health"
+                  : "Emergency"}{" "}
+              Details
             </h2>
 
             {editSection === "personal" && (
               <>
-                <label className="block mb-1 font-medium">Full Name</label>
+                <label className="block mb-1 font-medium">First Name</label>
                 <input
                   type="text"
-                  name="fullName"
-                  value={formData.fullName}
+                  name="firstName"
+                  value={formData.firstName || ""}
+                  onChange={handleChange}
+                  className="w-full border p-2 rounded mb-3"
+                />
+
+                <label className="block mb-1 font-medium">Last Name</label>
+                <input
+                  type="text"
+                  name="lastName"
+                  value={formData.lastName || ""}
                   onChange={handleChange}
                   className="w-full border p-2 rounded mb-3"
                 />
@@ -207,16 +288,16 @@ function Userprofile() {
                 <input
                   type="email"
                   name="email"
-                  value={formData.email}
+                  value={formData.email || ""}
                   onChange={handleChange}
                   className="w-full border p-2 rounded mb-3"
                 />
 
                 <label className="block mb-1 font-medium">Phone</label>
                 <input
-                  type="text"
-                  name="phone"
-                  value={formData.phone}
+                  type="number"
+                  name="mobile"
+                  value={formData.mobile || ""}
                   onChange={handleChange}
                   className="w-full border p-2 rounded mb-3"
                 />
@@ -225,7 +306,7 @@ function Userprofile() {
                 <input
                   type="date"
                   name="dob"
-                  value={formData.dob}
+                  value={formData.dob ? formatDate(formData.dob) : ""}
                   onChange={handleChange}
                   className="w-full border p-2 rounded mb-3"
                 />
@@ -237,8 +318,8 @@ function Userprofile() {
                 <label className="block mb-1 font-medium">Blood Type</label>
                 <input
                   type="text"
-                  name="bloodType"
-                  value={formData.bloodType}
+                  name="blood"
+                  value={formData.blood || ""}
                   onChange={handleChange}
                   className="w-full border p-2 rounded mb-3"
                 />
@@ -246,8 +327,8 @@ function Userprofile() {
                 <label className="block mb-1 font-medium">Allergies</label>
                 <input
                   type="text"
-                  name="allergies"
-                  value={formData.allergies}
+                  name="allergy"
+                  value={formData.allergy || ""}
                   onChange={handleChange}
                   className="w-full border p-2 rounded mb-3"
                 />
@@ -257,8 +338,19 @@ function Userprofile() {
                 </label>
                 <input
                   type="text"
-                  name="conditions"
-                  value={formData.conditions}
+                  name="condition"
+                  value={formData.condition || ""}
+                  onChange={handleChange}
+                  className="w-full border p-2 rounded mb-3"
+                />
+
+                <label className="block mb-1 font-medium">
+                  Emergency Contact
+                </label>
+                <input
+                  type="text"
+                  name="emergencyNumber"
+                  value={formData.emergencyNumber || ""}
                   onChange={handleChange}
                   className="w-full border p-2 rounded mb-3"
                 />

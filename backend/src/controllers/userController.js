@@ -24,6 +24,12 @@ export const createUser = async (req, res) => {
       gender,
       dob,
       termsAccepted,
+
+      // ✅ new optional fields
+      blood,
+      condition,
+      allergy,
+      emergencyNumber,
     } = req.body;
 
     if (
@@ -38,7 +44,9 @@ export const createUser = async (req, res) => {
       !gender ||
       !dob
     ) {
-      return res.status(400).json({ message: "All fields are required" });
+      return res
+        .status(400)
+        .json({ message: "All required fields must be filled" });
     }
 
     if (password !== confirmPassword) {
@@ -65,6 +73,12 @@ export const createUser = async (req, res) => {
       gender,
       dob,
       termsAccepted,
+
+      // ✅ set optional fields if provided, else null
+      blood: blood || null,
+      condition: condition || null,
+      allergy: allergy || null,
+      emergencyNumber: emergencyNumber || null,
     });
 
     await newUser.save();
@@ -194,9 +208,11 @@ export const updateUser = async (req, res) => {
     if (updates.password)
       updates.password = await bcrypt.hash(updates.password, 10);
 
-    const updatedUser = await User.findByIdAndUpdate(req.params.id, updates, {
-      new: true,
-    }).select("-password");
+    const updatedUser =
+      (await User.findByIdAndUpdate(req.params.id, updates, { new: true })) ||
+      (await User.findOneAndUpdate({ userId: req.params.id }, updates, {
+        new: true,
+      }));
 
     if (!updatedUser)
       return res.status(404).json({ message: "User not found" });
@@ -219,12 +235,14 @@ export const deleteUser = async (req, res) => {
   }
 };
 
-// GET current logged-in user
+// -------------------- GET CURRENT USER --------------------
 export const getMe = async (req, res) => {
   try {
-    // req.user is set in the protect middleware
     if (!req.user) return res.status(404).json({ message: "User not found" });
-    res.status(200).json(req.user);
+
+    // ✅ return all profile info (excluding password)
+    const user = await User.findById(req.user._id).select("-password");
+    res.status(200).json(user);
   } catch (error) {
     res.status(500).json({ message: "Server error" });
   }

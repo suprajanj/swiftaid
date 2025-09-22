@@ -177,71 +177,56 @@ function Homepage() {
                   </p>
                 </div>
                 <div>
-                  <p className="text-sm text-gray-500">Blood Group</p>
-                  <p className="font-medium">{user?.bloodGroup || "O+"}</p>
+                  <p className="text-sm text-gray-500">Phone Number</p>
+                  <p className="font-medium">
+                    {user?.mobile || "Not Provided"}
+                  </p>
                 </div>
-                <button className="w-full bg-blue-500 hover:bg-blue-600 text-white py-2 px-4 rounded-lg font-medium transition duration-300">
-                  Update Personal Details
-                </button>
               </div>
             </div>
 
-            {/* Contact Information Card */}
+            {/* Health Details Card */}
             <div className="bg-white rounded-xl shadow-md p-6">
               <div className="flex items-center mb-4">
-                <div className="bg-green-100 p-2 rounded-full mr-3">
-                  <i
-                    data-feather="phone"
-                    className="text-green-500 w-5 h-5"
-                  ></i>
+                <div className="bg-red-100 p-2 rounded-full mr-3">
+                  <i data-feather="heart" className="text-red-500 w-5 h-5"></i>
                 </div>
                 <h3 className="font-semibold text-lg text-gray-800">
-                  Contact Information
+                  Health Details
                 </h3>
               </div>
               <div className="space-y-3">
                 <div>
-                  <p className="text-sm text-gray-500">Phone Number</p>
-                  <p className="font-medium">
-                    {user?.mobile || "+1 (555) 123-4567"}
-                  </p>
+                  <p className="text-sm text-gray-500">Blood Group</p>
+                  <p className="font-medium">{user?.blood || "Not Provided"}</p>
                 </div>
                 <div>
                   <p className="text-sm text-gray-500">Emergency Contact</p>
                   <p className="font-medium">
-                    {user?.emergencyContact ||
-                      "Jane Doe (Spouse) +1 (555) 987-6543"}
+                    {user?.emergencyNumber || "Not Provided"}
                   </p>
                 </div>
-                <button className="w-full bg-blue-500 hover:bg-blue-600 text-white py-2 px-4 rounded-lg font-medium transition duration-300">
-                  Update Contact Information
-                </button>
               </div>
             </div>
 
             {/* Location Card */}
             <div className="bg-white rounded-xl shadow-md p-6">
               <div className="flex items-center mb-4">
-                <div className="bg-red-100 p-2 rounded-full mr-3">
+                <div className="bg-green-100 p-2 rounded-full mr-3">
                   <i
                     data-feather="map-pin"
-                    className="text-red-500 w-5 h-5"
+                    className="text-green-500 w-5 h-5"
                   ></i>
                 </div>
-                <h3 className="font-semibold text-lg text-gray-800">
-                  Location
-                </h3>
+                <h3 className="font-semibold text-lg text-gray-800">Address</h3>
               </div>
-              <div className="space-y-4">
+              <div className="space-y-3">
                 <div>
-                  <p className="text-sm text-gray-500">Current Location</p>
+                  <p className="text-sm text-gray-500">Home Address</p>
                   <p className="font-medium">
-                    {user?.address || "123 Main St, Anytown, USA"}
+                    {user?.address || "Not Provided"}
                   </p>
                 </div>
-                <button className="w-full bg-blue-500 hover:bg-blue-600 text-white py-2 px-4 rounded-lg font-medium transition duration-300">
-                  Update Location
-                </button>
               </div>
             </div>
           </div>

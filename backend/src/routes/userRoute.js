@@ -1,3 +1,4 @@
+// routes/userRoute.js (partial — add this)
 import express from "express";
 import { protect } from "../middleware/authMiddleware.js";
 import {
@@ -22,7 +23,10 @@ router.post("/logout", logoutUser); // no protect
 
 router.get("/me", protect, getMe);
 
-// User management routes
+// Backwards-compatible update endpoint (optional)
+router.put("/update/:id", updateUser);
+
+// Existing user management routes
 router.get("/", getAllUsers);
 router.get("/:id", getUserById);
 router.put("/:id", updateUser);

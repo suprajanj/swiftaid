@@ -10,6 +10,16 @@ const getAllAlerts = async (req, res) => {
   }
 };
 
+const getAllAcceptedAlerts = async (req, res) => {
+  try {
+    const acceptedAlerts = await AcceptedAlert.find().sort({ acceptedAt: -1 });
+    res.json(acceptedAlerts);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+}
+
 const acceptAlert = async (req, res) => {
   try {
     const { id } = req.params;
@@ -54,4 +64,4 @@ const addAlert = async (req, res) => {
 };
 
 // ✅ Export all functions
-export { getAllAlerts, acceptAlert, displayAlertDetails, addAlert };
+export { getAllAlerts, acceptAlert, displayAlertDetails, addAlert, getAllAcceptedAlerts };

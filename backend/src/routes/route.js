@@ -7,5 +7,6 @@ router.get("/alerts", controller.getAllAlerts);
 router.put("/alerts/:id/accept", controller.acceptAlert);
 router.get("/alerts/:id", controller.displayAlertDetails);
 router.post("/alerts", controller.addAlert);
+router.get("/alerts/accepted", controller.getAllAcceptedAlerts);
 
 export default router;

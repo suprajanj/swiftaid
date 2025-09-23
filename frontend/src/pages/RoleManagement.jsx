@@ -9,9 +9,9 @@ export function RoleManagement() {
   const [loading, setLoading] = useState(true);
   const [dropdownOpen, setDropdownOpen] = useState(null);
   const [showModal, setShowModal] = useState(false);
-
   const [viewUser, setViewUser] = useState(null);
   const [editing, setEditing] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
 
   const [newUser, setNewUser] = useState({
     firstName: "",
@@ -51,30 +51,31 @@ export function RoleManagement() {
     fetchUsers();
   }, []);
 
+  // ✅ Role change
   const handleRoleChange = async (userId, newRole) => {
     try {
       await axios.put(`http://localhost:3000/api/user/${userId}`, {
         role: newRole,
       });
       setUsers(
-        users.map((user) =>
-          user._id === userId ? { ...user, role: newRole } : user
-        )
+        users.map((u) => (u._id === userId ? { ...u, role: newRole } : u))
       );
     } catch (err) {
       console.error("Error updating role:", err);
     }
   };
 
+  // ✅ Delete user
   const handleDeleteUser = async (userId) => {
     try {
       await axios.delete(`http://localhost:3000/api/user/${userId}`);
-      setUsers(users.filter((user) => user._id !== userId));
+      setUsers(users.filter((u) => u._id !== userId));
     } catch (err) {
       console.error("Error deleting user:", err);
     }
   };
 
+  // ✅ Add user
   const handleAddUser = async (e) => {
     e.preventDefault();
     const requiredFields = [
@@ -118,12 +119,9 @@ export function RoleManagement() {
         dob: new Date(newUser.dob),
         termsAccepted: Boolean(newUser.termsAccepted),
       };
-
       const res = await axios.post("http://localhost:3000/api/user", payload);
-
       setUsers([...users, res.data]);
       setShowModal(false);
-
       setNewUser({
         firstName: "",
         lastName: "",
@@ -150,6 +148,7 @@ export function RoleManagement() {
     }
   };
 
+  // ✅ Save edited user
   const handleSaveEdit = async () => {
     try {
       const payload = { ...viewUser };
@@ -167,6 +166,13 @@ export function RoleManagement() {
       );
     }
   };
+
+  // ✅ Filtered users based on search
+  const filteredUsers = users.filter((u) =>
+    `${u.firstName} ${u.lastName} ${u.email} ${u.role}`
+      .toLowerCase()
+      .includes(searchQuery.toLowerCase())
+  );
 
   return (
     <div className="min-h-screen bg-gray-50 font-inter flex">
@@ -186,6 +192,8 @@ export function RoleManagement() {
                 type="text"
                 placeholder="Search users..."
                 className="px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
               />
               <button
                 onClick={() => setShowModal(true)}
@@ -218,7 +226,7 @@ export function RoleManagement() {
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
-                  {users.map((user) => (
+                  {filteredUsers.map((user) => (
                     <tr key={user._id} className="hover:bg-gray-50">
                       <td
                         className="px-6 py-4 whitespace-nowrap cursor-pointer"
@@ -319,7 +327,7 @@ export function RoleManagement() {
             </div>
 
             <form onSubmit={handleAddUser} className="space-y-4">
-              {/* Fields same as before */}
+              {/* All input fields */}
               <input
                 type="text"
                 placeholder="First Name"
@@ -435,7 +443,6 @@ export function RoleManagement() {
                   </option>
                 ))}
               </select>
-
               <div className="flex items-center gap-2">
                 <input
                   type="checkbox"
@@ -449,7 +456,6 @@ export function RoleManagement() {
                   I accept the terms and conditions
                 </label>
               </div>
-
               <button
                 type="submit"
                 className="w-full bg-red-600 text-white py-2 rounded-md hover:bg-red-700"
@@ -498,8 +504,6 @@ export function RoleManagement() {
                   )}
                 </div>
               ))}
-
-              {/* Gender */}
               <div>
                 <label className="text-sm font-medium">Gender</label>
                 {editing ? (
@@ -519,8 +523,6 @@ export function RoleManagement() {
                   <div className="text-gray-700">{viewUser.gender}</div>
                 )}
               </div>
-
-              {/* DOB */}
               <div>
                 <label className="text-sm font-medium">Date of Birth</label>
                 {editing ? (
@@ -538,8 +540,6 @@ export function RoleManagement() {
                   </div>
                 )}
               </div>
-
-              {/* Role */}
               <div>
                 <label className="text-sm font-medium">Role</label>
                 {editing ? (
@@ -561,8 +561,6 @@ export function RoleManagement() {
                 )}
               </div>
             </div>
-
-            {/* Buttons */}
             <div className="mt-4 flex gap-2">
               {editing ? (
                 <button

@@ -57,7 +57,7 @@ const userSchema = new mongoose.Schema(
     },
     role: {
       type: String,
-      default: "customer",
+      default: "user",
     },
 
     // 🔹 New optional fields

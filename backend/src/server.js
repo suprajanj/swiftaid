@@ -9,7 +9,7 @@ dotenv.config();
 
 const app = express();
 
-// ✅ Validate important environment variables
+//Validate important environment variables
 if (!process.env.JWT_SECRET) {
   console.warn(
     "⚠️  Warning: JWT_SECRET is not set. Set it in your .env before using JWT for authentication."
@@ -30,7 +30,7 @@ app.use("/api/user", userRoute);
 
 //Start server
 app.listen(PORT, () => {
-  console.log(`🚀 Server is running on port ${PORT}`);
+  console.log(`Server is running on port ${PORT}`);
 });
 
 export default app;

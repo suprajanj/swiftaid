@@ -4,6 +4,7 @@ import {
   UsersIcon,
   BarChart3Icon,
   LogOutIcon,
+  Siren,
 } from "lucide-react";
 import { NavLink, useNavigate } from "react-router-dom";
 
@@ -28,6 +29,12 @@ export function Sidebar() {
       label: "Analytics",
       icon: <BarChart3Icon size={20} />,
       path: "/analytics",
+    },
+    {
+      id: "Requests",
+      label: "Requests",
+      icon: <Siren size={20} />,
+      path: "/requests",
     },
   ];
 

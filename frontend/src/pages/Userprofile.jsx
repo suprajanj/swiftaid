@@ -161,6 +161,14 @@ function Userprofile() {
           >
             View My Emergency Requests
           </button>
+
+          {/* New Change Password Button */}
+          <button
+            onClick={() => navigate("/changePassword")}
+            className="p-2 text-gray-700 hover:bg-gray-200 rounded text-left"
+          >
+            Change Password
+          </button>
         </div>
 
         <button

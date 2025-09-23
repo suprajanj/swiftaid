@@ -41,12 +41,11 @@ export default function NotificationDashboard() {
   const fetchAlerts = async () => {
     try {
       const res = await axios.get("http://localhost:3000/api/alerts");
-      // Ensure we always set an array
-      const alertsArray = Array.isArray(res.data) ? res.data : res.data.alerts || [];
+      const alertsArray = Array.isArray(res.data.data) ? res.data.data : [];
       setAlerts(alertsArray);
     } catch (err) {
       console.error("Error fetching alerts:", err);
-      setAlerts([]); // fallback to empty array
+      setAlerts([]);
     }
   };
 
@@ -82,8 +81,10 @@ export default function NotificationDashboard() {
       if (files.length > 0) {
         Array.from(files).forEach((file) => formData.append("files", file));
       }
+
+      // ✅ FIXED endpoint
       await axios.put(
-        `http://localhost:3000/api/alerts/complete/${alertId}`,
+        `http://localhost:3000/api/alerts/${alertId}/complete`,
         formData,
         { headers: { "Content-Type": "multipart/form-data" } }
       );
@@ -127,7 +128,6 @@ export default function NotificationDashboard() {
   if (loadError) return <p>Error loading map</p>;
   if (!isLoaded) return <p>Loading map...</p>;
 
-  // Ensure filteredAlerts is always an array
   const safeFilteredAlerts = Array.isArray(filteredAlerts) ? filteredAlerts : [];
 
   return (
@@ -144,7 +144,7 @@ export default function NotificationDashboard() {
       </div>
 
       <div className="grid grid-cols-12 gap-6">
-        {/* LEFT: Alerts List + Filter Dropdown */}
+        {/* LEFT: Alerts List */}
         <div className="col-span-3 bg-white shadow-xl rounded-2xl p-4 border max-h-[80vh] flex flex-col">
           <h2 className="text-xl font-bold mb-2 text-primary">Alert List</h2>
 
@@ -157,6 +157,7 @@ export default function NotificationDashboard() {
             <option value="pending">Pending</option>
             <option value="accepted">Accepted</option>
             <option value="cancelled">Cancelled</option>
+            <option value="resolved">Resolved</option>
             <option value="In My Area">In My Area</option>
           </select>
 
@@ -185,7 +186,7 @@ export default function NotificationDashboard() {
           </div>
         </div>
 
-        {/* MIDDLE + RIGHT-TOP: Google Map */}
+        {/* MAP */}
         <div className="col-span-9 relative">
           <GoogleMap
             mapContainerStyle={mapContainerStyle}
@@ -202,7 +203,7 @@ export default function NotificationDashboard() {
                   encodeURIComponent(
                     `<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40"><text x="0" y="30" font-size="30">🦺</text></svg>`
                   ),
-                scaledSize: new google.maps.Size(40, 40),
+                scaledSize: new window.google.maps.Size(40, 40), // ✅ FIX
               }}
             />
 
@@ -235,7 +236,7 @@ export default function NotificationDashboard() {
                             </text>
                           </svg>
                         `),
-                      scaledSize: new google.maps.Size(40, 40),
+                      scaledSize: new window.google.maps.Size(40, 40), // ✅ FIX
                     }}
                   />
                 )
@@ -255,10 +256,10 @@ export default function NotificationDashboard() {
                   <p>{selectedAlert.address}</p>
                   <p>Status: {selectedAlert.status}</p>
                   <p>Report ID: {selectedAlert.reportId}</p>
-                  <p>Timestamp: {selectedAlert.timestamp}</p>
+                  <p>Timestamp: {new Date(selectedAlert.createdAt).toLocaleString()}</p>
                   <button
                     className="bg-blue-500 text-white px-2 py-1 rounded"
-                    onClick={() => updateAlertStatus(selectedAlert._id, "accepted")}
+                    onClick={() => updateAlertStatus(selectedAlert._id, "resolved")}
                   >
                     {selectedAlert.status === "pending" ? "Accept" : "Close"}
                   </button>
@@ -267,7 +268,7 @@ export default function NotificationDashboard() {
             )}
           </GoogleMap>
 
-          {/* Floating Alert Details */}
+          {/* Floating Details */}
           {selectedAlert && (
             <div className="absolute top-12 right-4 w-80 bg-white shadow-xl rounded-2xl p-4 border z-50">
               <h2 className="text-lg font-bold mb-2">Alert Details</h2>

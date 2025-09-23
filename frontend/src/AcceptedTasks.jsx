@@ -28,7 +28,7 @@ export default function AcceptedTasks() {
   const fetchAcceptedTasks = async () => {
     try {
       const res = await axios.get("http://localhost:3000/api/alerts/accepted");
-      setTasks(res.data);
+      setTasks(res.data.data); // FIX: assign the array from backend
     } catch (err) {
       console.error("Error fetching accepted tasks:", err);
     }
@@ -36,7 +36,7 @@ export default function AcceptedTasks() {
 
   const cancelTask = async (taskId) => {
     try {
-      await axios.put(`http://localhost:3000/api/alerts/cancel/${taskId}`);
+      await axios.put(`http://localhost:3000/api/alerts/${taskId}/cancel`);
       fetchAcceptedTasks();
     } catch (err) {
       console.error(err);
@@ -55,7 +55,7 @@ export default function AcceptedTasks() {
         Array.from(files).forEach((file) => formData.append("files", file));
       }
       formData.append("status", "resolved");
-      await axios.put(`http://localhost:3000/api/alerts/complete/${taskId}`, formData);
+      await axios.put(`http://localhost:3000/api/alerts/${taskId}/complete`, formData);
       setShowCompleteForm(false);
       setFiles([]);
       fetchAcceptedTasks();
@@ -66,7 +66,7 @@ export default function AcceptedTasks() {
 
   const reachedTask = async (taskId) => {
     try {
-      await axios.put(`http://localhost:3000/api/alerts/reached/${taskId}`);
+      await axios.put(`http://localhost:3000/api/alerts/${taskId}/reached`);
       fetchAcceptedTasks();
     } catch (err) {
       console.error(err);
@@ -77,7 +77,7 @@ export default function AcceptedTasks() {
     setMapTask(task);
     try {
       const res = await axios.get(`http://localhost:3000/api/alerts/${task._id}/responders`);
-      setResponderLocations(res.data); // array of {lat, lng}
+      setResponderLocations(res.data.data || []); // ensure it's an array
     } catch (err) {
       console.error(err);
     }

@@ -21,6 +21,7 @@ export default function NotificationDashboard() {
     libraries,
   });
 
+  // Fetch alerts periodically
   useEffect(() => {
     fetchAlerts();
     if (navigator.geolocation) {
@@ -32,6 +33,7 @@ export default function NotificationDashboard() {
     return () => clearInterval(interval);
   }, []);
 
+  // Apply filter whenever alerts, filter, or user location change
   useEffect(() => {
     applyFilter();
   }, [alerts, filter, userLocation]);
@@ -39,13 +41,18 @@ export default function NotificationDashboard() {
   const fetchAlerts = async () => {
     try {
       const res = await axios.get("http://localhost:3000/api/alerts");
-      setAlerts(res.data);
+      // Ensure we always set an array
+      const alertsArray = Array.isArray(res.data) ? res.data : res.data.alerts || [];
+      setAlerts(alertsArray);
     } catch (err) {
       console.error("Error fetching alerts:", err);
+      setAlerts([]); // fallback to empty array
     }
   };
 
   const applyFilter = () => {
+    if (!Array.isArray(alerts)) return setFilteredAlerts([]);
+
     if (filter === "All") {
       setFilteredAlerts(alerts);
     } else if (filter === "In My Area") {
@@ -62,7 +69,9 @@ export default function NotificationDashboard() {
         })
       );
     } else {
-      setFilteredAlerts(alerts.filter((a) => a.status.toLowerCase() === filter.toLowerCase()));
+      setFilteredAlerts(
+        alerts.filter((a) => a.status?.toLowerCase() === filter.toLowerCase())
+      );
     }
   };
 
@@ -73,9 +82,11 @@ export default function NotificationDashboard() {
       if (files.length > 0) {
         Array.from(files).forEach((file) => formData.append("files", file));
       }
-      await axios.put(`http://localhost:3000/api/alerts/complete/${alertId}`, formData, {
-        headers: { "Content-Type": "multipart/form-data" },
-      });
+      await axios.put(
+        `http://localhost:3000/api/alerts/complete/${alertId}`,
+        formData,
+        { headers: { "Content-Type": "multipart/form-data" } }
+      );
       setSelectedAlert(null);
       setFiles([]);
       fetchAlerts();
@@ -91,13 +102,15 @@ export default function NotificationDashboard() {
     const dLon = deg2rad(lon2 - lon1);
     const a =
       Math.sin(dLat / 2) ** 2 +
-      Math.cos(deg2rad(lat1)) * Math.cos(deg2rad(lat2)) * Math.sin(dLon / 2) ** 2;
+      Math.cos(deg2rad(lat1)) *
+        Math.cos(deg2rad(lat2)) *
+        Math.sin(dLon / 2) ** 2;
     const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
     return R * c;
   };
 
   const getStatusColor = (status) => {
-    switch (status.toLowerCase()) {
+    switch (status?.toLowerCase()) {
       case "pending":
         return "bg-red-500 text-white";
       case "accepted":
@@ -114,6 +127,9 @@ export default function NotificationDashboard() {
   if (loadError) return <p>Error loading map</p>;
   if (!isLoaded) return <p>Loading map...</p>;
 
+  // Ensure filteredAlerts is always an array
+  const safeFilteredAlerts = Array.isArray(filteredAlerts) ? filteredAlerts : [];
+
   return (
     <div className="relative bg-gray-50 min-h-screen p-6">
       {/* Top Navigation */}
@@ -121,7 +137,7 @@ export default function NotificationDashboard() {
         <h1 className="text-2xl font-bold text-primary">🚨 Emergency Responder Dashboard</h1>
         <button
           className="bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded shadow"
-          onClick={() => window.location.href = "/accepted-tasks"}
+          onClick={() => (window.location.href = "/accepted-tasks")}
         >
           Go to Accepted Tasks
         </button>
@@ -132,7 +148,6 @@ export default function NotificationDashboard() {
         <div className="col-span-3 bg-white shadow-xl rounded-2xl p-4 border max-h-[80vh] flex flex-col">
           <h2 className="text-xl font-bold mb-2 text-primary">Alert List</h2>
 
-          {/* Dropdown filter */}
           <select
             className="mb-4 p-2 border rounded"
             value={filter}
@@ -146,18 +161,20 @@ export default function NotificationDashboard() {
           </select>
 
           <div className="space-y-3 overflow-y-auto flex-1">
-            {filteredAlerts.length === 0 ? (
+            {safeFilteredAlerts.length === 0 ? (
               <p className="text-gray-500 text-center mt-4">No alerts</p>
             ) : (
-              filteredAlerts.map((alert) => (
+              safeFilteredAlerts.map((alert) => (
                 <div
                   key={alert._id}
                   className={`p-3 rounded-xl border cursor-pointer hover:bg-blue-50 transition ${
-                    selectedAlert?._id === alert._id ? "border-blue-400 bg-blue-50" : "border-gray-200"
+                    selectedAlert?._id === alert._id
+                      ? "border-blue-400 bg-blue-50"
+                      : "border-gray-200"
                   }`}
                   onClick={() => setSelectedAlert(alert)}
                 >
-                  <h3 className="font-semibold">{alert.emergencyType.toUpperCase()}</h3>
+                  <h3 className="font-semibold">{alert.emergencyType?.toUpperCase()}</h3>
                   <p className="text-sm text-gray-600">{alert.address}</p>
                   <span className={`text-xs px-2 py-1 rounded ${getStatusColor(alert.status)}`}>
                     {alert.status}
@@ -168,7 +185,7 @@ export default function NotificationDashboard() {
           </div>
         </div>
 
-        {/* MIDDLE + RIGHT-TOP */}
+        {/* MIDDLE + RIGHT-TOP: Google Map */}
         <div className="col-span-9 relative">
           <GoogleMap
             mapContainerStyle={mapContainerStyle}
@@ -190,7 +207,7 @@ export default function NotificationDashboard() {
             />
 
             {/* Alerts */}
-            {filteredAlerts.map(
+            {safeFilteredAlerts.map(
               (alert) =>
                 alert.liveLocation?.coordinates && (
                   <MarkerF
@@ -224,7 +241,6 @@ export default function NotificationDashboard() {
                 )
             )}
 
-
             {/* InfoWindow */}
             {selectedAlert?.liveLocation?.coordinates && (
               <InfoWindowF
@@ -242,7 +258,7 @@ export default function NotificationDashboard() {
                   <p>Timestamp: {selectedAlert.timestamp}</p>
                   <button
                     className="bg-blue-500 text-white px-2 py-1 rounded"
-                    onClick={() => handleAccept(selectedAlert)}
+                    onClick={() => updateAlertStatus(selectedAlert._id, "accepted")}
                   >
                     {selectedAlert.status === "pending" ? "Accept" : "Close"}
                   </button>
@@ -275,7 +291,6 @@ export default function NotificationDashboard() {
               )}
             </div>
           )}
-
         </div>
       </div>
     </div>

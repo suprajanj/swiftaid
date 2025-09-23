@@ -9,7 +9,7 @@ const AcceptedAlertSchema = new mongoose.Schema({
   emergencyType: { 
     type: String, 
     required: true,
-    enum: ["medical", "fire", "police", "hospital", "media", "insurance"], // all lowercase
+    enum: ["medical", "fire", "assault", "hospital", "accident", "other"], // all lowercase
   },
   address: { type: String, required: true },
   status: { type: String, default: "accepted" },

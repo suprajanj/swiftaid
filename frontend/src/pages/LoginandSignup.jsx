@@ -122,7 +122,7 @@ export default function LoginandSignup() {
       const role = res.data.role || "user";
       switch (role.toLowerCase()) {
         case "admin":
-          navigate("/admin");
+          navigate("/dashboard");
           break;
         case "responder":
           navigate("/responder");

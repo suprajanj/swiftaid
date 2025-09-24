@@ -1,7 +1,36 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import axios from "axios";
 import { Sidebar } from "../components/Sidebar";
 
 export function Dashboard() {
+  const navigate = useNavigate();
+  const [user, setUser] = useState(null);
+
+  // -------------------- Check JWT & Fetch User --------------------
+  useEffect(() => {
+    const token = localStorage.getItem("token");
+    if (!token) {
+      navigate("/login");
+      return;
+    }
+
+    const fetchUser = async () => {
+      try {
+        const res = await axios.get("http://localhost:3000/api/user/me", {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        setUser(res.data);
+      } catch (err) {
+        console.error(err);
+        localStorage.removeItem("token");
+        navigate("/login");
+      }
+    };
+
+    fetchUser();
+  }, [navigate]);
+
   return (
     <div className="min-h-screen bg-gray-50 font-inter flex">
       {/* Sidebar */}
@@ -11,7 +40,9 @@ export function Dashboard() {
       <div className="flex-1 p-6">
         <div className="mb-6">
           <h1 className="text-2xl font-bold text-gray-800">Dashboard</h1>
-          <p className="text-gray-600">Welcome to SwiftAid Admin Panel</p>
+          <p className="text-gray-600">
+            Welcome {user ? user.firstName : "to SwiftAid Admin Panel"}
+          </p>
         </div>
 
         {/* Stats Cards */}

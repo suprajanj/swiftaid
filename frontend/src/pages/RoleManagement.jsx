@@ -25,7 +25,6 @@ export function RoleManagement() {
     gender: "",
     dob: "",
     termsAccepted: false,
-    role: "User",
   });
 
   const roles = [
@@ -430,19 +429,7 @@ export function RoleManagement() {
                 className="w-full border px-3 py-2 rounded-md text-sm"
                 required
               />
-              <select
-                value={newUser.role}
-                onChange={(e) =>
-                  setNewUser({ ...newUser, role: e.target.value })
-                }
-                className="w-full border px-3 py-2 rounded-md text-sm"
-              >
-                {roles.map((role) => (
-                  <option key={role} value={role}>
-                    {role}
-                  </option>
-                ))}
-              </select>
+
               <div className="flex items-center gap-2">
                 <input
                   type="checkbox"

@@ -178,15 +178,21 @@ export const verifyOTP = async (req, res) => {
       return res.status(400).json({ message: "Invalid OTP" });
     }
 
+    // OTP verified → remove record
     await Otp.deleteOne({ userId });
 
-    // ✅ Generate JWT after successful OTP
+    // ✅ Fetch user
+    const user = await User.findById(userId);
+    if (!user) return res.status(404).json({ message: "User not found" });
+
+    // ✅ Generate JWT
     const token = generateToken(userId);
 
     res.status(200).json({
       message: "OTP verified successfully",
       userId,
-      token, // send JWT to frontend
+      token,
+      role: user.role || "user", // ✅ include role
     });
   } catch (error) {
     console.error("OTP verification error:", error);

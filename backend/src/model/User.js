@@ -55,8 +55,17 @@ const userSchema = new mongoose.Schema(
       type: Boolean,
       required: true,
     },
+    // New field
     role: {
       type: String,
+      enum: [
+        "admin",
+        "responder",
+        "dispatcher",
+        "fund raiser",
+        "organization",
+        "user",
+      ],
       default: "user",
     },
 

@@ -38,6 +38,16 @@ export function Sidebar() {
     },
   ];
 
+  // ✅ Simple Logout with confirmation
+  const handleLogout = () => {
+    const confirmLogout = window.confirm("Are you sure you want to logout?");
+    if (confirmLogout) {
+      localStorage.removeItem("token");
+      localStorage.removeItem("user"); // if stored
+      navigate("/");
+    }
+  };
+
   return (
     <div className="w-64 bg-white border-r border-gray-200 min-h-screen flex flex-col">
       {/* Logo Section */}
@@ -75,7 +85,7 @@ export function Sidebar() {
       {/* Logout */}
       <div className="p-4 border-t border-gray-200">
         <button
-          onClick={() => navigate("/")}
+          onClick={handleLogout}
           className="flex items-center w-full px-4 py-2 text-gray-700 rounded-md hover:bg-gray-100"
         >
           <LogOutIcon size={20} className="mr-3" />

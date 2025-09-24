@@ -124,10 +124,32 @@ export const loginUser = async (req, res) => {
     });
 
     await transporter.sendMail({
-      from: process.env.EMAIL_USER,
+      from: `"SwiftAid Security" <${process.env.EMAIL_USER}>`,
       to: user.email,
-      subject: "Your OTP Code",
+      subject: "Your OTP Code (Valid for 5 minutes)",
       text: `Your OTP is ${otp}. It expires in 5 minutes.`,
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 500px; margin: auto; border: 1px solid #e0e0e0; border-radius: 10px; padding: 20px; background-color: #f9f9f9;">
+          <h2 style="color: #333; text-align: center;">One-Time Password (OTP)</h2>
+          <p style="font-size: 16px; color: #555;">
+            Hi <strong>${user.firstName || "User"}</strong>,  
+            <br/><br/>
+            Use the following OTP to complete your login. This code will expire in <strong>5 minutes</strong>.
+          </p>
+          <div style="text-align: center; margin: 30px 0;">
+            <span style="font-size: 28px; font-weight: bold; letter-spacing: 4px; background: #4CAF50; color: white; padding: 10px 20px; border-radius: 8px; display: inline-block;">
+              ${otp}
+            </span>
+          </div>
+          <p style="font-size: 14px; color: #777; text-align: center;">
+            If you didn't request this, please ignore this email.
+          </p>
+          <hr style="margin: 20px 0;" />
+          <p style="font-size: 12px; color: #aaa; text-align: center;">
+            © ${new Date().getFullYear()} SwiftAid | Secure Login System
+          </p>
+        </div>
+      `,
     });
 
     res.status(200).json({ message: "OTP sent to email", userId: user._id });

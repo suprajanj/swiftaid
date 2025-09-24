@@ -2,7 +2,6 @@ import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import toast, { Toaster } from "react-hot-toast";
-import Homepage from "./Homepage";
 
 export default function LoginandSignup() {
   const navigate = useNavigate();
@@ -119,8 +118,27 @@ export default function LoginandSignup() {
 
       toast.success(res.data.message + " — Logged in successfully!");
 
-      // ✅ Navigate immediately to homepage
-      navigate("/homepage");
+      // ✅ Role-based navigation
+      const role = res.data.role || "user";
+      switch (role.toLowerCase()) {
+        case "admin":
+          navigate("/admin");
+          break;
+        case "responder":
+          navigate("/responder");
+          break;
+        case "dispatcher":
+          navigate("/dispatcher");
+          break;
+        case "fund raiser":
+          navigate("/funds");
+          break;
+        case "organization":
+          navigate("/org");
+          break;
+        default:
+          navigate("/homepage");
+      }
 
       // Reset form and states
       setIsOTPStep(false);

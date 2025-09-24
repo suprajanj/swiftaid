@@ -19,10 +19,12 @@
     "@react-google-maps/api": "^2.20.7",
     "axios": "^1.12.2",
     "cors": "^2.8.5",
+    "lucide-react": "^0.544.0",
     "mui": "^0.0.1",
     "react": "^19.1.1",
     "react-dom": "^19.1.1",
-    "react-router-dom": "^7.9.1"
+    "react-router-dom": "^7.9.1",
+    "react-toastify": "^11.0.5"
   },
   "devDependencies": {
     "@eslint/js": "^9.33.0",

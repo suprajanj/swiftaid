@@ -1,147 +1,210 @@
-import mongoose from "mongoose";
 import Alert from "../model/alertModel.js";
 import AcceptedAlert from "../model/acceptedAlertModel.js";
+import CompletedAlert from "../model/completedAlertModel.js";
 
 // Get all alerts
-export const getAllAlerts = async (req, res) => {
+const getAllAlerts = async (req, res) => {
   try {
-    const alerts = await Alert.find().sort({ createdAt: -1 });
-    res.json({ success: true, data: alerts });
-  } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    const alerts = await Alert.find();
+    res.json(alerts);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
   }
 };
 
-// Get accepted alerts
-export const getAllAcceptedAlerts = async (req, res) => {
+// Get all accepted alerts
+const getAllAcceptedAlerts = async (req, res) => {
   try {
-    const alerts = await AcceptedAlert.find({ status: "accepted" }).sort({ acceptedAt: -1 });
-    res.json({ success: true, data: alerts });
-  } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    const alerts = await AcceptedAlert.find();
+    res.json(alerts);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
   }
 };
 
-// Accept alert
-export const acceptAlert = async (req, res) => {
-  const session = await mongoose.startSession();
-  session.startTransaction();
+// Get alerts by status
+const getAlertsByStatus = async (req, res) => {
+  try {
+    const { status } = req.params;
+    const alerts = await Alert.find({ status });
+    res.json(alerts);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+// Add a new alert
+const addAlert = async (req, res) => {
+  try {
+    const alert = new Alert(req.body);
+    await alert.save();
+    res.status(201).json(alert);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+// Display single alert details
+const displayAlertDetails = async (req, res) => {
   try {
     const { id } = req.params;
-    const alert = await Alert.findById(id).session(session);
-    if (!alert) return res.status(404).json({ success: false, message: "Alert not found" });
 
-    const exists = await AcceptedAlert.findOne({ originalAlertId: id }).session(session);
-    if (exists) return res.status(400).json({ success: false, message: "Already accepted" });
+    const alert =
+      (await Alert.findById(id)) ||
+      (await AcceptedAlert.findById(id)) ||
+      (await CompletedAlert.findById(id));
 
-    const accepted = new AcceptedAlert({
-      originalAlertId: alert._id,
-      ...alert.toObject(),
-      status: "accepted",
-      acceptedAt: new Date(),
-    });
-
-    await accepted.save({ session });
-    alert.status = "accepted";
-    await alert.save({ session });
-
-    await session.commitTransaction();
-    session.endSession();
-    res.json({ success: true, data: accepted });
-  } catch (err) {
-    await session.abortTransaction();
-    session.endSession();
-    res.status(500).json({ success: false, message: err.message });
+    if (!alert) return res.status(404).json({ message: "Alert not found" });
+    res.json(alert);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
   }
 };
 
-// Cancel alert
-export const cancelAlert = async (req, res) => {
+// Accept an alert
+const acceptAlert = async (req, res) => {
   try {
     const { id } = req.params;
-    await Alert.findByIdAndUpdate(id, { status: "cancelled" });
-    await AcceptedAlert.findOneAndUpdate({ originalAlertId: id }, { status: "cancelled" });
-    res.json({ success: true });
-  } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+
+    // Remove from completed (if exists)
+    await CompletedAlert.findByIdAndDelete(id);
+
+    const alert = await Alert.findById(id);
+    if (!alert) return res.status(404).json({ message: "Alert not found" });
+
+    const accepted = new AcceptedAlert(alert.toObject());
+    await accepted.save();
+
+    await Alert.findByIdAndDelete(id); // remove from main
+    res.json({ message: "Alert accepted", accepted });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+// Cancel an alert (remove from accepted)
+const cancelAlert = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    await AcceptedAlert.findByIdAndDelete(id);
+    await CompletedAlert.findByIdAndDelete(id);
+    await Alert.findByIdAndDelete(id);
+
+    res.json({ message: "Alert canceled from all databases" });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
   }
 };
 
 // Mark as reached
-export const markAsReached = async (req, res) => {
+const markAsReached = async (req, res) => {
   try {
     const { id } = req.params;
-    const updated = await AcceptedAlert.findOneAndUpdate(
-      { originalAlertId: id },
-      { status: "reached" },
-      { new: true }
-    );
-    res.json({ success: true, data: updated });
-  } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+
+    const update = { status: "reached" };
+    const alert =
+      (await AcceptedAlert.findByIdAndUpdate(id, update, { new: true })) ||
+      (await Alert.findByIdAndUpdate(id, update, { new: true }));
+
+    if (!alert) return res.status(404).json({ message: "Alert not found" });
+
+    res.json({ message: "Responder reached", alert });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
   }
 };
 
-// Complete alert with media
-export const completeAlert = async (req, res) => {
+// Complete alert
+const completeAlert = async (req, res) => {
   try {
     const { id } = req.params;
-    const mediaFiles = req.files ? req.files.map(f => f.path) : [];
+    const { comment } = req.body;
+    const files = req.files || [];
 
-    const accepted = await AcceptedAlert.findOneAndUpdate(
-      { originalAlertId: id },
-      { status: "resolved", completedAt: new Date(), media: mediaFiles },
-      { new: true }
-    );
-    await Alert.findByIdAndUpdate(id, { status: "resolved" });
+    // Find in accepted or main alerts
+    const alert =
+      (await AcceptedAlert.findById(id)) || (await Alert.findById(id));
+    if (!alert) return res.status(404).json({ message: "Alert not found" });
 
-    res.json({ success: true, data: accepted });
-  } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
-  }
-};
-
-// Get responders (static example, replace with real data)
-export const getRespondersForAlert = async (req, res) => {
-  try {
-    res.json({
-      success: true,
-      data: [{ lat: 6.9271, lng: 79.8612, emoji: "  🚑" }],
+    const completed = new CompletedAlert({
+      ...alert.toObject(),
+      comment,
+      files: files.map((f) => f.filename),
+      completedAt: new Date(),
     });
-  } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+
+    await completed.save();
+
+    // Remove from other databases
+    await AcceptedAlert.findByIdAndDelete(id);
+    await Alert.findByIdAndDelete(id);
+
+    res.json({ message: "Alert completed successfully", completed });
+  } catch (error) {
+    console.error("❌ completeAlert error:", error);
+    res.status(500).json({ error: error.message });
   }
 };
 
-// Alerts by status
-export const getAlertsByStatus = async (req, res) => {
+// Update responder location
+const updateResponderLocation = async (req, res) => {
   try {
-    const { status } = req.params;
-    const alerts = await Alert.find({ status: status.toLowerCase() });
-    res.json({ success: true, data: alerts });
-  } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    const { id } = req.params;
+    const { lat, lng } = req.body;
+    const update = { responderLocation: { lat, lng } };
+
+    const alert =
+      (await AcceptedAlert.findByIdAndUpdate(id, update, { new: true })) ||
+      (await Alert.findByIdAndUpdate(id, update, { new: true }));
+
+    if (!alert) return res.status(404).json({ message: "Alert not found" });
+    res.json({ message: "Responder location updated", alert });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
   }
 };
 
-// Alert details
-export const displayAlertDetails = async (req, res) => {
+// Get responders for an alert
+const getRespondersForAlert = async (req, res) => {
   try {
-    const alert = await Alert.findById(req.params.id);
-    if (!alert) return res.status(404).json({ success: false, message: "Not found" });
-    res.json({ success: true, data: alert });
-  } catch (err) {
-    res.status(400).json({ success: false, message: err.message });
+    const { id } = req.params;
+    const alert =
+      (await AcceptedAlert.findById(id)) ||
+      (await Alert.findById(id)) ||
+      (await CompletedAlert.findById(id));
+
+    if (!alert) return res.status(404).json({ message: "Alert not found" });
+    res.json(alert.responders || []);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+// In controller.js
+// controller/controller.js
+const deleteAllAlerts = async (req, res) => {
+  try {
+    await Alert.deleteMany({});
+    await AcceptedAlert.deleteMany({});
+    await CompletedAlert.deleteMany({});
+    res.json({ message: "All alerts deleted from all databases" });
+  } catch (error) {
+    console.error("❌ deleteAllAlerts error:", error);
+    res.status(500).json({ error: error.message });
   }
 };
 
-// Add alert
-export const addAlert = async (req, res) => {
-  try {
-    const alert = new Alert(req.body);
-    await alert.save();
-    res.status(201).json({ success: true, data: alert });
-  } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
-  }
+export {
+  getAllAlerts,
+  getAllAcceptedAlerts,
+  getAlertsByStatus,
+  addAlert,
+  displayAlertDetails,
+  acceptAlert,
+  cancelAlert,
+  markAsReached,
+  completeAlert,
+  updateResponderLocation,
+  getRespondersForAlert,
+  deleteAllAlerts,
 };

@@ -1,8 +1,15 @@
+// NotificationDashboard.jsx
 import { useState, useEffect } from "react";
 import axios from "axios";
-import { GoogleMap, useLoadScript, MarkerF, InfoWindowF } from "@react-google-maps/api";
+import {
+  GoogleMap,
+  MarkerF,
+  InfoWindowF,
+  useLoadScript,
+} from "@react-google-maps/api";
+import { toast, ToastContainer } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 import mapStyles from "./mapStyles.jsx";
-import "./index.css";
 
 const libraries = ["places"];
 const mapContainerStyle = { width: "100%", height: "80vh", borderRadius: "10px" };
@@ -13,27 +20,25 @@ export default function NotificationDashboard() {
   const [filteredAlerts, setFilteredAlerts] = useState([]);
   const [selectedAlert, setSelectedAlert] = useState(null);
   const [userLocation, setUserLocation] = useState(defaultCenter);
-  const [files, setFiles] = useState([]);
   const [filter, setFilter] = useState("All");
+  const [files, setFiles] = useState([]);
 
   const { isLoaded, loadError } = useLoadScript({
     googleMapsApiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY,
     libraries,
   });
 
-  // Fetch alerts periodically
   useEffect(() => {
     fetchAlerts();
     if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition((pos) => {
-        setUserLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude });
-      });
+      navigator.geolocation.getCurrentPosition((pos) =>
+        setUserLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude })
+      );
     }
     const interval = setInterval(fetchAlerts, 10000);
     return () => clearInterval(interval);
   }, []);
 
-  // Apply filter whenever alerts, filter, or user location change
   useEffect(() => {
     applyFilter();
   }, [alerts, filter, userLocation]);
@@ -41,17 +46,14 @@ export default function NotificationDashboard() {
   const fetchAlerts = async () => {
     try {
       const res = await axios.get("http://localhost:3000/api/alerts");
-      const alertsArray = Array.isArray(res.data.data) ? res.data.data : [];
-      setAlerts(alertsArray);
+      setAlerts(Array.isArray(res.data) ? res.data : res.data.data || []);
     } catch (err) {
       console.error("Error fetching alerts:", err);
-      setAlerts([]);
+      toast.error("Failed to fetch alerts.");
     }
   };
 
   const applyFilter = () => {
-    if (!Array.isArray(alerts)) return setFilteredAlerts([]);
-
     if (filter === "All") {
       setFilteredAlerts(alerts);
     } else if (filter === "In My Area") {
@@ -69,30 +71,20 @@ export default function NotificationDashboard() {
       );
     } else {
       setFilteredAlerts(
-        alerts.filter((a) => a.status?.toLowerCase() === filter.toLowerCase())
+        alerts.filter((a) => a.status.toLowerCase() === filter.toLowerCase())
       );
     }
   };
 
-  const updateAlertStatus = async (alertId, status) => {
+  const handleAccept = async (alert) => {
     try {
-      const formData = new FormData();
-      formData.append("status", status);
-      if (files.length > 0) {
-        Array.from(files).forEach((file) => formData.append("files", file));
-      }
-
-      // ✅ FIXED endpoint
-      await axios.put(
-        `http://localhost:3000/api/alerts/${alertId}/complete`,
-        formData,
-        { headers: { "Content-Type": "multipart/form-data" } }
-      );
-      setSelectedAlert(null);
-      setFiles([]);
+      await axios.put(`http://localhost:3000/api/alerts/${alert._id}/accept`);
+      toast.success(`Alert ${alert.reportId} accepted!`);
       fetchAlerts();
+      setSelectedAlert(null);
     } catch (err) {
-      console.error("Error updating alert:", err);
+      console.error(err);
+      toast.error("Failed to accept alert.");
     }
   };
 
@@ -111,11 +103,13 @@ export default function NotificationDashboard() {
   };
 
   const getStatusColor = (status) => {
-    switch (status?.toLowerCase()) {
+    switch (status.toLowerCase()) {
       case "pending":
         return "bg-red-500 text-white";
       case "accepted":
         return "bg-yellow-400 text-black";
+      case "reached":
+        return "bg-blue-500 text-white";
       case "cancelled":
         return "bg-gray-400 text-white";
       case "resolved":
@@ -128,23 +122,25 @@ export default function NotificationDashboard() {
   if (loadError) return <p>Error loading map</p>;
   if (!isLoaded) return <p>Loading map...</p>;
 
-  const safeFilteredAlerts = Array.isArray(filteredAlerts) ? filteredAlerts : [];
-
   return (
     <div className="relative bg-gray-50 min-h-screen p-6">
+      <ToastContainer position="top-right" autoClose={3000} />
+
       {/* Top Navigation */}
       <div className="flex justify-between items-center mb-4">
-        <h1 className="text-2xl font-bold text-primary">🚨 Emergency Responder Dashboard</h1>
+        <h1 className="text-2xl font-bold text-primary">
+          🚨 Emergency Responder Dashboard
+        </h1>
         <button
           className="bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded shadow"
-          onClick={() => (window.location.href = "/accepted-tasks")}
+          onClick={() => window.location.href = "/accepted-tasks"}
         >
           Go to Accepted Tasks
         </button>
       </div>
 
       <div className="grid grid-cols-12 gap-6">
-        {/* LEFT: Alerts List */}
+        {/* LEFT: Alerts List + Filter */}
         <div className="col-span-3 bg-white shadow-xl rounded-2xl p-4 border max-h-[80vh] flex flex-col">
           <h2 className="text-xl font-bold mb-2 text-primary">Alert List</h2>
 
@@ -157,15 +153,16 @@ export default function NotificationDashboard() {
             <option value="pending">Pending</option>
             <option value="accepted">Accepted</option>
             <option value="cancelled">Cancelled</option>
-            <option value="resolved">Resolved</option>
             <option value="In My Area">In My Area</option>
           </select>
 
           <div className="space-y-3 overflow-y-auto flex-1">
-            {safeFilteredAlerts.length === 0 ? (
+            {Array.isArray(filteredAlerts) && filteredAlerts.length === 0 && (
               <p className="text-gray-500 text-center mt-4">No alerts</p>
-            ) : (
-              safeFilteredAlerts.map((alert) => (
+            )}
+
+            {Array.isArray(filteredAlerts) &&
+              filteredAlerts.map((alert) => (
                 <div
                   key={alert._id}
                   className={`p-3 rounded-xl border cursor-pointer hover:bg-blue-50 transition ${
@@ -175,18 +172,17 @@ export default function NotificationDashboard() {
                   }`}
                   onClick={() => setSelectedAlert(alert)}
                 >
-                  <h3 className="font-semibold">{alert.emergencyType?.toUpperCase()}</h3>
+                  <h3 className="font-semibold">{alert.emergencyType.toUpperCase()}</h3>
                   <p className="text-sm text-gray-600">{alert.address}</p>
                   <span className={`text-xs px-2 py-1 rounded ${getStatusColor(alert.status)}`}>
                     {alert.status}
                   </span>
                 </div>
-              ))
-            )}
+              ))}
           </div>
         </div>
 
-        {/* MAP */}
+        {/* RIGHT: Map */}
         <div className="col-span-9 relative">
           <GoogleMap
             mapContainerStyle={mapContainerStyle}
@@ -203,44 +199,43 @@ export default function NotificationDashboard() {
                   encodeURIComponent(
                     `<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40"><text x="0" y="30" font-size="30">🦺</text></svg>`
                   ),
-                scaledSize: new window.google.maps.Size(40, 40), // ✅ FIX
+                scaledSize: new google.maps.Size(40, 40),
               }}
             />
 
-            {/* Alerts */}
-            {safeFilteredAlerts.map(
-              (alert) =>
-                alert.liveLocation?.coordinates && (
-                  <MarkerF
-                    key={alert._id}
-                    position={{
-                      lat: alert.liveLocation.coordinates[1],
-                      lng: alert.liveLocation.coordinates[0],
-                    }}
-                    onClick={() => setSelectedAlert(alert)}
-                    icon={{
-                      url:
-                        "data:image/svg+xml;charset=UTF-8," +
-                        encodeURIComponent(`
-                          <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40">
-                            <text x="0" y="32" font-size="32">
-                              ${
-                                alert.status === "accepted"
+            {/* Alert markers */}
+            {Array.isArray(filteredAlerts) &&
+              filteredAlerts.map(
+                (alert) =>
+                  alert.liveLocation?.coordinates && (
+                    <MarkerF
+                      key={alert._id}
+                      position={{
+                        lat: alert.liveLocation.coordinates[1],
+                        lng: alert.liveLocation.coordinates[0],
+                      }}
+                      onClick={() => setSelectedAlert(alert)}
+                      icon={{
+                        url:
+                          "data:image/svg+xml;charset=UTF-8," +
+                          encodeURIComponent(
+                            `<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40">
+                              <text x="0" y="32" font-size="32">${
+                                alert.status === "accepted" || alert.status === "Accepted"
                                   ? "⌛"
                                   : alert.status === "pending"
                                   ? "📢"
                                   : alert.status === "resolved"
                                   ? "✅"
                                   : "⚪"
-                              }
-                            </text>
-                          </svg>
-                        `),
-                      scaledSize: new window.google.maps.Size(40, 40), // ✅ FIX
-                    }}
-                  />
-                )
-            )}
+                              }</text>
+                            </svg>`
+                          ),
+                        scaledSize: new google.maps.Size(40, 40),
+                      }}
+                    />
+                  )
+              )}
 
             {/* InfoWindow */}
             {selectedAlert?.liveLocation?.coordinates && (
@@ -252,23 +247,29 @@ export default function NotificationDashboard() {
                 onCloseClick={() => setSelectedAlert(null)}
               >
                 <div className="text-sm">
-                  <h3 className="font-bold text-blue-500 text-lg">{selectedAlert.emergencyType}</h3>
+                  <h3 className="font-bold text-blue-500 text-lg">
+                    {selectedAlert.emergencyType}
+                  </h3>
                   <p>{selectedAlert.address}</p>
                   <p>Status: {selectedAlert.status}</p>
                   <p>Report ID: {selectedAlert.reportId}</p>
-                  <p>Timestamp: {new Date(selectedAlert.createdAt).toLocaleString()}</p>
                   <button
-                    className="bg-blue-500 text-white px-2 py-1 rounded"
-                    onClick={() => updateAlertStatus(selectedAlert._id, "resolved")}
+                    className="bg-blue-500 text-white px-2 py-1 rounded mt-2"
+                    onClick={() =>
+                      selectedAlert.status === "pending"
+                        ? handleAccept(selectedAlert)
+                        : setSelectedAlert(null)
+                    }
                   >
-                    {selectedAlert.status === "pending" ? "Accept" : "Close"}
+                    {selectedAlert.status === "pending" ? "Accept" :
+                      selectedAlert.status === "accepted" ? "Cancel" : "Close"}
                   </button>
                 </div>
               </InfoWindowF>
             )}
           </GoogleMap>
 
-          {/* Floating Details */}
+          {/* Floating Alert Details */}
           {selectedAlert && (
             <div className="absolute top-12 right-4 w-80 bg-white shadow-xl rounded-2xl p-4 border z-50">
               <h2 className="text-lg font-bold mb-2">Alert Details</h2>

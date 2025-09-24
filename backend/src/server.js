@@ -1,10 +1,11 @@
+// server.js
 import dotenv from "dotenv";
-console.log(".env file path:", process.cwd() + "/.env");
-dotenv.config();
 import express from "express";
 import mongoose from "mongoose";
 import cors from "cors";
 import router from "./routes/route.js";
+
+dotenv.config();
 
 const app = express();
 
@@ -13,26 +14,28 @@ const PORT = process.env.PORT || 3000;
 const HOST = process.env.HOST || "127.0.0.1";
 const MONGO_URI_ALL = process.env.MONGO_URI_ALL;
 const MONGO_URI_ACCEPTED = process.env.MONGO_URI_ACCEPTED;
+const MONGO_URI_COMPLETED = process.env.MONGO_URI_COMPLETED;
 
-// 🛡 Middleware
-app.use(cors({ origin: "http://localhost:5001" })); // Adjust to match your frontend
+// Middleware
+app.use(cors({ origin: "http://localhost:5001" })); // frontend dev server
 app.use(express.json());
 
-// 🛠 Debugging logs
+// Debug env check
 console.log("Loaded ENV:", {
   PORT,
   HOST,
   MONGO_URI_ALL: MONGO_URI_ALL ? "[HIDDEN]" : "❌ NOT FOUND",
   MONGO_URI_ACCEPTED: MONGO_URI_ACCEPTED ? "[HIDDEN]" : "❌ NOT FOUND",
+  MONGO_URI_COMPLETED: MONGO_URI_COMPLETED ? "[HIDDEN]" : "❌ NOT FOUND",
 });
 
-// ❌ Exit if environment variables are missing
-if (!MONGO_URI_ALL || !MONGO_URI_ACCEPTED) {
+// 🚨 Fail fast if no DB URIs
+if (!MONGO_URI_ALL || !MONGO_URI_ACCEPTED || !MONGO_URI_COMPLETED) {
   console.error("❌ Missing Mongo URIs. Check your .env file.");
   process.exit(1);
 }
 
-// ✅ MongoDB Connections
+// 🔗 Connect to MongoDBs
 const connectDatabases = async () => {
   try {
     // Primary connection (allAlerts)
@@ -53,16 +56,34 @@ const connectDatabases = async () => {
     acceptedAlertsDB.once("open", () => {
       console.log("✅ Connected to acceptedAlerts database");
     });
+    acceptedAlertsDB.on("error", (err) => {
+      console.error("❌ acceptedAlerts DB error:", err);
+    });
 
-    // Export secondary connection globally
+    // Tertiary connection (completedAlerts)
+    const completedAlertsDB = mongoose.createConnection(MONGO_URI_COMPLETED, {
+      family: 4,
+      serverSelectionTimeoutMS: 5000,
+      socketTimeoutMS: 45000,
+    });
+
+    completedAlertsDB.once("open", () => {
+      console.log("✅ Connected to completedAlerts database");
+    });
+    completedAlertsDB.on("error", (err) => {
+      console.error("❌ completedAlerts DB error:", err);
+    });
+
+    // Store in global for controllers
+    global.allAlertsDB = mongoose.connection;
     global.acceptedAlertsDB = acceptedAlertsDB;
+    global.completedAlertsDB = completedAlertsDB;
   } catch (error) {
     console.error("❌ MongoDB connection error:", error);
     process.exit(1);
   }
 };
 
-// Connect to both databases
 await connectDatabases();
 
 // ✅ Root route

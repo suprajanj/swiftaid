@@ -1,13 +1,13 @@
-// backend/routes/responderRoutes.js
 import express from "express";
-import { createResponder, getResponders, updateResponder, deleteResponder, patchResponder} from "../controllers/responderController.js";
+import { createResponder, getResponders, updateResponder, deleteResponder, patchResponder } from "../controllers/responderController.js";
 
 const router = express.Router();
 
+// CRUD endpoints
 router.post("/", createResponder);
 router.get("/", getResponders);
 router.put("/:id", updateResponder);
 router.delete("/:id", deleteResponder);
-router.patch("/:id", patchResponder); // Update availability status
+router.patch("/:id", patchResponder); // Update availability
 
 export default router;

@@ -1,7 +1,6 @@
-// backend/controllers/responderController.js
-import Responder from "../models/Responder.js";
+import Responder from "../models/Responder.js"
 
-// Create responder
+// Create a new responder
 export const createResponder = async (req, res) => {
   try {
     const responder = new Responder(req.body);
@@ -24,7 +23,7 @@ export const getResponders = async (req, res) => {
   }
 };
 
-// Update responder
+// Update responder (full update)
 export const updateResponder = async (req, res) => {
   try {
     const updated = await Responder.findByIdAndUpdate(req.params.id, req.body, { new: true });
@@ -47,10 +46,11 @@ export const deleteResponder = async (req, res) => {
     res.status(500).json({ message: "Internal Server Error" });
   }
 };
-export const patchResponder = async (req, res) => {
-   try {
-    const { availability } = req.body;
 
+// Patch responder (update availability)
+export const patchResponder = async (req, res) => {
+  try {
+    const { availability } = req.body;
     const responder = await Responder.findByIdAndUpdate(
       req.params.id,
       { availability },
@@ -58,10 +58,9 @@ export const patchResponder = async (req, res) => {
     );
 
     if (!responder) return res.status(404).json({ message: "Responder not found" });
-
     res.json(responder);
   } catch (err) {
-    console.error(err);
+    console.error("Error patching responder:", err);
     res.status(500).json({ message: "Internal Server Error" });
   }
 };

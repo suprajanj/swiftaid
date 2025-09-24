@@ -1,6 +1,6 @@
+// models/SOS.js
 import mongoose from "mongoose";
 
-// Create schema
 const sosSchema = new mongoose.Schema(
   {
     name: { type: String, required: true },
@@ -11,12 +11,10 @@ const sosSchema = new mongoose.Schema(
     location: {
       latitude: { type: Number, required: true },
       longitude: { type: Number, required: true },
-      mapLink: { type: String }, // store Google Maps link
+      mapLink: { type: String },
     },
   },
   { timestamps: true }
 );
 
-const SOS = mongoose.model("SOS", sosSchema);
-
-export default SOS;
+export default mongoose.model("SOS", sosSchema);

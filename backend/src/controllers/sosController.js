@@ -1,32 +1,41 @@
+// controllers/sosController.js
 import SOS from "../models/sos.js";
+import Responder from "../models/Responder.js";
 
 // Get all SOS records
-export async function getAllsos(req, res) {
+export const getAllSOS = async (req, res) => {
   try {
-    const sos = await SOS.find();
-    res.status(200).json(sos);
-  } catch (error) {
-    console.error("Error on getAllsos Controller", error);
-    res.status(500).json({ message: "Internal Server Error!" });
+    const sosList = await SOS.find().populate("assignedResponder", "name number");
+    res.status(200).json(sosList);
+  } catch (err) {
+    console.error("Error fetching SOS records:", err);
+    res.status(500).json({ message: "Internal Server Error" });
   }
-}
+};
 
-// Create SOS record (with live location)
-export async function createSOS(req, res) {
+// Get SOS by ID
+export const getSOSByID = async (req, res) => {
+  try {
+    const sos = await SOS.findById(req.params.id).populate("assignedResponder", "name number");
+    if (!sos) return res.status(404).json({ message: "SOS not found" });
+    res.status(200).json(sos);
+  } catch (err) {
+    console.error("Error fetching SOS by ID:", err);
+    res.status(500).json({ message: "Internal Server Error" });
+  }
+};
+
+// Create a new SOS
+export const createSOS = async (req, res) => {
   try {
     const { name, age, number, emergencyType, location } = req.body;
-   
-    if (!name || !age || !number || !emergencyType) {
+
+    if (!name || !age || !number || !emergencyType)
       return res.status(400).json({ message: "Missing required fields" });
-    }
 
-    if (!location || !location.latitude || !location.longitude) {
-      return res
-        .status(400)
-        .json({ message: "Location (lat/lng) is required" });
-    }
+    if (!location?.latitude || !location?.longitude)
+      return res.status(400).json({ message: "Location is required" });
 
-    // Generate Google Maps link
     const mapLink = `https://www.google.com/maps?q=${location.latitude},${location.longitude}`;
 
     const sos = new SOS({
@@ -34,92 +43,115 @@ export async function createSOS(req, res) {
       age,
       number,
       emergencyType,
-      location: {
-        latitude: location.latitude,
-        longitude: location.longitude,
-        mapLink,
-      },
+      location: { ...location, mapLink },
     });
 
     const savedSOS = await sos.save();
     res.status(201).json(savedSOS);
-  } catch (error) {
-    console.error("Error on createSOS Controller", error);
-    res.status(500).json({ message: "Internal Server Error!" });
+  } catch (err) {
+    console.error("Error creating SOS:", err);
+    res.status(500).json({ message: "Internal Server Error" });
   }
-}
+};
 
-// Update SOS record
-export async function updateSOS(req, res) {
+// Update SOS (with automatic unassign if emergencyType changes)
+export const updateSOS = async (req, res) => {
   try {
-    const { name, age, number, location } = req.body;
+    const { name, age, number, emergencyType, location } = req.body;
 
-    let updateData = { name, age, number, emergencyType, location };
+    const sos = await SOS.findById(req.params.id);
+    if (!sos) return res.status(404).json({ message: "SOS not found" });
 
-    if (location && location.latitude && location.longitude) {
-      updateData.location = {
+    // If emergencyType changes, unassign responder
+    if (emergencyType && sos.emergencyType !== emergencyType && sos.assignedResponder) {
+      const prevResponder = await Responder.findById(sos.assignedResponder);
+      if (prevResponder) {
+        prevResponder.availability = true;
+        await prevResponder.save();
+      }
+      sos.assignedResponder = null; // Unassign
+    }
+
+    sos.name = name || sos.name;
+    sos.age = age || sos.age;
+    sos.number = number || sos.number;
+    sos.emergencyType = emergencyType || sos.emergencyType;
+
+    if (location?.latitude && location?.longitude) {
+      sos.location = {
         latitude: location.latitude,
         longitude: location.longitude,
         mapLink: `https://www.google.com/maps?q=${location.latitude},${location.longitude}`,
       };
     }
 
-    const updatedSOS = await SOS.findByIdAndUpdate(req.params.id, updateData, {
-      new: true,
-    });
-
-    if (!updatedSOS) return res.status(404).json({ message: "SOS not found" });
-
-    res.status(200).json(updatedSOS);
-  } catch (error) {
-    console.error("Error on updateSOS Controller", error);
-    res.status(500).json({ message: "Internal Server Error!" });
+    const updatedSOS = await sos.save();
+    const populatedSOS = await updatedSOS.populate("assignedResponder", "name number");
+    res.status(200).json(populatedSOS);
+  } catch (err) {
+    console.error("Error updating SOS:", err);
+    res.status(500).json({ message: "Internal Server Error" });
   }
-}
+};
 
-// Delete SOS record
-export async function deleteSOS(req, res) {
-  try {
-    const deletedNote = await SOS.findByIdAndDelete(req.params.id);
-
-    if (!deletedNote) return res.status(404).json({ message: "SOS not found" });
-    res.status(200).json({ message: "SOS deleted successfully!" });
-  } catch (error) {
-    console.error("Error on deleteSOS Controller", error);
-    res.status(500).json({ message: "Internal Server Error!" });
-  }
-}
-
-// Get SOS by ID
-export async function getSOSByID(req, res) {
+// Delete SOS
+export const deleteSOS = async (req, res) => {
   try {
     const sos = await SOS.findById(req.params.id);
     if (!sos) return res.status(404).json({ message: "SOS not found" });
 
-    res.json(sos);
-  } catch (error) {
-    console.error("Error on getByID Controller", error);
-    res.status(500).json({ message: "Internal Server Error!" });
+    // If SOS has a responder assigned, make them available
+    if (sos.assignedResponder) {
+      const responder = await Responder.findById(sos.assignedResponder);
+      if (responder) {
+        responder.availability = true;
+        await responder.save();
+      }
+    }
+
+    await SOS.findByIdAndDelete(req.params.id);
+    res.status(200).json({ message: "SOS deleted successfully" });
+  } catch (err) {
+    console.error("Error deleting SOS:", err);
+    res.status(500).json({ message: "Internal Server Error" });
   }
-}
+};
 
 // Assign a responder to SOS
-export async function assignResponder(req, res) {
+export const assignResponder = async (req, res) => {
   try {
     const { sosId, responderId } = req.body;
 
     const sos = await SOS.findById(sosId);
     if (!sos) return res.status(404).json({ message: "SOS not found" });
 
-    sos.assignedResponder = responderId;
+    const responder = await Responder.findById(responderId);
+    if (!responder) return res.status(404).json({ message: "Responder not found" });
+
+    // If SOS already had a responder, make them available
+    if (sos.assignedResponder) {
+      const prevResponder = await Responder.findById(sos.assignedResponder);
+      if (prevResponder) {
+        prevResponder.availability = true;
+        await prevResponder.save();
+      }
+    }
+
+    // Assign new responder
+    sos.assignedResponder = responder._id;
     await sos.save();
 
-    const io = req.app.get("io");
-    io.emit("responderAssigned", { sosId, responderId });
+    responder.availability = false;
+    await responder.save();
 
-    res.status(200).json({ message: "Responder assigned successfully", sos });
-  } catch (error) {
-    console.error("Error on assignResponder Controller", error);
-    res.status(500).json({ message: "Internal Server Error!" });
+    // Emit via socket.io
+    const io = req.app.get("io");
+    io.emit("responderAssigned", { sosId: sos._id, responderId: responder._id });
+
+    const populatedSOS = await sos.populate("assignedResponder", "name number");
+    res.status(200).json({ message: "Responder assigned successfully", sos: populatedSOS });
+  } catch (err) {
+    console.error("Error assigning responder:", err);
+    res.status(500).json({ message: "Internal Server Error" });
   }
-}
+};

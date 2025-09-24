@@ -6,7 +6,8 @@ const sosSchema = new mongoose.Schema(
     name: { type: String, required: true },
     age: { type: String, required: true },
     number: { type: String, required: true },
-    emergency: { type: String, required: true },
+    emergencyType: { type: String, required: true },
+    assignedResponder: { type: mongoose.Schema.Types.ObjectId, ref: "Responder" },
     location: {
       latitude: { type: Number, required: true },
       longitude: { type: Number, required: true },

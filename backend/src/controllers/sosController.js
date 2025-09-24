@@ -1,4 +1,4 @@
-import SOS from "../model/SOS.js";
+import SOS from "../models/sos.js";
 
 // Get all SOS records
 export async function getAllsos(req, res) {
@@ -14,7 +14,11 @@ export async function getAllsos(req, res) {
 // Create SOS record (with live location)
 export async function createSOS(req, res) {
   try {
-    const { name, age, number, emergency, location } = req.body;
+    const { name, age, number, emergencyType, location } = req.body;
+   
+    if (!name || !age || !number || !emergencyType) {
+      return res.status(400).json({ message: "Missing required fields" });
+    }
 
     if (!location || !location.latitude || !location.longitude) {
       return res
@@ -29,7 +33,7 @@ export async function createSOS(req, res) {
       name,
       age,
       number,
-      emergency,
+      emergencyType,
       location: {
         latitude: location.latitude,
         longitude: location.longitude,
@@ -50,7 +54,7 @@ export async function updateSOS(req, res) {
   try {
     const { name, age, number, location } = req.body;
 
-    let updateData = { name, age, number, emergency };
+    let updateData = { name, age, number, emergencyType, location };
 
     if (location && location.latitude && location.longitude) {
       updateData.location = {
@@ -95,6 +99,27 @@ export async function getSOSByID(req, res) {
     res.json(sos);
   } catch (error) {
     console.error("Error on getByID Controller", error);
+    res.status(500).json({ message: "Internal Server Error!" });
+  }
+}
+
+// Assign a responder to SOS
+export async function assignResponder(req, res) {
+  try {
+    const { sosId, responderId } = req.body;
+
+    const sos = await SOS.findById(sosId);
+    if (!sos) return res.status(404).json({ message: "SOS not found" });
+
+    sos.assignedResponder = responderId;
+    await sos.save();
+
+    const io = req.app.get("io");
+    io.emit("responderAssigned", { sosId, responderId });
+
+    res.status(200).json({ message: "Responder assigned successfully", sos });
+  } catch (error) {
+    console.error("Error on assignResponder Controller", error);
     res.status(500).json({ message: "Internal Server Error!" });
   }
 }

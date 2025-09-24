@@ -1,4 +1,5 @@
 import express from "express";
+import { assignResponder } from "../controllers/sosController.js";
 import {
   createSOS,
   deleteSOS,
@@ -11,12 +12,15 @@ const router = express.Router();
 
 router.get("/", getAllsos);
 
-router.get("/:id", getSOSByID);
-
 router.post("/", createSOS);
+
+router.post("/assign", assignResponder);
+
+router.get("/:id", getSOSByID);
 
 router.put("/:id", updateSOS);
 
 router.delete("/:id", deleteSOS);
+
 
 export default router;

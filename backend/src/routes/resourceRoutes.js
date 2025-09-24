@@ -1,7 +1,11 @@
 // routes/resourceRoutes.js
 import express from 'express';
 import ResourceRequest from '../model/ResourceRequest.js';
-import { updateFundraiserAmount } from '../controllers/resourceRequestController.js';
+import { 
+    updateFundraiserAmount,
+    createResourceRequest,
+    getActiveResourceRequests
+} from '../controllers/resourceRequestController.js';
 
 const router = express.Router();
 
@@ -29,6 +33,11 @@ router.get('/requests', async (req, res) => {
 });
 
 /* ================================
+   GET active resource requests (for donation dropdown)
+================================ */
+router.get('/requests/active', getActiveResourceRequests);
+
+/* ================================
    GET single request by ID
 ================================ */
 router.get('/requests/:id', async (req, res) => {
@@ -45,15 +54,7 @@ router.get('/requests/:id', async (req, res) => {
 /* ================================
    POST create new request
 ================================ */
-router.post('/requests', async (req, res) => {
-  try {
-    const resourceRequest = new ResourceRequest(req.body);
-    await resourceRequest.save();
-    res.status(201).json({ success: true, message: 'Resource request created successfully', data: resourceRequest });
-  } catch (error) {
-    res.status(400).json({ success: false, message: 'Validation Error', error: error.message });
-  }
-});
+router.post('/requests', createResourceRequest);
 
 /* ================================
    PUT update full request (all fields)
@@ -74,7 +75,7 @@ router.put('/requests/:id', async (req, res) => {
 });
 
 /* ================================
-   PUT update fundraiser amount - NEW ENDPOINT
+   PUT update fundraiser amount - SUPPORTS INCREMENT/DECREMENT
 ================================ */
 router.put('/requests/:id/fundraiser', updateFundraiserAmount);
 

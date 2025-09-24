@@ -18,7 +18,7 @@ router.use('/resources', resourceRoutes);
 router.use('/donations', donationRoutes);
 
 // 404 handler for API routes
-// ✅ Correct catch-all for Express 5
+// Correct catch-all for Express 5
 router.use((req, res) => {
   res.status(404).json({
     success: false,

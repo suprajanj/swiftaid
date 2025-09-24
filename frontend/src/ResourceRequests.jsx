@@ -36,6 +36,9 @@ export default function ResourceRequests() {
     status: "pending", // pending | in_progress | completed | cancelled
     additionalNotes: "",
 
+    // Fundraiser fields
+    fundraiserTarget: 0,
+    fundraiserCollected: 0
   });
 
   // Map emergencyType -> category as backend expects
@@ -109,9 +112,8 @@ export default function ResourceRequests() {
       status: "pending",
       additionalNotes: "",
 
-       
-    fundraiserTarget: 0,
-    fundraiserCollected: 0
+      fundraiserTarget: 0,
+      fundraiserCollected: 0
     });
     setEditingId(null);
     setError(null);
@@ -244,11 +246,6 @@ export default function ResourceRequests() {
         await new Promise(resolve => setTimeout(resolve, 500));
       }
 
-      // If fundraiser, attach fundraiser info
- 
-
-
-
       // Verify jsPDF is available
       if (!window.jspdf || !window.jspdf.jsPDF) {
         throw new Error('jsPDF not properly loaded');
@@ -348,10 +345,6 @@ export default function ResourceRequests() {
       }
 
       console.log('Saving PDF...');
-      
-
-
-
 
       // Save PDF
       doc.save(`SwiftAid_Resource_Requests_Report_${new Date().toISOString().split('T')[0]}.pdf`);
@@ -409,13 +402,12 @@ export default function ResourceRequests() {
     };
 
     // If fundraiser, attach fundraiser details
-if (form.resourceType === "fundraiser") {
-  payload.fundraiser = {
-    targetAmount: Number(form.fundraiserTarget),
-    collectedAmount: Number(form.fundraiserCollected) || 0
-  };
-}
-
+    if (form.resourceType === "fundraiser") {
+      payload.fundraiser = {
+        targetAmount: Number(form.fundraiserTarget),
+        collectedAmount: Number(form.fundraiserCollected) || 0
+      };
+    }
 
     try {
       const method = editingId ? "PUT" : "POST";
@@ -455,7 +447,7 @@ if (form.resourceType === "fundraiser") {
 
   // Normalize UI enums to backend enums
   function normalizeStatus(s) {
-    // UI "active" is invalid — use pending/in_progress/completed/cancelled
+    // UI "active" is invalid – use pending/in_progress/completed/cancelled
     if (s === "active") return "pending";
     return s;
   }
@@ -499,7 +491,11 @@ if (form.resourceType === "fundraiser") {
       requiredBy: r?.requiredBy ? r.requiredBy.split("T")[0] : "",
 
       status: r.status || "pending",
-      additionalNotes: r.additionalNotes || ""
+      additionalNotes: r.additionalNotes || "",
+      
+      // Fundraiser fields
+      fundraiserTarget: r?.fundraiser?.targetAmount || 0,
+      fundraiserCollected: r?.fundraiser?.collectedAmount || 0
     });
     setEditingId(r._id);
     window.scrollTo({ top: 0, behavior: "smooth" });
@@ -530,7 +526,7 @@ if (form.resourceType === "fundraiser") {
     };
     return map[lvl] || "#FFB300";
   };
-
+  
   return (
     <div
       style={{
@@ -696,7 +692,7 @@ if (form.resourceType === "fundraiser") {
                   onChange={onChange}
                   required
                   style={inputStyle}
-                  placeholder="contact@org.lk"
+                  placeholder="contact@gmail.com"
                 />
               </Input>
 
@@ -743,10 +739,8 @@ if (form.resourceType === "fundraiser") {
                   <option value="medical">Medical</option>
                   <option value="fire">Fire</option>
                   <option value="accident">Accident</option>
-                  <option value="natural_disaster">Disaster</option>
                   <option value="crime">Crime</option>
                   <option value="search_rescue">Search & Rescue</option>
-                  <option value="hazmat">Hazmat</option>
                   <option value="other">Other</option>
                 </select>
               </Input>
@@ -796,46 +790,28 @@ if (form.resourceType === "fundraiser") {
                   <option value="medical_supplies">Medical supplies</option>
                   <option value="medicine">Medicine</option>
                   <option value="fundraiser">Fundraiser</option>
-                  <option value="oxygen">Oxygen</option>
                   <option value="medical_equipment">Medical Equipment</option>
                   <option value="firefighting_equipment">Firefighting Eq.</option>
                   <option value="rescue_tools">Rescue Tools</option>
-                  <option value="protective_gear">Protective Gear</option>
-                  <option value="food">Food</option>
-                  <option value="water">Water</option>
-                  <option value="clothing">Clothing</option>
-                  <option value="shelter_materials">Shelter Materials</option>
                   <option value="volunteers">Volunteers</option>
-                  <option value="transport_vehicles">Transport Vehicles</option>
-                  <option value="lighting_equipment">Lighting</option>
                   <option value="other">Other</option>
                 </select>
               </Input>
 
               {form.resourceType === "fundraiser" && (
-  <>
-    <label>🎯 Target Amount (USD) *</label>
-    <input
-      type="number"
-      name="fundraiserTarget"
-      value={form.fundraiserTarget}
-      onChange={onChange}
-      required
-      style={inputStyle}
-    />
+                <Input label="Target Amount (Rs.) *">
+                  <input
+                    type="number"
+                    name="fundraiserTarget"
+                    value={form.fundraiserTarget}
+                    onChange={onChange}
+                    required
+                    style={inputStyle}
+                    placeholder="Enter target amount"
+                  />
+                </Input>
+              )}
 
-{/* <label>💰 Collected Amount</label>
-    <input
-      type="number"
-      name="fundraiserCollected"
-      value={form.fundraiserCollected}
-      onChange={onChange}
-      style={inputStyle}
-      disabled
-    /> */}
-    
-  </>
-)}
               {form.resourceType === "blood" && (
                 <Input label="Blood Group *">
                   <select
@@ -853,29 +829,33 @@ if (form.resourceType === "fundraiser") {
                 </Input>
               )}
 
-              <Input label="Quantity *">
-                <input
-                  type="number"
-                  name="quantity"
-                  value={form.quantity}
-                  onChange={onChange}
-                  min={1}
-                  required
-                  style={inputStyle}
-                  placeholder="Units/Items"
-                />
-              </Input>
+              {form.resourceType !== "fundraiser" && (
+                <Input label="Quantity *">
+                  <input
+                    type="number"
+                    name="quantity"
+                    value={form.quantity}
+                    onChange={onChange}
+                    min={1}
+                    required
+                    style={inputStyle}
+                    placeholder="Units/Items"
+                  />
+                </Input>
+              )}
 
-              <Input label="Unit *">
-                <input
-                  name="unit"
-                  value={form.unit}
-                  onChange={onChange}
-                  required
-                  style={inputStyle}
-                  placeholder="units / liters / kg / pieces"
-                />
-              </Input>
+              {form.resourceType !== "fundraiser" && (
+                <Input label="Unit *">
+                  <input
+                    name="unit"
+                    value={form.unit}
+                    onChange={onChange}
+                    required
+                    style={inputStyle}
+                    placeholder="units / liters / kg / pieces"
+                  />
+                </Input>
+              )}
 
               <Input label="Required By">
                 <input
@@ -1008,10 +988,10 @@ if (form.resourceType === "fundraiser") {
                     </p>
 
                     {r.resourceType === "fundraiser" && (
-  <p style={{ margin: "4px 0", color: "#4CAF50", fontWeight: "bold" }}>
-    🎯 Target: ${r.fundraiser?.targetAmount || 0} | 💰 Collected: ${r.fundraiser?.collectedAmount || 0}
-  </p>
-)}
+                      <p style={{ margin: "4px 0", color: "#4CAF50", fontWeight: "bold" }}>
+                        Target: Rs.{r.fundraiser?.targetAmount || 0} | Collected: Rs.{r.fundraiser?.collectedAmount || 0}
+                      </p>
+                    )}
 
                   </div>
                 </div>
@@ -1095,7 +1075,6 @@ function Input({ label, children, full }) {
     </div>
   );
 }
-
 
 /* ---------- Styles ---------- */
 

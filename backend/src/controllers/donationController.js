@@ -30,7 +30,7 @@ export const createDonation = async (req, res) => {
                 line_items: [
                     {
                         price_data: {
-                            currency: 'usd',
+                            currency: 'rs',
                             product_data: {
                                 name: `${request.organizationName} - Fundraiser`
                             },
@@ -87,7 +87,7 @@ export const createPaymentIntent = async (req, res) => {
 
         const paymentIntent = await stripe.paymentIntents.create({
             amount: amount * 100, // cents
-            currency: "usd",
+            currency: "rs",
             automatic_payment_methods: { enabled: true },
         });
 
@@ -181,24 +181,134 @@ export const getDonationById = async (req, res) => {
     }
 };
 
-// UPDATE donation status
+// UPDATE donation status - WITH FUNDRAISER REVERSAL LOGIC
+// UPDATE donation status - WITH FUNDRAISER REVERSAL LOGIC
 export const updateDonationStatus = async (req, res) => {
     try {
-        const { status, adminNotes } = req.body;
-        const donation = await Donation.findByIdAndUpdate(req.params.id, { status, adminNotes }, { new: true });
-        if (!donation) return res.status(404).json({ success: false, message: 'Donation not found' });
-        res.status(200).json({ success: true, message: 'Donation updated', data: donation });
+        const { id } = req.params;
+        const { status, adminNotes, rejectionReason } = req.body;
+
+        // Get the current donation with populated resource request
+        const currentDonation = await Donation.findById(id).populate('resourceRequest');
+        if (!currentDonation) {
+            return res.status(404).json({ success: false, message: 'Donation not found' });
+        }
+
+        let fundraiserAdjustment = 0;
+
+        // ✅ Case 1: Approving/Completing donation → ADD to collected
+        if (
+            currentDonation.resourceRequest?.resourceType === 'fundraiser' &&
+            ['approved', 'completed'].includes(status) &&
+            currentDonation.donationDetails?.amount > 0 &&
+            !['approved', 'completed'].includes(currentDonation.status) // avoid double adding
+        ) {
+            fundraiserAdjustment = currentDonation.donationDetails.amount;
+        }
+
+        // ✅ Case 2: Cancelling/Rejecting donation → SUBTRACT from collected (only if already counted before)
+        if (
+            currentDonation.resourceRequest?.resourceType === 'fundraiser' &&
+            ['cancelled', 'rejected'].includes(status) &&
+            currentDonation.donationDetails?.amount > 0 &&
+            ['approved', 'completed'].includes(currentDonation.status) // only reverse if it was already added
+        ) {
+            fundraiserAdjustment = -currentDonation.donationDetails.amount;
+        }
+
+        // Apply fundraiser adjustment if needed
+        if (fundraiserAdjustment !== 0) {
+            await ResourceRequest.findByIdAndUpdate(
+                currentDonation.resourceRequest._id,
+                { $inc: { 'fundraiser.collectedAmount': fundraiserAdjustment } }
+            );
+
+            // Ensure collectedAmount never goes below 0
+            const updatedRequest = await ResourceRequest.findById(currentDonation.resourceRequest._id);
+            if (updatedRequest.fundraiser.collectedAmount < 0) {
+                await ResourceRequest.findByIdAndUpdate(
+                    currentDonation.resourceRequest._id,
+                    { 'fundraiser.collectedAmount': 0 }
+                );
+            }
+        }
+
+        // Update the donation status
+        const updateData = { status };
+        if (adminNotes) updateData.adminNotes = adminNotes;
+        if (status === 'rejected' && rejectionReason) updateData.rejectionReason = rejectionReason;
+        if (status === 'contacted') updateData.contactedAt = new Date();
+        if (status === 'completed') updateData.completedAt = new Date();
+
+        const updatedDonation = await Donation.findByIdAndUpdate(
+            id,
+            updateData,
+            { new: true, runValidators: true }
+        ).populate('resourceRequest', 'organizationName resourceType urgencyLevel fundraiser');
+
+        res.json({
+            success: true,
+            message: `Donation status updated to ${status}${fundraiserAdjustment !== 0 ? '. Fundraiser amount adjusted.' : ''}`,
+            data: updatedDonation
+        });
+
     } catch (error) {
-        res.status(400).json({ success: false, message: 'Error updating donation', error: error.message });
+        console.error('Error updating donation status:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Failed to update donation status',
+            error: error.message
+        });
     }
 };
 
-// DELETE donation
+
+
+// DELETE donation - WITH FUNDRAISER REVERSAL
 export const deleteDonation = async (req, res) => {
     try {
-        const donation = await Donation.findByIdAndDelete(req.params.id);
+        // Get donation with resource request details before deletion
+        const donation = await Donation.findById(req.params.id).populate('resourceRequest');
         if (!donation) return res.status(404).json({ success: false, message: 'Donation not found' });
-        res.status(200).json({ success: true, message: 'Donation deleted' });
+
+        // Check if this is a completed fundraiser donation that needs amount reversal
+        const needsFundraiserReversal = 
+            donation.resourceRequest?.resourceType === 'fundraiser' &&
+            ['completed', 'approved'].includes(donation.status) &&
+            donation.donationDetails?.amount > 0;
+
+        if (needsFundraiserReversal) {
+            console.log('Reversing fundraiser amount on deletion:', donation.donationDetails.amount);
+            
+            // Subtract the donation amount from collected amount
+            await ResourceRequest.findByIdAndUpdate(
+                donation.resourceRequest._id,
+                {
+                    $inc: {
+                        'fundraiser.collectedAmount': -donation.donationDetails.amount
+                    }
+                }
+            );
+
+            // Ensure collected amount doesn't go negative
+            const updatedRequest = await ResourceRequest.findById(donation.resourceRequest._id);
+            if (updatedRequest.fundraiser.collectedAmount < 0) {
+                await ResourceRequest.findByIdAndUpdate(
+                    donation.resourceRequest._id,
+                    {
+                        'fundraiser.collectedAmount': 0
+                    }
+                );
+            }
+        }
+
+        // Now delete the donation
+        await Donation.findByIdAndDelete(req.params.id);
+
+        res.status(200).json({ 
+            success: true, 
+            message: `Donation deleted successfully${needsFundraiserReversal ? '. Fundraiser amount adjusted.' : ''}` 
+        });
     } catch (error) {
         res.status(500).json({ success: false, message: 'Error deleting donation', error: error.message });
     }

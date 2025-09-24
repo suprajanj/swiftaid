@@ -11,7 +11,7 @@ dotenv.config();
 
 // 2. Initialize Stripe
 if (!process.env.STRIPE_SECRET_KEY) {
-  console.error("❌ Missing STRIPE_SECRET_KEY in .env");
+  console.error(" Missing STRIPE_SECRET_KEY in .env");
   process.exit(1);
 }
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
@@ -23,7 +23,7 @@ const app = express();
 connectDB();
 
 // Debug Stripe Key Load
-console.log("Stripe key loaded:", process.env.STRIPE_SECRET_KEY ? "✅" : "❌");
+console.log("Stripe key loaded:", process.env.STRIPE_SECRET_KEY ? "Done" : "Wrong");
 
 // 5. Middleware
 app.use(
@@ -72,13 +72,13 @@ app.post(
         process.env.STRIPE_WEBHOOK_SECRET
       );
     } catch (err) {
-      console.error("⚠️ Webhook signature verification failed:", err.message);
+      console.error(" Webhook signature verification failed:", err.message);
       return res.status(400).send(`Webhook Error: ${err.message}`);
     }
 
     // Handle Stripe events
     if (event.type === "checkout.session.completed") {
-      console.log("💰 Payment successful:", event.data.object.id);
+      console.log(" Payment successful:", event.data.object.id);
       // TODO: call donationController.handleStripeWebhook()
     }
 
@@ -120,7 +120,7 @@ app.use((req, res) => {
 
 // 9. Global error handler
 app.use((error, req, res, next) => {
-  console.error("🔥 Global error:", error);
+  console.error(" Global error:", error);
   res.status(500).json({
     success: false,
     message: "Internal Server Error",
@@ -131,6 +131,6 @@ app.use((error, req, res, next) => {
 // 10. Start server
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
-  console.log(`🚀 Server running on port ${PORT}`);
-  console.log(`📖 API: http://localhost:${PORT}/`);
+  console.log(` Server running on port ${PORT}`);
+  console.log(` API: http://localhost:${PORT}/`);
 });

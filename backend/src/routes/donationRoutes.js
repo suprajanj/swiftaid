@@ -2,7 +2,11 @@
 import express from 'express';
 import Donation from '../model/Donation.js';
 import ResourceRequest from '../model/ResourceRequest.js';
-import { createPaymentIntent } from '../controllers/donationController.js';
+import { 
+    createPaymentIntent, 
+    updateDonationStatus,
+    deleteDonation 
+} from '../controllers/donationController.js';
 
 const router = express.Router();
 
@@ -20,7 +24,7 @@ router.get('/', async (req, res) => {
         if (resourceRequest) filter.resourceRequest = resourceRequest;
 
         const donations = await Donation.find(filter)
-            .populate('resourceRequest', 'organizationName resourceType urgencyLevel')
+            .populate('resourceRequest', 'organizationName resourceType urgencyLevel fundraiser')
             .sort({ createdAt: -1 });
 
         res.json({ success: true, count: donations.length, data: donations });
@@ -32,7 +36,8 @@ router.get('/', async (req, res) => {
 // ===================== GET single donation =====================
 router.get('/:id', async (req, res) => {
     try {
-        const donation = await Donation.findById(req.params.id).populate('resourceRequest');
+        const donation = await Donation.findById(req.params.id)
+            .populate('resourceRequest', 'organizationName resourceType urgencyLevel fundraiser');
         if (!donation) return res.status(404).json({ success: false, message: 'Donation not found' });
         res.json({ success: true, data: donation });
     } catch (error) {
@@ -66,7 +71,7 @@ router.post('/', async (req, res) => {
 
         const donation = new Donation(req.body);
         await donation.save();
-        await donation.populate('resourceRequest', 'organizationName resourceType urgencyLevel');
+        await donation.populate('resourceRequest', 'organizationName resourceType urgencyLevel fundraiser');
 
         res.status(201).json({ success: true, message: 'Donation created successfully', data: donation });
     } catch (error) {
@@ -80,7 +85,7 @@ router.put('/:id', async (req, res) => {
         const donation = await Donation.findByIdAndUpdate(req.params.id, req.body, {
             new: true,
             runValidators: true
-        }).populate('resourceRequest', 'organizationName resourceType urgencyLevel');
+        }).populate('resourceRequest', 'organizationName resourceType urgencyLevel fundraiser');
 
         if (!donation) return res.status(404).json({ success: false, message: 'Donation not found' });
 
@@ -90,49 +95,10 @@ router.put('/:id', async (req, res) => {
     }
 });
 
-// ===================== PUT update donation STATUS =====================
-router.put('/:id/status', async (req, res) => {
-    try {
-        const { status, adminNotes, rejectionReason } = req.body;
-        const allowedStatuses = ['pending', 'approved', 'contacted', 'completed', 'rejected', 'cancelled'];
+// ===================== PUT update donation STATUS - WITH FUNDRAISER REVERSAL =====================
+router.put('/:id/status', updateDonationStatus);
 
-        if (!allowedStatuses.includes(status)) {
-            return res.status(400).json({ 
-                success: false, 
-                message: `Invalid status. Allowed: ${allowedStatuses.join(', ')}` 
-            });
-        }
-
-        const updateData = { status };
-        if (adminNotes) updateData.adminNotes = adminNotes;
-        if (status === 'rejected' && rejectionReason) updateData.rejectionReason = rejectionReason;
-        if (status === 'contacted') updateData.contactedAt = new Date();
-        if (status === 'completed') updateData.completedAt = new Date();
-
-        const donation = await Donation.findByIdAndUpdate(
-            req.params.id, 
-            updateData, 
-            { new: true, runValidators: true }
-        ).populate('resourceRequest', 'organizationName resourceType urgencyLevel');
-
-        if (!donation) return res.status(404).json({ success: false, message: 'Donation not found' });
-
-        res.json({ success: true, message: 'Donation status updated successfully', data: donation });
-    } catch (error) {
-        res.status(400).json({ success: false, message: 'Update Error', error: error.message });
-    }
-});
-
-// ===================== DELETE donation =====================
-router.delete('/:id', async (req, res) => {
-    try {
-        const donation = await Donation.findByIdAndDelete(req.params.id);
-        if (!donation) return res.status(404).json({ success: false, message: 'Donation not found' });
-
-        res.json({ success: true, message: 'Donation deleted successfully' });
-    } catch (error) {
-        res.status(500).json({ success: false, message: 'Server Error', error: error.message });
-    }
-});
+// ===================== DELETE donation - WITH FUNDRAISER REVERSAL =====================
+router.delete('/:id', deleteDonation);
 
 export default router;

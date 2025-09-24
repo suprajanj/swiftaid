@@ -21,30 +21,40 @@ export default function Donations() {
     status: "pending",
     adminNotes: "",
     paymentAmount: "",
+    cardNumber: "",
+    expiryDate: "",
+    cvv: "",
+    cardHolderName: "",
   });
   const [editingId, setEditingId] = useState(null);
   const [adminMode, setAdminMode] = useState(false);
   const [selectedRequest, setSelectedRequest] = useState(null);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [paymentProcessing, setPaymentProcessing] = useState(false);
+  const [paymentSuccess, setPaymentSuccess] = useState(null);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
 
-  // Load donations
+  // Load donations from API
   const loadDonations = async () => {
     try {
       const res = await fetch("http://localhost:3000/api/donations");
       const data = await res.json();
-      if (data.success) setDonations(data.data);
+      if (data.success) {
+        setDonations(data.data);
+      }
     } catch (error) {
       console.error("Error loading donations:", error);
     }
   };
 
-  // Load resource requests
+  // Load resource requests from API
   const loadRequests = async () => {
     try {
       const res = await fetch("http://localhost:3000/api/resources/requests");
       const data = await res.json();
-      if (data.success) setRequests(data.data);
+      if (data.success) {
+        setRequests(data.data);
+      }
     } catch (error) {
       console.error("Error loading requests:", error);
     }
@@ -55,6 +65,159 @@ export default function Donations() {
     loadRequests();
   }, []);
 
+  // Update fundraiser collected amount
+  const updateFundraiserAmount = async (requestId, donationAmount) => {
+    try {
+      const res = await fetch(`http://localhost:3000/api/resources/requests/${requestId}/fundraiser`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          collectedAmount: donationAmount
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        console.error("Failed to update fundraiser amount:", data.message);
+      } else {
+        // Reload requests to get updated amounts
+        loadRequests();
+      }
+    } catch (error) {
+      console.error("Error updating fundraiser:", error);
+    }
+  };
+
+  // Handle admin status update - WITH FUNDRAISER REVERSAL LOGIC
+  const handleStatusUpdate = async () => {
+    if (!editingId) return;
+
+    try {
+      // Get the current donation details
+      const currentDonation = donations.find(d => d._id === editingId);
+      const currentRequest = requests.find(r => r._id === currentDonation?.resourceRequest?._id);
+      
+      // Check if this is a fundraiser cancellation that needs amount reversal
+      const isReversingFundraiser = 
+        currentRequest?.resourceType === "fundraiser" &&
+        ['completed', 'approved'].includes(currentDonation?.status) &&
+        ['cancelled', 'rejected'].includes(form.status) &&
+        currentDonation?.donationDetails?.amount > 0;
+
+      console.log('Frontend status update check:', {
+        resourceType: currentRequest?.resourceType,
+        currentStatus: currentDonation?.status,
+        newStatus: form.status,
+        amount: currentDonation?.donationDetails?.amount,
+        isReversingFundraiser
+      });
+
+      const res = await fetch(`http://localhost:3000/api/donations/${editingId}/status`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          status: form.status,
+          adminNotes: form.adminNotes,
+          rejectionReason: form.status === 'rejected' ? 'Admin decision' : undefined
+        }),
+      });
+
+      const data = await res.json();
+
+      if (res.ok && data.success) {
+        // If we reversed a fundraiser donation, reload the requests to get updated amounts
+        if (isReversingFundraiser) {
+          console.log('Reloading requests after fundraiser reversal...');
+          await loadRequests();
+        }
+        
+        alert(data.message || "Status Updated Successfully");
+        setEditingId(null);
+        resetForm();
+        loadDonations();
+      } else {
+        alert(`Error: ${data.message}`);
+      }
+    } catch (error) {
+      console.error("Status update error:", error);
+      alert("Network error occurred");
+    }
+  };
+
+  // Edit donation
+  const handleEdit = (d) => {
+    const request = requests.find(r => r._id === d.resourceRequest?._id);
+    setSelectedRequest(request);
+    
+    setForm({
+      resourceRequest: d.resourceRequest?._id || "",
+      fullName: d.donor?.fullName || "",
+      phone: d.donor?.phone || "",
+      email: d.donor?.email || "",
+      nic: d.donor?.nic || "",
+      address: d.donor?.address || "",
+      district: d.donor?.district || "",
+      city: d.donor?.city || "",
+      quantity: d.donationDetails?.quantity || 1,
+      bloodGroup: d.donationDetails?.bloodGroup || "",
+      medicalConditions: d.donationDetails?.medicalConditions || "",
+      preferredDate: d.availability?.preferredDate?.split("T")[0] || "",
+      preferredTime: d.availability?.preferredTime || "",
+      isFlexible: d.availability?.isFlexible ?? true,
+      status: d.status || "pending",
+      adminNotes: d.adminNotes || "",
+      paymentAmount: d.donationDetails?.amount || "",
+      cardNumber: "",
+      expiryDate: "",
+      cvv: "",
+      cardHolderName: "",
+    });
+    setEditingId(d._id);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  // Delete donation - WITH FUNDRAISER REVERSAL HANDLING
+  const handleDelete = async (id) => {
+    if (!window.confirm("Are you sure you want to delete this donation?")) return;
+    
+    try {
+      const res = await fetch(`http://localhost:3000/api/donations/${id}`, {
+        method: "DELETE",
+      });
+      
+      const data = await res.json();
+      
+      if (res.ok && data.success) {
+        alert(data.message || "Donation deleted successfully");
+        
+        // If message indicates fundraiser adjustment, reload requests
+        if (data.message && data.message.includes('Fundraiser amount adjusted')) {
+          await loadRequests();
+        }
+        
+        loadDonations();
+      } else {
+        alert(`Error: ${data.message}`);
+      }
+    } catch (error) {
+      console.error("Delete error:", error);
+      alert("Network error occurred");
+    }
+  };
+
+  // Get status color
+  const getStatusColor = (status) => {
+    switch (status) {
+      case 'pending': return '#FFA726';
+      case 'approved': return '#66BB6A';
+      case 'contacted': return '#42A5F5';
+      case 'completed': return '#4CAF50';
+      case 'rejected': return '#F44336';
+      case 'cancelled': return '#9E9E9E';
+      default: return '#FFA726';
+    }
+  };
+
   // Handle input changes
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -63,6 +226,29 @@ export default function Donations() {
     if (name === 'resourceRequest') {
       const selected = requests.find(r => r._id === value);
       setSelectedRequest(selected);
+    }
+
+    // Format card number with spaces
+    if (name === 'cardNumber') {
+      const formatted = value.replace(/\s/g, '').replace(/(\d{4})/g, '$1 ').trim();
+      if (formatted.replace(/\s/g, '').length <= 16) {
+        setForm({ ...form, [name]: formatted });
+      }
+      return;
+    }
+
+    // Format expiry date
+    if (name === 'expiryDate') {
+      const formatted = value.replace(/\D/g, '').replace(/(\d{2})(\d{2})/, '$1/$2').slice(0, 5);
+      setForm({ ...form, [name]: formatted });
+      return;
+    }
+
+    // Limit CVV to 3 digits
+    if (name === 'cvv') {
+      const formatted = value.replace(/\D/g, '').slice(0, 3);
+      setForm({ ...form, [name]: formatted });
+      return;
     }
     
     setForm({ 
@@ -89,7 +275,7 @@ export default function Donations() {
   };
 
   // Process Payment (Mock payment gateway integration)
-  const processPayment = async (amount) => {
+  const processPayment = async (paymentData) => {
     setPaymentProcessing(true);
     
     // Mock payment processing - replace with actual payment gateway
@@ -99,41 +285,23 @@ export default function Donations() {
         const success = Math.random() > 0.1; // 90% success rate for demo
         
         if (success) {
-          resolve({
+          const transactionId = `TXN_${Date.now()}`;
+          const result = {
             success: true,
-            transactionId: `TXN_${Date.now()}`,
-            amount: amount,
-            timestamp: new Date().toISOString()
-          });
+            transactionId: transactionId,
+            amount: paymentData.amount,
+            timestamp: new Date().toISOString(),
+            transferId: `${Math.floor(Math.random() * 9000) + 1000}${Math.floor(Math.random() * 900) + 100}`,
+            cardLast4: paymentData.cardNumber.replace(/\s/g, '').slice(-4),
+            ...paymentData
+          };
+          resolve(result);
         } else {
           reject(new Error("Payment failed. Please try again."));
         }
         setPaymentProcessing(false);
-      }, 2000);
+      }, 3000);
     });
-  };
-
-  // Update fundraiser collected amount
-  const updateFundraiserAmount = async (requestId, donationAmount) => {
-    try {
-      const res = await fetch(`http://localhost:3000/api/resources/requests/${requestId}/fundraiser`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          collectedAmount: donationAmount
-        }),
-      });
-
-      const data = await res.json();
-      if (!res.ok || !data.success) {
-        console.error("Failed to update fundraiser amount:", data.message);
-      } else {
-        // Reload requests to get updated amounts
-        loadRequests();
-      }
-    } catch (error) {
-      console.error("Error updating fundraiser:", error);
-    }
   };
 
   // Handle form submission
@@ -185,8 +353,10 @@ export default function Donations() {
           amount: parseFloat(form.paymentAmount) || 0,
           paymentInfo: paymentResult ? {
             transactionId: paymentResult.transactionId,
+            transferId: paymentResult.transferId,
             paymentDate: paymentResult.timestamp,
-            paymentStatus: 'completed'
+            paymentStatus: 'completed',
+            cardLast4: paymentResult.cardLast4
           } : undefined
         };
       } else {
@@ -213,16 +383,24 @@ export default function Donations() {
       const data = await res.json();
 
       if (res.ok && data.success) {
-        // If it's a successful fundraiser donation, update the fundraiser collected amount
-        if (selectedRequest?.resourceType === "fundraiser" && paymentResult && !editingId) {
-          await updateFundraiserAmount(form.resourceRequest, parseFloat(form.paymentAmount));
+        
+        
+        if (paymentResult) {
+          setPaymentSuccess({
+            ...paymentResult,
+            donorName: form.fullName,
+            donorEmail: form.email,
+            organizationName: selectedRequest?.organizationName
+          });
+          setShowSuccessModal(true);
+        } else {
+          alert(editingId ? "Donation Updated" : "Donation Created Successfully");
         }
         
-        alert(editingId ? "Donation Updated" : "Donation Created Successfully");
         setEditingId(null);
         resetForm();
         setShowPaymentModal(false);
-        loadDonations();
+        loadDonations(); // Reload donations from API
       } else {
         console.error("Detailed error:", data);
         let errorMsg = data.message || 'Failed to save donation';
@@ -246,8 +424,38 @@ export default function Donations() {
         return;
       }
 
+      // Validate card details
+      const cardNumber = form.cardNumber.replace(/\s/g, '');
+      if (!cardNumber || cardNumber.length !== 16) {
+        alert("Please enter a valid 16-digit card number");
+        return;
+      }
+
+      if (!form.expiryDate || form.expiryDate.length !== 5) {
+        alert("Please enter a valid expiry date (MM/YY)");
+        return;
+      }
+
+      if (!form.cvv || form.cvv.length !== 3) {
+        alert("Please enter a valid 3-digit CVV");
+        return;
+      }
+
+      if (!form.cardHolderName.trim()) {
+        alert("Please enter the cardholder name");
+        return;
+      }
+
+      const paymentData = {
+        amount: amount,
+        cardNumber: cardNumber,
+        expiryDate: form.expiryDate,
+        cvv: form.cvv,
+        cardHolderName: form.cardHolderName
+      };
+
       // Process payment
-      const paymentResult = await processPayment(amount);
+      const paymentResult = await processPayment(paymentData);
       
       // If payment successful, submit donation
       await submitDonation(paymentResult);
@@ -258,202 +466,36 @@ export default function Donations() {
     }
   };
 
-  // Generate CSV as fallback if PDF fails
-  const generateCSV = () => {
-    try {
-      const headers = [
-        'Full Name', 'Phone', 'Email', 'NIC', 'Address', 'District', 'City',
-        'Quantity/Amount', 'Blood Group', 'Medical Conditions', 'Preferred Date',
-        'Preferred Time', 'Flexible', 'Status', 'Admin Notes', 'Created Date'
-      ];
+  // Download receipt as PDF
+  const downloadReceipt = () => {
+    if (!paymentSuccess) return;
 
-      const rows = donations.map(d => [
-        d.donor?.fullName || '', d.donor?.phone || '', d.donor?.email || '',
-        d.donor?.nic || '', d.donor?.address || '', d.donor?.district || '',
-        d.donor?.city || '', d.donationDetails?.quantity || d.donationDetails?.amount || '',
-        d.donationDetails?.bloodGroup || '', d.donationDetails?.medicalConditions || '',
-        d.availability?.preferredDate?.split("T")[0] || '', d.availability?.preferredTime || '',
-        d.availability?.isFlexible ? 'Yes' : 'No', d.status || 'pending',
-        d.adminNotes || '', new Date(d.createdAt).toLocaleDateString()
-      ]);
+    const receiptContent = `
+SwiftAid - Donation Receipt
 
-      const csvContent = [headers, ...rows]
-        .map(row => row.map(field => `"${field}"`).join(','))
-        .join('\n');
+Transaction Successful!
+Transfer ID: ${paymentSuccess.transferId}
 
-      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-      const link = document.createElement('a');
-      const url = URL.createObjectURL(blob);
-      link.setAttribute('href', url);
-      link.setAttribute('download', `SwiftAid_Donations_Report_${new Date().toISOString().split('T')[0]}.csv`);
-      link.style.visibility = 'hidden';
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      
-      alert("CSV report downloaded successfully!");
-      
-    } catch (error) {
-      console.error("CSV generation error:", error);
-      alert("Failed to generate CSV report.");
-    }
-  };
+From: ${paymentSuccess.donorName}
+To: ${paymentSuccess.organizationName}
+Email: ${paymentSuccess.donorEmail}
 
-  // Load jsPDF dynamically and generate PDF
-  const generatePDF = async () => {
-    try {
-      console.log('Starting PDF generation...');
-      
-      if (!window.jspdf) {
-        console.log('Loading jsPDF libraries...');
-        
-        await Promise.race([
-          new Promise((resolve, reject) => {
-            const script = document.createElement('script');
-            script.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
-            script.onload = () => {
-              console.log('jsPDF core loaded');
-              
-              const autoTableScript = document.createElement('script');
-              autoTableScript.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js';
-              autoTableScript.onload = () => {
-                console.log('AutoTable plugin loaded');
-                resolve();
-              };
-              autoTableScript.onerror = () => reject(new Error('Failed to load AutoTable'));
-              document.head.appendChild(autoTableScript);
-            };
-            script.onerror = () => reject(new Error('Failed to load jsPDF'));
-            document.head.appendChild(script);
-          }),
-          new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout loading libraries')), 10000))
-        ]);
-        
-        await new Promise(resolve => setTimeout(resolve, 500));
-      }
+Amount: $${paymentSuccess.amount.toFixed(2)}
+Card: ****${paymentSuccess.cardLast4}
+Date: ${new Date(paymentSuccess.timestamp).toLocaleString()}
 
-      if (!window.jspdf || !window.jspdf.jsPDF) {
-        throw new Error('jsPDF not properly loaded');
-      }
+Thank you for your generous donation!
+    `;
 
-      console.log('Creating PDF document...');
-      
-      const { jsPDF } = window.jspdf;
-      const doc = new jsPDF();
-
-      doc.setFontSize(20);
-      doc.setTextColor(40, 40, 40);
-      doc.text("SwiftAid - Donations Report", 14, 20);
-
-      doc.setFontSize(12);
-      doc.setTextColor(100, 100, 100);
-      doc.text(`Generated on: ${new Date().toLocaleDateString()}`, 14, 30);
-
-      if (donations.length === 0) {
-        doc.setFontSize(14);
-        doc.setTextColor(100, 100, 100);
-        doc.text("No donations found.", 14, 50);
-      } else {
-        const tableColumn = [
-          "Name", "Phone", "Email", "Location", "Qty/Amount",
-          "Blood", "Date", "Time", "Status"
-        ];
-
-        const tableRows = donations.map((d) => [
-          d.donor?.fullName || "N/A",
-          d.donor?.phone || "N/A",
-          d.donor?.email || "N/A",
-          `${d.donor?.district || "N/A"}/${d.donor?.city || "N/A"}`,
-          d.donationDetails?.quantity || `$${d.donationDetails?.amount}` || "N/A",
-          d.donationDetails?.bloodGroup || "N/A",
-          d.availability?.preferredDate?.split("T")[0] || "N/A",
-          d.availability?.preferredTime || "N/A",
-          d.status || "Pending",
-        ]);
-
-        console.log('Adding table to PDF...');
-
-        doc.autoTable({
-          head: [tableColumn],
-          body: tableRows,
-          startY: 40,
-          styles: { 
-            fontSize: 8,
-            cellPadding: 2,
-            overflow: 'linebreak'
-          },
-          headStyles: { 
-            fillColor: [76, 175, 80],
-            textColor: [255, 255, 255],
-            fontSize: 9,
-            fontStyle: 'bold'
-          },
-          alternateRowStyles: {
-            fillColor: [245, 245, 245]
-          },
-          columnStyles: {
-            0: { cellWidth: 20 }, 1: { cellWidth: 22 }, 2: { cellWidth: 25 },
-            3: { cellWidth: 22 }, 4: { cellWidth: 12 }, 5: { cellWidth: 15 },
-            6: { cellWidth: 18 }, 7: { cellWidth: 18 }, 8: { cellWidth: 18 }
-          }
-        });
-      }
-
-      const pageCount = doc.internal.getNumberOfPages();
-      for (let i = 1; i <= pageCount; i++) {
-        doc.setPage(i);
-        doc.setFontSize(10);
-        doc.setTextColor(150, 150, 150);
-        doc.text(`Page ${i} of ${pageCount}`, doc.internal.pageSize.getWidth() - 30, doc.internal.pageSize.getHeight() - 10);
-        doc.text(`Total Donations: ${donations.length}`, 14, doc.internal.pageSize.getHeight() - 10);
-      }
-
-      console.log('Saving PDF...');
-      
-      doc.save(`SwiftAid_Donations_Report_${new Date().toISOString().split('T')[0]}.pdf`);
-      
-      alert("PDF downloaded successfully!");
-
-    } catch (error) {
-      console.error("PDF generation error:", error);
-      
-      if (window.confirm("PDF generation failed. Would you like to download a CSV report instead?")) {
-        generateCSV();
-      } else {
-        alert("Failed to generate PDF. Please check your internet connection and try again.");
-      }
-    }
-  };
-
-  // Handle admin status update only
-  const handleStatusUpdate = async () => {
-    if (!editingId) return;
-
-    try {
-      const res = await fetch(`http://localhost:3000/api/donations/${editingId}/status`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          status: form.status,
-          adminNotes: form.adminNotes,
-          rejectionReason: form.status === 'rejected' ? 'Admin decision' : undefined
-        }),
-      });
-
-      const data = await res.json();
-
-      if (res.ok && data.success) {
-        alert("Status Updated Successfully");
-        setEditingId(null);
-        resetForm();
-        loadDonations();
-      } else {
-        alert(`Error: ${data.message}`);
-      }
-    } catch (error) {
-      console.error("Status update error:", error);
-      alert("Network error occurred");
-    }
+    const blob = new Blob([receiptContent], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `SwiftAid_Receipt_${paymentSuccess.transferId}.txt`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
   };
 
   // Reset form
@@ -476,72 +518,12 @@ export default function Donations() {
       status: "pending",
       adminNotes: "",
       paymentAmount: "",
+      cardNumber: "",
+      expiryDate: "",
+      cvv: "",
+      cardHolderName: "",
     });
     setSelectedRequest(null);
-  };
-
-  // Edit donation
-  const handleEdit = (d) => {
-    const request = requests.find(r => r._id === d.resourceRequest?._id);
-    setSelectedRequest(request);
-    
-    setForm({
-      resourceRequest: d.resourceRequest?._id || "",
-      fullName: d.donor?.fullName || "",
-      phone: d.donor?.phone || "",
-      email: d.donor?.email || "",
-      nic: d.donor?.nic || "",
-      address: d.donor?.address || "",
-      district: d.donor?.district || "",
-      city: d.donor?.city || "",
-      quantity: d.donationDetails?.quantity || 1,
-      bloodGroup: d.donationDetails?.bloodGroup || "",
-      medicalConditions: d.donationDetails?.medicalConditions || "",
-      preferredDate: d.availability?.preferredDate?.split("T")[0] || "",
-      preferredTime: d.availability?.preferredTime || "",
-      isFlexible: d.availability?.isFlexible ?? true,
-      status: d.status || "pending",
-      adminNotes: d.adminNotes || "",
-      paymentAmount: d.donationDetails?.amount || "",
-    });
-    setEditingId(d._id);
-    window.scrollTo({ top: 0, behavior: "smooth" });
-  };
-
-  // Delete donation
-  const handleDelete = async (id) => {
-    if (!window.confirm("Are you sure you want to delete this donation?")) return;
-    
-    try {
-      const res = await fetch(`http://localhost:3000/api/donations/${id}`, {
-        method: "DELETE",
-      });
-      
-      const data = await res.json();
-      
-      if (res.ok && data.success) {
-        alert("Donation deleted successfully");
-        loadDonations();
-      } else {
-        alert(`Error: ${data.message}`);
-      }
-    } catch (error) {
-      console.error("Delete error:", error);
-      alert("Network error occurred");
-    }
-  };
-
-  // Get status color
-  const getStatusColor = (status) => {
-    switch (status) {
-      case 'pending': return '#FFA726';
-      case 'approved': return '#66BB6A';
-      case 'contacted': return '#42A5F5';
-      case 'completed': return '#4CAF50';
-      case 'rejected': return '#F44336';
-      case 'cancelled': return '#9E9E9E';
-      default: return '#FFA726';
-    }
   };
 
   // Check if selected request is fundraiser
@@ -580,50 +562,137 @@ export default function Donations() {
             >
               {adminMode ? "Exit Admin" : "Admin Mode"}
             </button>
+          </div>
+        </div>
 
-            {adminMode && (
-              <div style={{ display: "flex", gap: "10px" }}>
+        {/* Payment Success Modal */}
+        {showSuccessModal && paymentSuccess && (
+          <div style={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: "rgba(0,0,0,0.8)",
+            zIndex: 2000,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center"
+          }}>
+            <div style={{
+              backgroundColor: "white",
+              padding: "40px",
+              borderRadius: "20px",
+              maxWidth: "500px",
+              width: "90%",
+              boxShadow: "0 20px 60px rgba(0,0,0,0.3)",
+              textAlign: "center"
+            }}>
+              {/* Success Icon */}
+              <div style={{
+                width: "80px",
+                height: "80px",
+                borderRadius: "50%",
+                backgroundColor: "#4CAF50",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                margin: "0 auto 20px",
+                color: "white",
+                fontSize: "40px",
+                fontWeight: "bold"
+              }}>
+                ✓
+              </div>
+
+              <h2 style={{ 
+                color: "#4CAF50", 
+                marginBottom: "10px",
+                fontSize: "1.8rem"
+              }}>
+                Transaction Successful!
+              </h2>
+
+              <p style={{ 
+                color: "#666",
+                fontSize: "1rem",
+                marginBottom: "25px"
+              }}>
+                Transfer ID: {paymentSuccess.transferId}
+              </p>
+
+              {/* Transaction Details */}
+              <div style={{
+                backgroundColor: "#f8f9fa",
+                padding: "20px",
+                borderRadius: "10px",
+                marginBottom: "25px",
+                textAlign: "left"
+              }}>
+                <div style={{ marginBottom: "10px" }}>
+                  <strong>From:</strong> {paymentSuccess.donorName}
+                </div>
+                <div style={{ marginBottom: "10px" }}>
+                  <strong>To:</strong> {paymentSuccess.organizationName}
+                </div>
+                <div style={{ marginBottom: "10px" }}>
+                  <strong>Card:</strong> ****{paymentSuccess.cardLast4}
+                </div>
+                <div style={{ marginBottom: "10px" }}>
+                  <strong>Date:</strong> {new Date(paymentSuccess.timestamp).toLocaleDateString()}
+                </div>
+              </div>
+
+              {/* Amount */}
+              <div style={{
+                fontSize: "2rem",
+                fontWeight: "bold",
+                color: "#333",
+                marginBottom: "30px"
+              }}>
+                Rs.{paymentSuccess.amount.toFixed(2)}
+              </div>
+
+              {/* Action Buttons */}
+              <div style={{ display: "flex", gap: "15px", justifyContent: "center" }}>
                 <button
-                  onClick={generatePDF}
+                  onClick={downloadReceipt}
                   style={{
-                    padding: "12px 24px",
+                    padding: "12px 30px",
                     backgroundColor: "#2196F3",
                     color: "white",
                     border: "none",
-                    borderRadius: "8px",
+                    borderRadius: "25px",
                     cursor: "pointer",
                     fontWeight: "bold",
-                    fontSize: "16px",
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "8px"
+                    fontSize: "16px"
                   }}
                 >
-                  Download PDF
+                  Download Receipt
                 </button>
                 
                 <button
-                  onClick={generateCSV}
+                  onClick={() => {
+                    setShowSuccessModal(false);
+                    setPaymentSuccess(null);
+                  }}
                   style={{
-                    padding: "12px 24px",
+                    padding: "12px 30px",
                     backgroundColor: "#4CAF50",
                     color: "white",
                     border: "none",
-                    borderRadius: "8px",
+                    borderRadius: "25px",
                     cursor: "pointer",
                     fontWeight: "bold",
-                    fontSize: "16px",
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "8px"
+                    fontSize: "16px"
                   }}
                 >
-                  Download CSV
+                  Done
                 </button>
               </div>
-            )}
+            </div>
           </div>
-        </div>
+        )}
 
         {/* Payment Modal */}
         {showPaymentModal && (
@@ -643,9 +712,11 @@ export default function Donations() {
               backgroundColor: "white",
               padding: "40px",
               borderRadius: "12px",
-              maxWidth: "500px",
+              maxWidth: "600px",
               width: "90%",
-              boxShadow: "0 10px 40px rgba(0,0,0,0.3)"
+              boxShadow: "0 10px 40px rgba(0,0,0,0.3)",
+              maxHeight: "90vh",
+              overflowY: "auto"
             }}>
               <h2 style={{ textAlign: "center", color: "#4CAF50", marginBottom: "20px" }}>
                 Complete Your Donation Payment
@@ -654,16 +725,71 @@ export default function Donations() {
               <div style={{ backgroundColor: "#f5f5f5", padding: "20px", borderRadius: "8px", marginBottom: "25px" }}>
                 <h3 style={{ margin: "0 0 10px 0", color: "#333" }}>Donation Summary</h3>
                 <p style={{ margin: "5px 0" }}><strong>Organization:</strong> {selectedRequest?.organizationName}</p>
-                <p style={{ margin: "5px 0" }}><strong>Amount:</strong> ${form.paymentAmount}</p>
-                <p style={{ margin: "5px 0" }}><strong>Target:</strong> ${selectedRequest?.fundraiser?.targetAmount}</p>
-                <p style={{ margin: "5px 0" }}><strong>Collected:</strong> ${selectedRequest?.fundraiser?.collectedAmount || 0}</p>
-                <p style={{ margin: "5px 0" }}><strong>Remaining:</strong> ${remainingAmount}</p>
+                <p style={{ margin: "5px 0" }}><strong>Amount:</strong> Rs.{form.paymentAmount}</p>
+                <p style={{ margin: "5px 0" }}><strong>Target:</strong> Rs.{selectedRequest?.fundraiser?.targetAmount}</p>
+                <p style={{ margin: "5px 0" }}><strong>Collected:</strong> Rs.{selectedRequest?.fundraiser?.collectedAmount || 0}</p>
+                <p style={{ margin: "5px 0" }}><strong>Remaining:</strong> Rs.{remainingAmount}</p>
+              </div>
+
+              {/* Card Details Form */}
+              <div style={{ backgroundColor: "#fafafa", padding: "25px", borderRadius: "8px", marginBottom: "20px" }}>
+                <h3 style={{ margin: "0 0 20px 0", color: "#333" }}>Payment Details</h3>
+                
+                <div style={{ marginBottom: "15px" }}>
+                  <label style={labelStyle}>Cardholder Name *</label>
+                  <input 
+                    name="cardHolderName"
+                    placeholder="Enter name as on card"
+                    value={form.cardHolderName}
+                    onChange={handleChange}
+                    required
+                    style={inputStyle}
+                  />
+                </div>
+
+                <div style={{ marginBottom: "15px" }}>
+                  <label style={labelStyle}>Card Number *</label>
+                  <input 
+                    name="cardNumber"
+                    placeholder="1234 5678 9012 3456"
+                    value={form.cardNumber}
+                    onChange={handleChange}
+                    required
+                    style={inputStyle}
+                  />
+                </div>
+
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "15px" }}>
+                  <div>
+                    <label style={labelStyle}>Expiry Date *</label>
+                    <input 
+                      name="expiryDate"
+                      placeholder="MM/YY"
+                      value={form.expiryDate}
+                      onChange={handleChange}
+                      required
+                      style={inputStyle}
+                    />
+                  </div>
+
+                  <div>
+                    <label style={labelStyle}>CVV *</label>
+                    <input 
+                      name="cvv"
+                      placeholder="123"
+                      value={form.cvv}
+                      onChange={handleChange}
+                      required
+                      style={inputStyle}
+                    />
+                  </div>
+                </div>
               </div>
 
               <div style={{ backgroundColor: "#e8f5e8", padding: "15px", borderRadius: "8px", marginBottom: "25px", textAlign: "center" }}>
                 <p style={{ margin: 0, color: "#2e7d32" }}>
-                  <strong>Secure Payment Processing</strong><br/>
-                  Your payment will be processed securely through our payment gateway.
+                  <strong>🔒 Secure Payment Processing</strong><br/>
+                  Your payment information is encrypted and secure.
                 </p>
               </div>
 
@@ -675,10 +801,10 @@ export default function Donations() {
                     ...submitButton,
                     backgroundColor: paymentProcessing ? "#ccc" : "#4CAF50",
                     cursor: paymentProcessing ? "not-allowed" : "pointer",
-                    minWidth: "140px"
+                    minWidth: "160px"
                   }}
                 >
-                  {paymentProcessing ? "Processing..." : `Pay $${form.paymentAmount}`}
+                  {paymentProcessing ? "Processing..." : `Pay ${form.paymentAmount}`}
                 </button>
                 
                 <button
@@ -696,7 +822,90 @@ export default function Donations() {
           </div>
         )}
 
-        {/* User Donation Form */}
+        {/* Admin Status Update Section */}
+        {adminMode && editingId && (
+          <div style={{ 
+            background: "linear-gradient(135deg, #f3e2dbff 0%, #c0b9b6ff 100%)", 
+            padding: "25px", 
+            borderRadius: "12px", 
+            marginBottom: "25px", 
+            border: "2px solid #FF9800",
+            boxShadow: "0 4px 20px rgba(255,152,0,0.2)"
+          }}>
+            <h3 style={{ marginBottom: "20px", color: "#FFA726" }}>Admin Panel: Update Donation Status</h3>
+            
+            {/* Warning for fundraiser reversals */}
+            {(() => {
+              const currentDonation = donations.find(d => d._id === editingId);
+              const currentRequest = requests.find(r => r._id === currentDonation?.resourceRequest?._id);
+              const isReversingFundraiser = 
+                currentRequest?.resourceType === "fundraiser" &&
+                ['completed', 'approved'].includes(currentDonation?.status) &&
+                ['cancelled', 'rejected'].includes(form.status) &&
+                currentDonation?.donationDetails?.amount > 0;
+              
+              return isReversingFundraiser && (
+                <div style={{
+                  backgroundColor: "#fff3cd",
+                  border: "1px solid #ffeaa7",
+                  padding: "15px",
+                  borderRadius: "8px",
+                  marginBottom: "20px"
+                }}>
+                  <strong style={{ color: "#856404" }}>⚠️ Fundraiser Amount Reversal Warning</strong>
+                  <p style={{ margin: "5px 0 0 0", color: "#856404" }}>
+                    Changing this donation from "{currentDonation?.status}" to "{form.status}" will subtract 
+                    Rs.{currentDonation?.donationDetails?.amount} from the fundraiser's collected amount.
+                  </p>
+                </div>
+              );
+            })()}
+            
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "20px" }}>
+              <div>
+                <label style={labelStyle}>Status</label>
+                <select name="status" value={form.status} onChange={handleChange} style={inputStyle}>
+                  <option value="pending">Pending Review</option>
+                  <option value="approved">Approved</option>
+                  <option value="contacted">Donor Contacted</option>
+                  <option value="completed">Donation Completed</option>
+                  <option value="rejected">Rejected</option>
+                  <option value="cancelled">Cancelled</option>
+                </select>
+              </div>
+              
+              <div></div>
+              
+              <div style={{ gridColumn: "1 / -1" }}>
+                <label style={labelStyle}>Admin Notes</label>
+                <textarea 
+                  name="adminNotes" 
+                  placeholder="Add notes about this donation, contact details, etc..." 
+                  value={form.adminNotes} 
+                  onChange={handleChange} 
+                  style={{...inputStyle, minHeight: "120px"}} 
+                />
+              </div>
+              
+              <button 
+                type="button"
+                onClick={handleStatusUpdate} 
+                style={{...submitButton, backgroundColor: "#FF9800"}}
+              >
+                Update Status
+              </button>
+              
+              <button 
+                type="button"
+                onClick={() => {setEditingId(null); resetForm();}} 
+                style={cancelButton}
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        )}
+
         {!adminMode && (
           <div style={{ 
             background: "#f9f9f9", 
@@ -736,7 +945,7 @@ export default function Donations() {
                       <option key={r._id} value={r._id}>
                         {r.organizationName} - {r.resourceType} ({r.urgencyLevel})
                         {r.resourceType === "fundraiser" && r.fundraiser && (
-                          ` - Target: $${r.fundraiser.targetAmount}`
+                          ` - Target: ${r.fundraiser.targetAmount}`
                         )}
                       </option>
                     ))}
@@ -760,19 +969,19 @@ export default function Donations() {
                       <div style={{ textAlign: "center", background: "rgba(255,255,255,0.7)", padding: "10px", borderRadius: "8px" }}>
                         <strong style={{ color: "#1976d2" }}>Target</strong><br/>
                         <span style={{ fontSize: "1.3rem", fontWeight: "bold", color: "#333" }}>
-                          ${selectedRequest.fundraiser.targetAmount}
+                          Rs.{selectedRequest.fundraiser.targetAmount}
                         </span>
                       </div>
                       <div style={{ textAlign: "center", background: "rgba(255,255,255,0.7)", padding: "10px", borderRadius: "8px" }}>
                         <strong style={{ color: "#388e3c" }}>Collected</strong><br/>
                         <span style={{ fontSize: "1.3rem", fontWeight: "bold", color: "#333" }}>
-                          ${selectedRequest.fundraiser.collectedAmount || 0}
+                          Rs.{selectedRequest.fundraiser.collectedAmount || 0}
                         </span>
                       </div>
                       <div style={{ textAlign: "center", background: "rgba(255,255,255,0.7)", padding: "10px", borderRadius: "8px" }}>
                         <strong style={{ color: "#f57c00" }}>Remaining</strong><br/>
                         <span style={{ fontSize: "1.3rem", fontWeight: "bold", color: "#333" }}>
-                          ${remainingAmount}
+                          Rs.{remainingAmount}
                         </span>
                       </div>
                     </div>
@@ -888,7 +1097,7 @@ export default function Donations() {
                 {/* Conditional Donation Details */}
                 {isFundraiser ? (
                   <div style={{ gridColumn: "1 / -1" }}>
-                    <label style={labelStyle}>Donation Amount (USD) *</label>
+                    <label style={labelStyle}>Donation Amount (Rs.) *</label>
                     <input 
                       type="number" 
                       name="paymentAmount" 
@@ -903,7 +1112,7 @@ export default function Donations() {
                     />
                     {remainingAmount > 0 && (
                       <p style={{ margin: "5px 0", color: "#666", fontSize: "0.9rem" }}>
-                        Maximum donation amount: ${remainingAmount}
+                        Maximum donation amount: Rs.{remainingAmount}
                       </p>
                     )}
                   </div>
@@ -923,14 +1132,21 @@ export default function Donations() {
                       />
                     </div>
 
+                    {/* Blood Group Dropdown */}
                     <div>
                       <label style={labelStyle}>Blood Group (if applicable)</label>
-                      <select name="bloodGroup" value={form.bloodGroup} onChange={handleChange} style={inputStyle}>
+                      <select 
+                        name="bloodGroup" 
+                        value={form.bloodGroup} 
+                        onChange={handleChange} 
+                        style={inputStyle}
+                      >
                         <option value="">-- Select Blood Group --</option>
-                        <option value="A+">A+</option><option value="A-">A-</option>
-                        <option value="B+">B+</option><option value="B-">B-</option>
-                        <option value="AB+">AB+</option><option value="AB-">AB-</option>
-                        <option value="O+">O+</option><option value="O-">O-</option>
+                        {selectedRequest?.resourceType === "blood" && selectedRequest?.resourceDetails?.bloodGroup && (
+                          <option value={selectedRequest.resourceDetails.bloodGroup}>
+                            {selectedRequest.resourceDetails.bloodGroup}
+                          </option>
+                        )}
                       </select>
                     </div>
 
@@ -1007,61 +1223,6 @@ export default function Donations() {
           </div>
         )}
 
-        {/* Admin Status Update Section */}
-        {adminMode && editingId && (
-          <div style={{ 
-            background: "linear-gradient(135deg, #f3e2dbff 0%, #c0b9b6ff 100%)", 
-            padding: "25px", 
-            borderRadius: "12px", 
-            marginBottom: "25px", 
-            border: "2px solid #FF9800",
-            boxShadow: "0 4px 20px rgba(255,152,0,0.2)"
-          }}>
-            <h3 style={{ marginBottom: "20px", color: "#FFA726" }}>Admin Panel: Update Donation Status</h3>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "20px" }}>
-              <div>
-                <label style={labelStyle}>Status</label>
-                <select name="status" value={form.status} onChange={handleChange} style={inputStyle}>
-                  <option value="pending">Pending Review</option>
-                  <option value="approved">Approved</option>
-                  <option value="contacted">Donor Contacted</option>
-                  <option value="completed">Donation Completed</option>
-                  <option value="cancelled">Cancelled</option>
-                </select>
-              </div>
-              
-              <div></div>
-              
-              <div style={{ gridColumn: "1 / -1" }}>
-                <label style={labelStyle}>Admin Notes</label>
-                <textarea 
-                  name="adminNotes" 
-                  placeholder="Add notes about this donation, contact details, etc..." 
-                  value={form.adminNotes} 
-                  onChange={handleChange} 
-                  style={{...inputStyle, minHeight: "120px"}} 
-                />
-              </div>
-              
-              <button 
-                type="button"
-                onClick={handleStatusUpdate} 
-                style={{...submitButton, backgroundColor: "#FF9800"}}
-              >
-                Update Status
-              </button>
-              
-              <button 
-                type="button"
-                onClick={() => {setEditingId(null); resetForm();}} 
-                style={cancelButton}
-              >
-                Cancel
-              </button>
-            </div>
-          </div>
-        )}
-
         {/* Donations List */}
         <div style={{ marginTop: "40px" }}>
           <h2 style={{ marginBottom: "25px", fontSize: "2rem", color: "#4CAF50" }}>
@@ -1082,7 +1243,7 @@ export default function Donations() {
           ) : (
             <div style={{ display: "grid", gap: "25px" }}>
               {donations.map((d) => {
-                const donationRequest = requests.find(r => r._id === d.resourceRequest?._id);
+                const donationRequest = requests.find(r => r._id === d.resourceRequest?._id || d.resourceRequest);
                 const isFundraiserDonation = donationRequest?.resourceType === "fundraiser";
                 
                 return (
@@ -1113,6 +1274,12 @@ export default function Donations() {
                               {d.donationDetails?.paymentInfo && (
                                 <>
                                   <p><strong>Transaction ID:</strong> {d.donationDetails.paymentInfo.transactionId}</p>
+                                  {d.donationDetails.paymentInfo.transferId && (
+                                    <p><strong>Transfer ID:</strong> {d.donationDetails.paymentInfo.transferId}</p>
+                                  )}
+                                  {d.donationDetails.paymentInfo.cardLast4 && (
+                                    <p><strong>Card:</strong> ****{d.donationDetails.paymentInfo.cardLast4}</p>
+                                  )}
                                   <p><strong>Payment Status:</strong> 
                                     <span style={{ 
                                       color: d.donationDetails.paymentInfo.paymentStatus === 'completed' ? '#4CAF50' : '#FFA726',
@@ -1138,7 +1305,7 @@ export default function Donations() {
                           )}
                           <p><strong>Preferred:</strong> {d.availability?.preferredDate?.split("T")[0]} ({d.availability?.preferredTime})</p>
                           <p><strong>Flexible:</strong> {d.availability?.isFlexible ? "Yes" : "No"}</p>
-                          <p><strong>For Request:</strong> {d.resourceRequest?.organizationName || "N/A"}</p>
+                          <p><strong>For Request:</strong> {donationRequest?.organizationName || d.resourceRequest?.organizationName || "N/A"}</p>
                           <p><strong>Request Type:</strong> {donationRequest?.resourceType || "N/A"}</p>
                         </div>
                       </div>
@@ -1171,7 +1338,7 @@ export default function Donations() {
                         </p>
                         
                         {d.adminNotes && (
-                          <p style={{ margin: 0, color: "#FFA726" }}>
+                          <p style={{ margin: "0 0 10px 0", color: "#FFA726" }}>
                             <strong>Admin Notes:</strong> {d.adminNotes}
                           </p>
                         )}

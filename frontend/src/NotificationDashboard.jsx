@@ -131,6 +131,29 @@ export default function NotificationDashboard() {
         <h1 className="text-2xl font-bold text-primary">
           🚨 Emergency Responder Dashboard
         </h1>
+        <div
+          className="flex items-center space-x-4"
+          style={{ alignItems: "center" }}
+        >
+          <select
+            className="mb-4 p-2 border rounded"
+            value={filter}
+            onChange={(e) => setFilter(e.target.value)}
+          >
+            <option value="All">All Alerts</option>
+            <option value="pending">Pending</option>
+            <option value="accepted">Accepted</option>
+            <option value="cancelled">Cancelled</option>
+          </select>
+          <label className="ml-4 flex items-center space-x-2 mb-4">
+            <input
+              type="checkbox"
+              checked={filter === "In My Area"}
+              onChange={(e) => setFilter(e.target.checked ? "In My Area" : "All")}
+            />
+            <span>In My Area</span>
+          </label>
+        </div>
         <button
           className="bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded shadow"
           onClick={() => window.location.href = "/accepted-tasks"}
@@ -143,18 +166,6 @@ export default function NotificationDashboard() {
         {/* LEFT: Alerts List + Filter */}
         <div className="col-span-3 bg-white shadow-xl rounded-2xl p-4 border max-h-[80vh] flex flex-col">
           <h2 className="text-xl font-bold mb-2 text-primary">Alert List</h2>
-
-          <select
-            className="mb-4 p-2 border rounded"
-            value={filter}
-            onChange={(e) => setFilter(e.target.value)}
-          >
-            <option value="All">All Alerts</option>
-            <option value="pending">Pending</option>
-            <option value="accepted">Accepted</option>
-            <option value="cancelled">Cancelled</option>
-            <option value="In My Area">In My Area</option>
-          </select>
 
           <div className="space-y-3 overflow-y-auto flex-1">
             {Array.isArray(filteredAlerts) && filteredAlerts.length === 0 && (

@@ -18,8 +18,10 @@ export default function AcceptedTasks() {
   const [tasks, setTasks] = useState([]);
   const [currentTask, setCurrentTask] = useState(null);
   const [showCompleteForm, setShowCompleteForm] = useState(false);
+  const [showCancelForm, setShowCancelForm] = useState(false);
   const [files, setFiles] = useState([]);
   const [comment, setComment] = useState("");
+  const [cancelReasons, setCancelReasons] = useState([]);
   const [responderLocation, setResponderLocation] = useState(null);
   const [directions, setDirections] = useState(null);
 
@@ -56,13 +58,9 @@ export default function AcceptedTasks() {
   };
 
   // Mark as reached
-  // Mark as reached
   const reachedTask = async (task) => {
     try {
-      console.log("Task ID:", task._id); // debug
-      const res = await axios.put(
-        `http://localhost:3000/api/alerts/${task._id}/reached`
-      );
+      await axios.put(`http://localhost:3000/api/alerts/${task._id}/reached`);
       toast.success(`Task ${task.reportId} marked as reached.`);
       fetchAcceptedTasks();
       setShowCompleteForm(true);
@@ -73,7 +71,7 @@ export default function AcceptedTasks() {
     }
   };
 
-
+  // Complete task
   const completeTask = async (taskId) => {
     try {
       const formData = new FormData();
@@ -87,17 +85,33 @@ export default function AcceptedTasks() {
       );
 
       toast.success("Task completed successfully!");
-      setShowCompleteForm(false); // Close the form
+      setShowCompleteForm(false);
       setFiles([]);
       setComment("");
       setCurrentTask(null);
-      fetchAcceptedTasks(); // Refresh the tasks table
+      fetchAcceptedTasks();
     } catch (err) {
       console.error("Complete Task Error:", err.response || err);
       toast.error("Failed to complete task.");
     }
   };
 
+  // Cancel task
+  const cancelTask = async (taskId) => {
+    try {
+      await axios.put(`http://localhost:3000/api/alerts/${taskId}/cancel`, {
+        reasons: cancelReasons,
+      });
+      toast.success("Task cancelled successfully.");
+      setShowCancelForm(false);
+      setCancelReasons([]);
+      setCurrentTask(null);
+      fetchAcceptedTasks();
+    } catch (err) {
+      console.error("Cancel Task Error:", err.response || err);
+      toast.error("Failed to cancel task.");
+    }
+  };
 
   // Show route to task
   const openRouteMap = (task) => {
@@ -127,6 +141,15 @@ export default function AcceptedTasks() {
 
   if (loadError) return <p>Error loading map</p>;
   if (!isLoaded) return <p>Loading map...</p>;
+
+  // Handle cancel reason checkbox
+  const handleReasonChange = (reason) => {
+    setCancelReasons((prev) =>
+      prev.includes(reason)
+        ? prev.filter((r) => r !== reason)
+        : [...prev, reason]
+    );
+  };
 
   return (
     <div className="p-6 bg-gray-50 min-h-screen">
@@ -168,6 +191,48 @@ export default function AcceptedTasks() {
         </div>
       )}
 
+      {/* Cancel Task Form */}
+      {showCancelForm && currentTask && (
+        <div className="bg-white shadow-xl rounded-xl p-4 mb-4 border animate-fadeIn">
+          <h2 className="text-lg font-bold mb-2">
+            Cancel Task: {currentTask.reportId}
+          </h2>
+          <p className="text-sm mb-2">Select reasons:</p>
+          <div className="flex flex-col gap-2 mb-2">
+            {[
+              "False alarm",
+              "Responder unavailable",
+              "Duplicate alert",
+              "Other emergency prioritized",
+              "Other",
+            ].map((reason) => (
+              <label key={reason} className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={cancelReasons.includes(reason)}
+                  onChange={() => handleReasonChange(reason)}
+                />
+                {reason}
+              </label>
+            ))}
+          </div>
+          <div className="flex gap-2">
+            <button
+              className="bg-red-600 text-white px-3 py-1 rounded hover:bg-red-700 transition"
+              onClick={() => cancelTask(currentTask._id)}
+            >
+              Confirm Cancel
+            </button>
+            <button
+              className="bg-gray-400 text-white px-3 py-1 rounded hover:bg-gray-500 transition"
+              onClick={() => setShowCancelForm(false)}
+            >
+              Back
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Tasks Table */}
       <div className="overflow-x-auto bg-white shadow-xl rounded-xl border animate-fadeIn">
         <table className="min-w-full divide-y divide-gray-200">
@@ -198,39 +263,50 @@ export default function AcceptedTasks() {
                 <td className="px-4 py-2 text-sm">{task.address}</td>
                 <td className="px-4 py-2 text-sm font-semibold">{task.status}</td>
                 <td className="px-4 py-2 text-sm space-x-2">
-                  {/* Reached / Complete button */}
-                  {(task.status === "accepted" || task.status === "reached") && (
+                  {task.status === "accepted" && (
                     <button
-                      className={`${
-                        task.status === "accepted"
-                          ? "bg-yellow-500 hover:bg-yellow-600"
-                          : "bg-green-600 hover:bg-green-700"
-                      } text-white px-2 py-1 rounded transition`}
-                      onClick={() => {
-                        if (task.status === "accepted") {
-                          reachedTask(task); // pass full task object
-                        } else if (task.status === "reached") {
-                          completeTask(task._id); // pass ID
-                        }
-                      }}
+                      className="bg-yellow-500 hover:bg-yellow-600 text-white px-2 py-1 rounded transition"
+                      onClick={() => reachedTask(task)}
                     >
-                      {task.status === "accepted"
-                        ? "Mark as Reached"
-                        : task.status === "reached"
-                        ? "Complete Task"
-                        : "Completed"}
+                      Mark as Reached
                     </button>
                   )}
 
+                  {task.status === "reached" && (
+                    <>
+                      <button
+                        className="bg-green-600 hover:bg-green-700 text-white px-2 py-1 rounded transition"
+                        onClick={() => {
+                          setCurrentTask(task);
+                          setShowCompleteForm(true);
+                        }}
+                      >
+                        Complete Task
+                      </button>
+                      <button
+                        className="bg-red-600 hover:bg-red-700 text-white px-2 py-1 rounded transition"
+                        onClick={() => {
+                          setCurrentTask(task);
+                          setShowCancelForm(true);
+                        }}
+                      >
+                        Cancel Task
+                      </button>
+                    </>
+                  )}
 
-                  {/* Completed label */}
                   {task.status === "completed" && (
                     <span className="text-green-700 font-semibold">
                       Completed ✅
                     </span>
                   )}
 
-                  {/* View Route */}
+                  {task.status === "cancelled" && (
+                    <span className="text-red-700 font-semibold">
+                      Cancelled ❌
+                    </span>
+                  )}
+
                   <button
                     className="bg-blue-500 text-white px-2 py-1 rounded hover:bg-blue-600 transition"
                     onClick={() => openRouteMap(task)}

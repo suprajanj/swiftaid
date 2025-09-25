@@ -5,6 +5,10 @@ import { GoogleMap, Marker, useJsApiLoader } from "@react-google-maps/api";
 import { io } from "socket.io-client";
 import AssignViaMapModal from "../components/AssignViaMapModal";
 import toast, { Toaster } from "react-hot-toast";
+import {
+  PieChart, Pie, Cell, Tooltip, Legend,
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer
+} from "recharts";
 
 const GOOGLE_MAP_LIBRARIES = ["places"];
 const socket = io("http://localhost:4000");
@@ -12,7 +16,7 @@ const socket = io("http://localhost:4000");
 function AdminDashboard() {
   const API_URL = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
   const mapRef = useRef();
-  const audioRef = useRef(null);
+  const audioRef = useRef("../assets/audio.mp3");
 
   const [activeTab, setActiveTab] = useState("overview");
   const [filterType, setFilterType] = useState("All");
@@ -91,7 +95,7 @@ function AdminDashboard() {
   const statusCounts = { Pending: 0, Assigned: 0, Completed: 0 };
   emergencies.forEach(e => { const s = e.status || "Pending"; statusCounts[s] = (statusCounts[s] || 0) + 1; });
 
-  const filteredEmergencies = emergencies.filter(e => 
+  const filteredEmergencies = emergencies.filter(e =>
     (filterType === "All" || e.emergencyType === filterType) &&
     (filterStatus === "All" || (e.status || "Pending") === filterStatus)
   );
@@ -175,6 +179,19 @@ function AdminDashboard() {
     } catch (err) { console.error(err); toast.error("❌ Failed to delete SOS"); }
   };
 
+  const handleCompleteSOS = async (sosId) => {
+  if (!confirm("Mark this SOS as completed?")) return;
+  try {
+    await axios.patch(`http://localhost:4000/api/sos/${sosId}/complete`);
+    toast.success("✅ SOS marked as completed");
+    fetchEmergencies();
+    socket.emit("sosUpdated", sosId); // notify others
+  } catch (err) {
+    console.error(err);
+    toast.error("❌ Failed to mark as completed");
+  }
+};
+
   useEffect(() => {
     if (mapRef.current && emergencies.length > 0) {
       const bounds = new window.google.maps.LatLngBounds();
@@ -182,6 +199,20 @@ function AdminDashboard() {
       mapRef.current.fitBounds(bounds);
     }
   }, [emergencies, isLoaded]);
+
+  // Chart Data
+  const COLORS = ["#ef4444", "#3b82f6", "#22c55e", "#f59e0b"];
+  const emergencyTypeCounts = emergencies.reduce((acc, e) => {
+    acc[e.emergencyType] = (acc[e.emergencyType] || 0) + 1;
+    return acc;
+  }, {});
+  const emergencyTypeData = Object.keys(emergencyTypeCounts).map((k) => ({ name: k, value: emergencyTypeCounts[k] }));
+
+  const responderAvailability = [
+    { name: "Available", value: 10 },
+    { name: "Busy", value: emergencies.filter((e) => e.assignedResponder).length },
+    { name: "Offline", value: 4 },
+  ];
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-200 text-black p-6">
@@ -208,86 +239,236 @@ function AdminDashboard() {
 
       {/* Overview Tab */}
       {activeTab === "overview" && (
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-12">
-          <div className="bg-white p-5 rounded-2xl shadow-xl text-center">
-            <p className="text-lg font-semibold">Total SOS</p>
-            <p className="text-3xl font-bold text-red-600">{emergencies.length}</p>
+        <>
+          {/* Motivational Banner */}
+          <div className="bg-gradient-to-r from-red-500 to-red-700 text-white rounded-2xl shadow-xl p-6 mb-8 text-center">
+            <h2 className="text-2xl font-bold">💪 Stay Alert, Save Lives!</h2>
+            <p className="mt-2 text-lg">Every second counts — your quick action can make the difference.</p>
           </div>
-          <div className="bg-white p-5 rounded-2xl shadow-xl text-center">
-            <p className="text-lg font-semibold">Pending</p>
-            <p className="text-3xl font-bold text-yellow-600">{statusCounts.Pending}</p>
+
+          {/* Summary Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-12">
+            <div className="bg-white p-5 rounded-2xl shadow-xl text-center">
+              <p className="text-lg font-semibold">Total SOS</p>
+              <p className="text-3xl font-bold text-red-600">{emergencies.length}</p>
+            </div>
+            <div className="bg-white p-5 rounded-2xl shadow-xl text-center">
+              <p className="text-lg font-semibold">Pending</p>
+              <p className="text-3xl font-bold text-yellow-600">{statusCounts.Pending}</p>
+            </div>
+            <div className="bg-white p-5 rounded-2xl shadow-xl text-center">
+              <p className="text-lg font-semibold">Assigned</p>
+              <p className="text-3xl font-bold text-blue-600">{statusCounts.Assigned}</p>
+            </div>
+            <div className="bg-white p-5 rounded-2xl shadow-xl text-center">
+              <p className="text-lg font-semibold">Completed</p>
+              <p className="text-3xl font-bold text-green-600">{statusCounts.Completed}</p>
+            </div>
           </div>
-          <div className="bg-white p-5 rounded-2xl shadow-xl text-center">
-            <p className="text-lg font-semibold">Assigned</p>
-            <p className="text-3xl font-bold text-blue-600">{statusCounts.Assigned}</p>
+
+          {/* Charts Section */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Emergency Type Distribution */}
+            <div className="bg-white p-5 rounded-2xl shadow-xl">
+              <h3 className="text-lg font-semibold mb-4">📊 Emergency Type Distribution</h3>
+              <ResponsiveContainer width="100%" height={300}>
+                <PieChart>
+                  <Pie data={emergencyTypeData} dataKey="value" cx="50%" cy="50%" outerRadius={100} label>
+                    {emergencyTypeData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                    ))}
+                  </Pie>
+                  <Tooltip />
+                  <Legend />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+
+            {/* Responder Availability Snapshot */}
+            <div className="bg-white p-5 rounded-2xl shadow-xl">
+              <h3 className="text-lg font-semibold mb-4">🧑‍🚒 Responder Availability Snapshot</h3>
+              <ResponsiveContainer width="100%" height={300}>
+                <BarChart data={responderAvailability}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="name" />
+                  <YAxis />
+                  <Tooltip />
+                  <Bar dataKey="value" fill="#3b82f6" />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
           </div>
-          <div className="bg-white p-5 rounded-2xl shadow-xl text-center">
-            <p className="text-lg font-semibold">Completed</p>
-            <p className="text-3xl font-bold text-green-600">{statusCounts.Completed}</p>
-          </div>
-        </div>
+        </>
       )}
 
       {/* SOS Management Tab */}
-      {activeTab === "sos" && (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className="bg-white p-5 rounded-2xl shadow-xl">
-            <div className="flex justify-between mb-4">
-              <h2 className="text-xl font-semibold">SOS Requests</h2>
-              <div className="flex gap-2">
-                <select className="border rounded-lg p-1" value={filterType} onChange={e => setFilterType(e.target.value)}>
-                  <option value="All">All Types</option>
-                  <option value="Medical">Medical</option>
-                  <option value="Fire">Fire</option>
-                  <option value="Police">Police</option>
-                </select>
-                <select className="border rounded-lg p-1" value={filterStatus} onChange={e => setFilterStatus(e.target.value)}>
-                  <option value="All">All Status</option>
-                  <option value="Pending">Pending</option>
-                  <option value="Assigned">Assigned</option>
-                  <option value="Completed">Completed</option>
-                </select>
-              </div>
-            </div>
-            <ul className="space-y-3 max-h-[500px] overflow-y-auto">
-              {filteredEmergencies.map(e => (
-                <li key={e._id} className={`p-3 rounded-lg border-l-4 ${e.status==="Pending"?"bg-yellow-50 border-yellow-500":e.status==="Assigned"?"bg-blue-50 border-blue-500":"bg-green-50 border-green-500"}`}>
-                  <p className="font-medium">{e.emergencyType} — {e.name} ({e.age})</p>
-                  <p className="text-sm">Status: {e.status || "Pending"}</p>
-                  <p className="text-sm">{e.assignedResponder?`Responder: ${e.assignedResponder.name}`:"No responder assigned"}</p>
-                  <div className="mt-2 flex gap-2">
-                    <button className="px-3 py-1 rounded-lg bg-yellow-400 text-white hover:bg-yellow-500" onClick={()=>openEditModal(e)}>Edit</button>
-                    <button className="px-3 py-1 rounded-lg bg-red-600 text-white hover:bg-red-700" onClick={()=>handleDeleteSOS(e._id)}>Delete</button>
-                    {!e.assignedResponder && <button className="px-3 py-1 rounded-lg bg-blue-600 text-white hover:bg-blue-700" onClick={()=>openAssignModal(e)}>Assign via Map</button>}
-                  </div>
-                </li>
-              ))}
-            </ul>
-          </div>
-
-          {/* Add SOS Form */}
-          <div className="bg-white p-5 rounded-2xl shadow-xl">
-            <h2 className="text-xl font-semibold mb-4">➕ Add Emergency Case</h2>
-            <form className="space-y-4" onSubmit={handleSubmit}>
-              <input type="text" name="name" placeholder="Name" value={formData.name} onChange={handleChange} required className="w-full p-2 border rounded-lg" />
-              <input type="number" name="age" placeholder="Age" value={formData.age} onChange={handleChange} required className="w-full p-2 border rounded-lg" />
-              <input type="tel" name="number" placeholder="Contact Number" value={formData.number} onChange={handleChange} required className="w-full p-2 border rounded-lg" />
-              <select name="emergencyType" value={formData.emergencyType} onChange={handleChange} required className="w-full p-2 border rounded-lg">
-                <option value="">Select Emergency Type</option>
-                <option value="Medical">Medical</option>
-                <option value="Fire">Fire</option>
-                <option value="Police">Police</option>
-              </select>
-              <div className="grid grid-cols-2 gap-2">
-                <input type="text" name="latitude" placeholder="Latitude" value={formData.latitude} onChange={handleChange} required className="p-2 border rounded-lg w-full" />
-                <input type="text" name="longitude" placeholder="Longitude" value={formData.longitude} onChange={handleChange} required className="p-2 border rounded-lg w-full" />
-              </div>
-              <input type="url" name="mapLink" value={formData.mapLink} readOnly className="p-2 border rounded-lg w-full bg-gray-100" />
-              <button type="submit" className="w-full bg-red-600 text-white p-3 rounded-lg hover:bg-red-700">🚑 Add Emergency Case</button>
-            </form>
-          </div>
+{activeTab === "sos" && (
+  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+    {/* SOS Requests */}
+    <div className="bg-white p-5 rounded-2xl shadow-xl">
+      <div className="flex justify-between items-center mb-4">
+        <h2 className="text-xl font-semibold">📋 SOS Requests</h2>
+        <div className="flex gap-2">
+          <select
+            className="border rounded-lg p-1"
+            value={filterType}
+            onChange={(e) => setFilterType(e.target.value)}
+          >
+            <option value="All">All Types</option>
+            <option value="Medical">Medical</option>
+            <option value="Fire">Fire</option>
+            <option value="Police">Police</option>
+          </select>
+          <select
+            className="border rounded-lg p-1"
+            value={filterStatus}
+            onChange={(e) => setFilterStatus(e.target.value)}
+          >
+            <option value="All">All Status</option>
+            <option value="Pending">Pending</option>
+            <option value="Assigned">Assigned</option>
+            <option value="Completed">Completed</option>
+          </select>
         </div>
-      )}
+      </div>
+
+      <ul className="space-y-3 max-h-[500px] overflow-y-auto">
+        {filteredEmergencies.map((e) => (
+          <li
+            key={e._id}
+            className={`p-4 rounded-lg border-l-4 ${
+              e.status === "Pending"
+                ? "bg-yellow-50 border-yellow-500"
+                : e.status === "Assigned"
+                ? "bg-blue-50 border-blue-500"
+                : "bg-green-50 border-green-500"
+            }`}
+          >
+            <p className="font-medium">
+              {e.emergencyType} — {e.name} ({e.age})
+            </p>
+            <p className="text-sm">Status: {e.status || "Pending"}</p>
+            <p className="text-sm">
+              {e.assignedResponder
+                ? `Responder: ${e.assignedResponder.name}`
+                : "No responder assigned"}
+            </p>
+            <div className="mt-3 flex flex-wrap gap-2">
+              <button
+                className="px-3 py-1 rounded-lg bg-yellow-400 text-white hover:bg-yellow-500"
+                onClick={() => openEditModal(e)}
+              >
+                Edit
+              </button>
+              <button
+                className="px-3 py-1 rounded-lg bg-red-600 text-white hover:bg-red-700"
+                onClick={() => handleDeleteSOS(e._id)}
+              >
+                Delete
+              </button>
+              {!e.assignedResponder && (
+                <button
+                  className="px-3 py-1 rounded-lg bg-blue-600 text-white hover:bg-blue-700"
+                  onClick={() => openAssignModal(e)}
+                >
+                  Assign via Map
+                </button>
+                
+              )}
+              {e.status === "Assigned" && (
+                <button
+                  className="px-3 py-1 rounded-lg bg-green-600 text-white hover:bg-green-700"
+                  onClick={() => handleCompleteSOS(e._id)}
+                >
+                  Mark Completed
+                </button>
+              )}
+            </div>
+          </li>
+        ))}
+      </ul>
+    </div>
+
+    {/* Add SOS Form */}
+    <div className="bg-white p-5 rounded-2xl shadow-xl">
+      <h2 className="text-xl font-semibold mb-4">➕ Add Emergency Case</h2>
+      <form className="space-y-4" onSubmit={handleSubmit}>
+        <input
+          type="text"
+          name="name"
+          placeholder="Name"
+          value={formData.name}
+          onChange={handleChange}
+          required
+          className="w-full p-2 border rounded-lg"
+        />
+        <input
+          type="number"
+          name="age"
+          placeholder="Age"
+          value={formData.age}
+          onChange={handleChange}
+          required
+          className="w-full p-2 border rounded-lg"
+        />
+        <input
+          type="tel"
+          name="number"
+          placeholder="Contact Number"
+          value={formData.number}
+          onChange={handleChange}
+          required
+          className="w-full p-2 border rounded-lg"
+        />
+        <select
+          name="emergencyType"
+          value={formData.emergencyType}
+          onChange={handleChange}
+          required
+          className="w-full p-2 border rounded-lg"
+        >
+          <option value="">Select Emergency Type</option>
+          <option value="Medical">Medical</option>
+          <option value="Fire">Fire</option>
+          <option value="Police">Police</option>
+        </select>
+        <div className="grid grid-cols-2 gap-2">
+          <input
+            type="text"
+            name="latitude"
+            placeholder="Latitude"
+            value={formData.latitude}
+            onChange={handleChange}
+            required
+            className="p-2 border rounded-lg w-full"
+          />
+          <input
+            type="text"
+            name="longitude"
+            placeholder="Longitude"
+            value={formData.longitude}
+            onChange={handleChange}
+            required
+            className="p-2 border rounded-lg w-full"
+          />
+        </div>
+        <input
+          type="url"
+          name="mapLink"
+          value={formData.mapLink}
+          readOnly
+          className="p-2 border rounded-lg w-full bg-gray-100"
+        />
+        <button
+          type="submit"
+          className="w-full bg-red-600 text-white p-3 rounded-lg hover:bg-red-700"
+        >
+          🚑 Add Emergency Case
+        </button>
+      </form>
+    </div>
+  </div>
+)}
 
       {/* Live Map Tab */}
       {activeTab === "map" && (

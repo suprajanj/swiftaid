@@ -149,3 +149,17 @@ export const assignResponder = async (req, res) => {
     res.status(500).json({ message: "Internal Server Error" });
   }
 };
+
+export const completeSOS = async (req, res) => {
+  try {
+    const sos = await SOS.findByIdAndUpdate(
+      req.params.id,
+      { status: "Completed", completedAt: new Date() },
+      { new: true }
+    );
+    if (!sos) return res.status(404).json({ error: "SOS not found" });
+    res.json(sos);
+  } catch (err) {
+    res.status(500).json({ error: "Failed to complete SOS" });
+  }
+}

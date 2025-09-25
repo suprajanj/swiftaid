@@ -7,6 +7,7 @@ import {
   updateSOS,
   deleteSOS,
   assignResponder,
+  completeSOS,
 } from "../controllers/sosController.js";
 
 const router = express.Router();
@@ -29,4 +30,6 @@ router.put("/:id", updateSOS);
 // Delete SOS by ID
 router.delete("/:id", deleteSOS);
 
+
+router.patch("/:id/complete", completeSOS)
 export default router;

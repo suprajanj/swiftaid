@@ -10,7 +10,7 @@ const sosSchema = new mongoose.Schema(
     assignedResponder: { type: mongoose.Schema.Types.ObjectId, ref: "Responder" },
     status: {
       type: String,
-      enum: ["Pending", "Assigned", "In Progress", "Resolved", "Cancelled"],
+      enum: ["Pending", "Assigned", "In Progress", "Completed", "Cancelled"],
       default: "Pending", // New SOS will start as Pending
     },
     location: {

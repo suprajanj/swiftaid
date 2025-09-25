@@ -8,6 +8,11 @@ const sosSchema = new mongoose.Schema(
     number: { type: String, required: true },
     emergencyType: { type: String, required: true },
     assignedResponder: { type: mongoose.Schema.Types.ObjectId, ref: "Responder" },
+    status: {
+      type: String,
+      enum: ["Pending", "Assigned", "In Progress", "Resolved", "Cancelled"],
+      default: "Pending", // New SOS will start as Pending
+    },
     location: {
       latitude: { type: Number, required: true },
       longitude: { type: Number, required: true },

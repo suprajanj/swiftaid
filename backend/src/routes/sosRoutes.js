@@ -18,7 +18,7 @@ router.get("/", getAllSOS);
 router.post("/", createSOS);
 
 // Assign a responder to a SOS
-router.post("/assign", assignResponder);
+router.patch("/assign", assignResponder);
 
 // Get SOS by ID
 router.get("/:id", getSOSByID);

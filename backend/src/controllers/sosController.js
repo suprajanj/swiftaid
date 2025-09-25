@@ -44,6 +44,7 @@ export const createSOS = async (req, res) => {
       number,
       emergencyType,
       location: { ...location, mapLink },
+      status: "Pending", // New SOS starts as Pending
     });
 
     const savedSOS = await sos.save();
@@ -57,7 +58,7 @@ export const createSOS = async (req, res) => {
 // Update SOS (with automatic unassign if emergencyType changes)
 export const updateSOS = async (req, res) => {
   try {
-    const { name, age, number, emergencyType, location } = req.body;
+    const { name, age, number, emergencyType, location, status } = req.body;
 
     const sos = await SOS.findById(req.params.id);
     if (!sos) return res.status(404).json({ message: "SOS not found" });
@@ -70,6 +71,7 @@ export const updateSOS = async (req, res) => {
         await prevResponder.save();
       }
       sos.assignedResponder = null; // Unassign
+      sos.status = "Pending"; // Reset status
     }
 
     sos.name = name || sos.name;
@@ -83,6 +85,10 @@ export const updateSOS = async (req, res) => {
         longitude: location.longitude,
         mapLink: `https://www.google.com/maps?q=${location.latitude},${location.longitude}`,
       };
+    }
+
+    if (status) {
+      sos.status = status; // Allow manual status update
     }
 
     const updatedSOS = await sos.save();
@@ -117,7 +123,7 @@ export const deleteSOS = async (req, res) => {
   }
 };
 
-// Assign a responder to SOS
+// Assign a responder to SOS and update status
 export const assignResponder = async (req, res) => {
   try {
     const { sosId, responderId } = req.body;
@@ -128,28 +134,16 @@ export const assignResponder = async (req, res) => {
     const responder = await Responder.findById(responderId);
     if (!responder) return res.status(404).json({ message: "Responder not found" });
 
-    // If SOS already had a responder, make them available
-    if (sos.assignedResponder) {
-      const prevResponder = await Responder.findById(sos.assignedResponder);
-      if (prevResponder) {
-        prevResponder.availability = true;
-        await prevResponder.save();
-      }
-    }
-
-    // Assign new responder
+    // Assign responder and mark SOS as Assigned
     sos.assignedResponder = responder._id;
+    sos.status = "Assigned";
     await sos.save();
 
+    // Mark responder as busy
     responder.availability = false;
     await responder.save();
 
-    // Emit via socket.io
-    const io = req.app.get("io");
-    io.emit("responderAssigned", { sosId: sos._id, responderId: responder._id });
-
-    const populatedSOS = await sos.populate("assignedResponder", "name number");
-    res.status(200).json({ message: "Responder assigned successfully", sos: populatedSOS });
+    res.status(200).json({ sos, responder });
   } catch (err) {
     console.error("Error assigning responder:", err);
     res.status(500).json({ message: "Internal Server Error" });

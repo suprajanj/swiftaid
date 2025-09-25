@@ -6,7 +6,7 @@ import {
   updateOrganization,
   deleteOrganization,
   updateAccess,
-  getOrganizationStats
+  getOrganizationStats,
 } from "../controllers/organizationController.js";
 
 const router = express.Router();

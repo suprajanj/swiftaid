@@ -1,5 +1,6 @@
 import Organization from "../models/Organization.js";
 import AuditLog from "../models/AuditLog.js";
+import mongoose from "mongoose";
 
 // Create Organization
 export const createOrganization = async (req, res) => {
@@ -100,7 +101,7 @@ export const getAllOrganizations = async (req, res) => {
     }
 
     const organizations = await Organization.find(filter)
-      .populate("createdBy", "name email")
+  //    .populate("createdBy", "name email")
       .sort({ createdAt: -1 })
       .limit(limit * 1)
       .skip((page - 1) * limit);
@@ -161,94 +162,73 @@ export const getOrganizationById = async (req, res) => {
 // Update Organization
 export const updateOrganization = async (req, res) => {
   try {
-    const { id } = req.params;
-    const updateData = req.body;
+    const orgId = req.params.id;
 
-    // Remove fields that shouldn't be updated directly
-    delete updateData.createdBy;
-    delete updateData.createdAt;
+    if (!mongoose.Types.ObjectId.isValid(orgId)) {
+      return res.status(400).json({ message: "Invalid organization ID" });
+    }
 
-    const organization = await Organization.findByIdAndUpdate(
-      id,
-      { ...updateData, updatedAt: Date.now() },
+    const updatedOrg = await Organization.findByIdAndUpdate(
+      orgId,
+      req.body,
       { new: true, runValidators: true }
     );
 
-    if (!organization) {
-      return res.status(404).json({
-        success: false,
-        message: "Organization not found",
-      });
+    if (!updatedOrg) {
+      return res.status(404).json({ message: "Organization not found" });
     }
 
-    // Log the action
-    await AuditLog.create({
-      action: "UPDATE_ORGANIZATION",
-      entityType: "Organization",
-      entityId: organization._id,
-      performedBy: req.adminId || req.body.updatedBy,
-      performedByModel: "Admin",
-      details: updateData,
-      ipAddress: req.ip,
-      userAgent: req.get("User-Agent"),
-    });
+    // Safe audit logging
+    try {
+      await AuditLog.create({
+        action: "update organization",
+        organizationId: orgId,
+        performedBy: req.user?._id || null, // ✅ fallback
+      });
+    } catch (auditErr) {
+      console.warn("AuditLog not created:", auditErr.message);
+      // Don’t block the update if logging fails
+    }
 
-    res.status(200).json({
-      success: true,
-      message: "Organization updated successfully",
-      data: organization,
-    });
-  } catch (error) {
-    console.error("Error updating organization:", error);
-    res.status(500).json({
-      success: false,
-      message: "Internal server error",
-      error: error.message,
-    });
+    res.status(200).json(updatedOrg);
+  } catch (err) {
+    console.error("Error updating organization:", err);
+    res.status(500).json({ message: err.message });
   }
 };
 
 // Delete Organization (Soft Delete)
 export const deleteOrganization = async (req, res) => {
   try {
-    const { id } = req.params;
+    const orgId = req.params.id;
 
-    const organization = await Organization.findByIdAndUpdate(
-      id,
-      { isActive: false, updatedAt: Date.now() },
-      { new: true }
-    );
-
-    if (!organization) {
-      return res.status(404).json({
-        success: false,
-        message: "Organization not found",
-      });
+    // Validate ObjectId
+    if (!mongoose.Types.ObjectId.isValid(orgId)) {
+      return res.status(400).json({ message: "Invalid organization ID" });
     }
 
-    // Log the action
-    await AuditLog.create({
-      action: "DELETE_ORGANIZATION",
-      entityType: "Organization",
-      entityId: organization._id,
-      performedBy: req.adminId || req.body.deletedBy,
-      performedByModel: "Admin",
-      details: { reason: "Soft delete - access revoked" },
-      ipAddress: req.ip,
-      userAgent: req.get("User-Agent"),
-    });
+    // Find and delete the organization
+    const deletedOrg = await Organization.findByIdAndDelete(orgId);
+    if (!deletedOrg) {
+      return res.status(404).json({ message: "Organization not found" });
+    }
 
-    res.status(200).json({
-      success: true,
-      message: "Organization access revoked successfully",
-    });
-  } catch (error) {
-    console.error("Error deleting organization:", error);
-    res.status(500).json({
-      success: false,
-      message: "Internal server error",
-      error: error.message,
-    });
+    // Log the deletion safely
+    try {
+      await AuditLog.create({
+        action: "delete organization",
+        organizationId: orgId,
+        performedBy: req.user?._id || null, // safe fallback if no user
+      });
+    } catch (auditErr) {
+      console.warn("AuditLog not created:", auditErr.message);
+      // optional: continue without failing delete
+    }
+
+    res.status(200).json({ message: "Deleted successfully" });
+  } catch (err) {
+    console.error("Error deleting organization:", err);
+    res.status(500).json({ message: err.message });
   }
 };
 

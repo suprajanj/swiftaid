@@ -1,20 +1,20 @@
-import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
-import { 
-  Search, 
-  Filter, 
-  Download, 
-  AlertTriangle, 
-  MapPin, 
-  Calendar, 
-  Users, 
+import React, { useState, useEffect } from "react";
+import { Link } from "react-router-dom";
+import {
+  Search,
+  Filter,
+  Download,
+  AlertTriangle,
+  MapPin,
+  Calendar,
+  Users,
   Eye,
   ChevronLeft,
   ChevronRight,
   Shield,
-  Clock
-} from 'lucide-react';
-import toast from 'react-hot-toast';
+  Clock,
+} from "lucide-react";
+import toast from "react-hot-toast";
 
 const EmergencyCasesPage = () => {
   const [cases, setCases] = useState([]);
@@ -23,17 +23,17 @@ const EmergencyCasesPage = () => {
     currentPage: 1,
     totalPages: 1,
     totalItems: 0,
-    itemsPerPage: 10
+    itemsPerPage: 10,
   });
   const [filters, setFilters] = useState({
-    incidentType: '',
-    district: '',
-    state: '',
-    severity: '',
-    status: '',
-    search: '',
-    startDate: '',
-    endDate: ''
+    incidentType: "",
+    district: "",
+    state: "",
+    severity: "",
+    status: "",
+    search: "",
+    startDate: "",
+    endDate: "",
   });
   const [showFilters, setShowFilters] = useState(false);
 
@@ -44,94 +44,116 @@ const EmergencyCasesPage = () => {
   const fetchCases = async () => {
     try {
       setLoading(true);
+
+      // Basic pagination query
       const queryParams = new URLSearchParams({
         page: pagination.currentPage,
         limit: pagination.itemsPerPage,
-        ...Object.fromEntries(Object.entries(filters).filter(([_, value]) => value !== ''))
       });
 
-      const response = await fetch(`/api/emergency-cases?${queryParams}`);
+      const response = await fetch(
+        `http://localhost:3000/api/cases?${queryParams}`
+      );
+
       if (response.ok) {
         const data = await response.json();
+
+        // Make sure data exists
         setCases(data.data || []);
-        setPagination(prev => ({
+        setPagination((prev) => ({
           ...prev,
-          ...data.pagination
+          ...data.pagination,
         }));
       } else {
-        toast.error('Failed to load emergency cases');
+        toast.error("Failed to load emergency cases");
+        console.error("Fetch failed with status:", response.status);
       }
     } catch (error) {
-      console.error('Error fetching cases:', error);
-      toast.error('Failed to load emergency cases');
+      console.error("Error fetching cases:", error);
+      toast.error("Failed to load emergency cases");
     } finally {
       setLoading(false);
     }
   };
 
   const handleFilterChange = (key, value) => {
-    setFilters(prev => ({ ...prev, [key]: value }));
-    setPagination(prev => ({ ...prev, currentPage: 1 }));
+    setFilters((prev) => ({ ...prev, [key]: value }));
+    setPagination((prev) => ({ ...prev, currentPage: 1 }));
   };
 
   const clearFilters = () => {
     setFilters({
-      incidentType: '',
-      district: '',
-      state: '',
-      severity: '',
-      status: '',
-      search: '',
-      startDate: '',
-      endDate: ''
+      incidentType: "",
+      district: "",
+      state: "",
+      severity: "",
+      status: "",
+      search: "",
+      startDate: "",
+      endDate: "",
     });
-    setPagination(prev => ({ ...prev, currentPage: 1 }));
+    setPagination((prev) => ({ ...prev, currentPage: 1 }));
   };
 
   const handleExport = async () => {
     try {
       const queryParams = new URLSearchParams({
-        format: 'csv',
-        ...Object.fromEntries(Object.entries(filters).filter(([_, value]) => value !== ''))
+        format: "csv",
+        ...Object.fromEntries(
+          Object.entries(filters).filter(([_, value]) => value !== "")
+        ),
       });
 
-      const response = await fetch(`/api/emergency-cases/export?${queryParams}`);
+      const response = await fetch(
+        `http://localhost:3000/api/cases?${queryParams}`
+      );
       if (response.ok) {
         const blob = await response.blob();
         const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
+        const a = document.createElement("a");
         a.href = url;
-        a.download = 'emergency_cases.csv';
+        a.download = "emergency_cases.csv";
         document.body.appendChild(a);
         a.click();
         window.URL.revokeObjectURL(url);
         document.body.removeChild(a);
-        toast.success('Data exported successfully');
+        toast.success("Data exported successfully");
       }
     } catch (error) {
-      console.error('Error exporting data:', error);
-      toast.error('Failed to export data');
+      console.error("Error exporting data:", error);
+      toast.error("Failed to export data");
     }
   };
 
   const getSeverityColor = (severity) => {
     switch (severity) {
-      case 'Critical': return 'bg-red-100 text-red-800';
-      case 'High': return 'bg-orange-100 text-orange-800';
-      case 'Medium': return 'bg-yellow-100 text-yellow-800';
-      case 'Low': return 'bg-green-100 text-green-800';
-      default: return 'bg-gray-100 text-gray-800';
+      case "Critical":
+        return "bg-red-100 text-red-800";
+      case "High":
+        return "bg-orange-100 text-orange-800";
+      case "Medium":
+        return "bg-yellow-100 text-yellow-800";
+      case "Low":
+        return "bg-green-100 text-green-800";
+      default:
+        return "bg-gray-100 text-gray-800";
     }
   };
 
   const getStatusColor = (status) => {
     switch (status) {
-      case 'Resolved': return 'bg-green-100 text-green-800';
-      case 'Under Investigation': return 'bg-yellow-100 text-yellow-800';
-      case 'Verified': return 'bg-blue-100 text-blue-800';
-      case 'Reported': return 'bg-gray-100 text-gray-800';
-      case 'Closed': return 'bg-red-100 text-red-800';
-      default: return 'bg-gray-100 text-gray-800';
+      case "Resolved":
+        return "bg-green-100 text-green-800";
+      case "Under Investigation":
+        return "bg-yellow-100 text-yellow-800";
+      case "Verified":
+        return "bg-blue-100 text-blue-800";
+      case "Reported":
+        return "bg-gray-100 text-gray-800";
+      case "Closed":
+        return "bg-red-100 text-red-800";
+      default:
+        return "bg-gray-100 text-gray-800";
     }
   };
 
@@ -150,8 +172,12 @@ const EmergencyCasesPage = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center py-6">
             <div>
-              <h1 className="text-3xl font-bold text-gray-900">Emergency Cases</h1>
-              <p className="text-gray-600 mt-1">View and filter verified emergency case data</p>
+              <h1 className="text-3xl font-bold text-gray-900">
+                Emergency Cases
+              </h1>
+              <p className="text-gray-600 mt-1">
+                View and filter verified emergency case data
+              </p>
             </div>
             <div className="flex space-x-3">
               <button
@@ -159,7 +185,7 @@ const EmergencyCasesPage = () => {
                 className="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
               >
                 <Filter className="h-4 w-4 mr-2" />
-                {showFilters ? 'Hide' : 'Show'} Filters
+                {showFilters ? "Hide" : "Show"} Filters
               </button>
               <button
                 onClick={handleExport}
@@ -178,18 +204,24 @@ const EmergencyCasesPage = () => {
         {showFilters && (
           <div className="bg-white shadow rounded-lg mb-8">
             <div className="px-6 py-4 border-b border-gray-200">
-              <h3 className="text-lg font-medium text-gray-900">Filter Cases</h3>
+              <h3 className="text-lg font-medium text-gray-900">
+                Filter Cases
+              </h3>
             </div>
             <div className="px-6 py-4">
               <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Search</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Search
+                  </label>
                   <div className="relative">
                     <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
                     <input
                       type="text"
                       value={filters.search}
-                      onChange={(e) => handleFilterChange('search', e.target.value)}
+                      onChange={(e) =>
+                        handleFilterChange("search", e.target.value)
+                      }
                       placeholder="Search cases..."
                       className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                     />
@@ -197,10 +229,14 @@ const EmergencyCasesPage = () => {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Incident Type</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Incident Type
+                  </label>
                   <select
                     value={filters.incidentType}
-                    onChange={(e) => handleFilterChange('incidentType', e.target.value)}
+                    onChange={(e) =>
+                      handleFilterChange("incidentType", e.target.value)
+                    }
                     className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
                   >
                     <option value="">All Types</option>
@@ -214,32 +250,44 @@ const EmergencyCasesPage = () => {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">District</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    District
+                  </label>
                   <input
                     type="text"
                     value={filters.district}
-                    onChange={(e) => handleFilterChange('district', e.target.value)}
+                    onChange={(e) =>
+                      handleFilterChange("district", e.target.value)
+                    }
                     placeholder="Enter district"
                     className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">State</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    State
+                  </label>
                   <input
                     type="text"
                     value={filters.state}
-                    onChange={(e) => handleFilterChange('state', e.target.value)}
+                    onChange={(e) =>
+                      handleFilterChange("state", e.target.value)
+                    }
                     placeholder="Enter state"
                     className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Severity</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Severity
+                  </label>
                   <select
                     value={filters.severity}
-                    onChange={(e) => handleFilterChange('severity', e.target.value)}
+                    onChange={(e) =>
+                      handleFilterChange("severity", e.target.value)
+                    }
                     className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
                   >
                     <option value="">All Severities</option>
@@ -251,15 +299,21 @@ const EmergencyCasesPage = () => {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Status</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Status
+                  </label>
                   <select
                     value={filters.status}
-                    onChange={(e) => handleFilterChange('status', e.target.value)}
+                    onChange={(e) =>
+                      handleFilterChange("status", e.target.value)
+                    }
                     className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
                   >
                     <option value="">All Statuses</option>
                     <option value="Reported">Reported</option>
-                    <option value="Under Investigation">Under Investigation</option>
+                    <option value="Under Investigation">
+                      Under Investigation
+                    </option>
                     <option value="Verified">Verified</option>
                     <option value="Resolved">Resolved</option>
                     <option value="Closed">Closed</option>
@@ -267,21 +321,29 @@ const EmergencyCasesPage = () => {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Start Date</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Start Date
+                  </label>
                   <input
                     type="date"
                     value={filters.startDate}
-                    onChange={(e) => handleFilterChange('startDate', e.target.value)}
+                    onChange={(e) =>
+                      handleFilterChange("startDate", e.target.value)
+                    }
                     className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">End Date</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    End Date
+                  </label>
                   <input
                     type="date"
                     value={filters.endDate}
-                    onChange={(e) => handleFilterChange('endDate', e.target.value)}
+                    onChange={(e) =>
+                      handleFilterChange("endDate", e.target.value)
+                    }
                     className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
@@ -316,14 +378,20 @@ const EmergencyCasesPage = () => {
                   <div className="flex items-center justify-between">
                     <div className="flex-1">
                       <div className="flex items-center space-x-3 mb-2">
-                        <h4 className="text-lg font-medium text-gray-900">{case_.title}</h4>
-                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getSeverityColor(case_.severity)}`}>
+                        <h4 className="text-lg font-medium text-gray-900">
+                          {case_.title}
+                        </h4>
+                        <span
+                          className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getSeverityColor(case_.severity)}`}
+                        >
                           {case_.severity}
                         </span>
                         <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
                           {case_.incidentType}
                         </span>
-                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(case_.status)}`}>
+                        <span
+                          className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(case_.status)}`}
+                        >
                           {case_.status}
                         </span>
                         {case_.verificationStatus?.isVerified && (
@@ -333,9 +401,11 @@ const EmergencyCasesPage = () => {
                           </span>
                         )}
                       </div>
-                      
-                      <p className="text-sm text-gray-600 mb-3">{case_.description}</p>
-                      
+
+                      <p className="text-sm text-gray-600 mb-3">
+                        {case_.description}
+                      </p>
+
                       <div className="flex items-center space-x-6 text-sm text-gray-500">
                         <div className="flex items-center">
                           <MapPin className="h-4 w-4 mr-1" />
@@ -347,7 +417,8 @@ const EmergencyCasesPage = () => {
                         </div>
                         <div className="flex items-center">
                           <Users className="h-4 w-4 mr-1" />
-                          {case_.affectedPeople?.injured || 0} injured, {case_.affectedPeople?.deceased || 0} deceased
+                          {case_.affectedPeople?.injured || 0} injured,{" "}
+                          {case_.affectedPeople?.deceased || 0} deceased
                         </div>
                         <div className="flex items-center">
                           <Clock className="h-4 w-4 mr-1" />
@@ -355,7 +426,7 @@ const EmergencyCasesPage = () => {
                         </div>
                       </div>
                     </div>
-                    
+
                     <div className="flex items-center space-x-2">
                       <Link
                         to={`/emergency-cases/${case_._id}`}
@@ -371,8 +442,12 @@ const EmergencyCasesPage = () => {
             ) : (
               <div className="px-6 py-8 text-center">
                 <AlertTriangle className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                <h3 className="text-lg font-medium text-gray-900 mb-2">No cases found</h3>
-                <p className="text-gray-500">No emergency cases match your current filters.</p>
+                <h3 className="text-lg font-medium text-gray-900 mb-2">
+                  No cases found
+                </h3>
+                <p className="text-gray-500">
+                  No emergency cases match your current filters.
+                </p>
               </div>
             )}
           </div>
@@ -382,13 +457,23 @@ const EmergencyCasesPage = () => {
             <div className="px-6 py-4 border-t border-gray-200">
               <div className="flex items-center justify-between">
                 <div className="text-sm text-gray-700">
-                  Showing {((pagination.currentPage - 1) * pagination.itemsPerPage) + 1} to{' '}
-                  {Math.min(pagination.currentPage * pagination.itemsPerPage, pagination.totalItems)} of{' '}
-                  {pagination.totalItems} results
+                  Showing{" "}
+                  {(pagination.currentPage - 1) * pagination.itemsPerPage + 1}{" "}
+                  to{" "}
+                  {Math.min(
+                    pagination.currentPage * pagination.itemsPerPage,
+                    pagination.totalItems
+                  )}{" "}
+                  of {pagination.totalItems} results
                 </div>
                 <div className="flex space-x-2">
                   <button
-                    onClick={() => setPagination(prev => ({ ...prev, currentPage: prev.currentPage - 1 }))}
+                    onClick={() =>
+                      setPagination((prev) => ({
+                        ...prev,
+                        currentPage: prev.currentPage - 1,
+                      }))
+                    }
                     disabled={pagination.currentPage === 1}
                     className="inline-flex items-center px-3 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
@@ -396,7 +481,12 @@ const EmergencyCasesPage = () => {
                     Previous
                   </button>
                   <button
-                    onClick={() => setPagination(prev => ({ ...prev, currentPage: prev.currentPage + 1 }))}
+                    onClick={() =>
+                      setPagination((prev) => ({
+                        ...prev,
+                        currentPage: prev.currentPage + 1,
+                      }))
+                    }
                     disabled={pagination.currentPage === pagination.totalPages}
                     className="inline-flex items-center px-3 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
                   >

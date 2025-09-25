@@ -1,6 +1,7 @@
 import EmergencyCase from "../models/EmergencyCase.js";
 import Organization from "../models/Organization.js";
 import AuditLog from "../models/AuditLog.js";
+import Admin from "../models/Admin.js"; // Add this
 
 // Create Emergency Case
 export const createEmergencyCase = async (req, res) => {
@@ -18,6 +19,7 @@ export const createEmergencyCase = async (req, res) => {
     } = req.body;
 
     const emergencyCase = new EmergencyCase({
+      caseId: `CASE-${Date.now()}`,
       title,
       description,
       incidentType,
@@ -27,7 +29,7 @@ export const createEmergencyCase = async (req, res) => {
       affectedPeople,
       assignedAgencies,
       tags,
-      createdBy: req.adminId || req.body.createdBy,
+      createdBy: req.adminId || null,
     });
 
     await emergencyCase.save();
@@ -137,7 +139,7 @@ export const getEmergencyCases = async (req, res) => {
     }
 
     const emergencyCases = await EmergencyCase.find(filter)
-      .populate("createdBy", "name email")
+      .populate("createdBy", "name email") // uses Admin model now
       .populate("verificationStatus.verifiedBy", "name email")
       .sort({ dateTime: -1 })
       .limit(limit * 1)

@@ -1,34 +1,34 @@
-import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
-import { 
-  BarChart3, 
-  Download, 
-  Filter, 
-  Search, 
-  AlertTriangle, 
-  Users, 
-  MapPin, 
+import React, { useState, useEffect } from "react";
+import { Link } from "react-router-dom";
+import {
+  BarChart3,
+  Download,
+  Filter,
+  Search,
+  AlertTriangle,
+  Users,
+  MapPin,
   Calendar,
   Eye,
   FileText,
-  Shield
-} from 'lucide-react';
-import toast from 'react-hot-toast';
+  Shield,
+} from "lucide-react";
+import toast from "react-hot-toast";
 
 const OrganizationDashboard = () => {
   const [stats, setStats] = useState({
     totalCases: 0,
     verifiedCases: 0,
     recentCases: 0,
-    myReports: 0
+    myReports: 0,
   });
   const [recentCases, setRecentCases] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filters, setFilters] = useState({
-    incidentType: '',
-    district: '',
-    severity: '',
-    search: ''
+    incidentType: "",
+    district: "",
+    severity: "",
+    search: "",
   });
 
   useEffect(() => {
@@ -40,25 +40,25 @@ const OrganizationDashboard = () => {
       setLoading(true);
       // Simulate API calls - replace with actual API endpoints
       const [casesResponse, statsResponse] = await Promise.all([
-        fetch('/api/emergency-cases?limit=5&isVerified=true'),
-        fetch('/api/emergency-cases/stats')
+        fetch("/api/emergency-cases?limit=5&isVerified=true"),
+        fetch("/api/emergency-cases/stats"),
       ]);
 
       if (casesResponse.ok && statsResponse.ok) {
         const casesData = await casesResponse.json();
         const statsData = await statsResponse.json();
-        
+
         setRecentCases(casesData.data || []);
         setStats({
           totalCases: statsData.data?.total || 0,
           verifiedCases: statsData.data?.verified || 0,
           recentCases: casesData.data?.length || 0,
-          myReports: 0 // This would come from a separate API call
+          myReports: 0, // This would come from a separate API call
         });
       }
     } catch (error) {
-      console.error('Error fetching dashboard data:', error);
-      toast.error('Failed to load dashboard data');
+      console.error("Error fetching dashboard data:", error);
+      toast.error("Failed to load dashboard data");
     } finally {
       setLoading(false);
     }
@@ -66,33 +66,33 @@ const OrganizationDashboard = () => {
 
   const handleExport = async () => {
     try {
-      const response = await fetch('/api/emergency-cases/export?format=csv');
+      const response = await fetch("/api/emergency-cases/export?format=csv");
       if (response.ok) {
         const blob = await response.blob();
         const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
+        const a = document.createElement("a");
         a.href = url;
-        a.download = 'emergency_cases.csv';
+        a.download = "emergency_cases.csv";
         document.body.appendChild(a);
         a.click();
         window.URL.revokeObjectURL(url);
         document.body.removeChild(a);
-        toast.success('Data exported successfully');
+        toast.success("Data exported successfully");
       }
     } catch (error) {
-      console.error('Error exporting data:', error);
-      toast.error('Failed to export data');
+      console.error("Error exporting data:", error);
+      toast.error("Failed to export data");
     }
   };
 
   const handleFilterChange = (key, value) => {
-    setFilters(prev => ({ ...prev, [key]: value }));
+    setFilters((prev) => ({ ...prev, [key]: value }));
   };
 
   const applyFilters = () => {
     // This would trigger a new API call with filters
-    console.log('Applying filters:', filters);
-    toast.success('Filters applied');
+    console.log("Applying filters:", filters);
+    toast.success("Filters applied");
   };
 
   if (loading) {
@@ -110,8 +110,12 @@ const OrganizationDashboard = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center py-6">
             <div>
-              <h1 className="text-3xl font-bold text-gray-900">Organization Dashboard</h1>
-              <p className="text-gray-600 mt-1">Access verified emergency case data</p>
+              <h1 className="text-3xl font-bold text-gray-900">
+                Organization Dashboard
+              </h1>
+              <p className="text-gray-600 mt-1">
+                Access verified emergency case data
+              </p>
             </div>
             <div className="flex space-x-3">
               <button
@@ -144,8 +148,12 @@ const OrganizationDashboard = () => {
                 </div>
                 <div className="ml-5 w-0 flex-1">
                   <dl>
-                    <dt className="text-sm font-medium text-gray-500 truncate">Total Cases</dt>
-                    <dd className="text-lg font-medium text-gray-900">{stats.totalCases}</dd>
+                    <dt className="text-sm font-medium text-gray-500 truncate">
+                      Total Cases
+                    </dt>
+                    <dd className="text-lg font-medium text-gray-900">
+                      {stats.totalCases}
+                    </dd>
                   </dl>
                 </div>
               </div>
@@ -160,8 +168,12 @@ const OrganizationDashboard = () => {
                 </div>
                 <div className="ml-5 w-0 flex-1">
                   <dl>
-                    <dt className="text-sm font-medium text-gray-500 truncate">Verified Cases</dt>
-                    <dd className="text-lg font-medium text-gray-900">{stats.verifiedCases}</dd>
+                    <dt className="text-sm font-medium text-gray-500 truncate">
+                      Verified Cases
+                    </dt>
+                    <dd className="text-lg font-medium text-gray-900">
+                      {stats.verifiedCases}
+                    </dd>
                   </dl>
                 </div>
               </div>
@@ -176,8 +188,12 @@ const OrganizationDashboard = () => {
                 </div>
                 <div className="ml-5 w-0 flex-1">
                   <dl>
-                    <dt className="text-sm font-medium text-gray-500 truncate">Recent Cases</dt>
-                    <dd className="text-lg font-medium text-gray-900">{stats.recentCases}</dd>
+                    <dt className="text-sm font-medium text-gray-500 truncate">
+                      Recent Cases
+                    </dt>
+                    <dd className="text-lg font-medium text-gray-900">
+                      {stats.recentCases}
+                    </dd>
                   </dl>
                 </div>
               </div>
@@ -192,8 +208,12 @@ const OrganizationDashboard = () => {
                 </div>
                 <div className="ml-5 w-0 flex-1">
                   <dl>
-                    <dt className="text-sm font-medium text-gray-500 truncate">My Reports</dt>
-                    <dd className="text-lg font-medium text-gray-900">{stats.myReports}</dd>
+                    <dt className="text-sm font-medium text-gray-500 truncate">
+                      My Reports
+                    </dt>
+                    <dd className="text-lg font-medium text-gray-900">
+                      {stats.myReports}
+                    </dd>
                   </dl>
                 </div>
               </div>
@@ -209,10 +229,14 @@ const OrganizationDashboard = () => {
           <div className="px-6 py-4">
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Incident Type</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Incident Type
+                </label>
                 <select
                   value={filters.incidentType}
-                  onChange={(e) => handleFilterChange('incidentType', e.target.value)}
+                  onChange={(e) =>
+                    handleFilterChange("incidentType", e.target.value)
+                  }
                   className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
                   <option value="">All Types</option>
@@ -226,21 +250,29 @@ const OrganizationDashboard = () => {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">District</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  District
+                </label>
                 <input
                   type="text"
                   value={filters.district}
-                  onChange={(e) => handleFilterChange('district', e.target.value)}
+                  onChange={(e) =>
+                    handleFilterChange("district", e.target.value)
+                  }
                   placeholder="Enter district"
                   className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Severity</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Severity
+                </label>
                 <select
                   value={filters.severity}
-                  onChange={(e) => handleFilterChange('severity', e.target.value)}
+                  onChange={(e) =>
+                    handleFilterChange("severity", e.target.value)
+                  }
                   className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
                   <option value="">All Severities</option>
@@ -267,7 +299,9 @@ const OrganizationDashboard = () => {
         {/* Recent Cases */}
         <div className="bg-white shadow rounded-lg">
           <div className="px-6 py-4 border-b border-gray-200">
-            <h3 className="text-lg font-medium text-gray-900">Recent Emergency Cases</h3>
+            <h3 className="text-lg font-medium text-gray-900">
+              Recent Emergency Cases
+            </h3>
           </div>
           <div className="divide-y divide-gray-200">
             {recentCases.length > 0 ? (
@@ -276,20 +310,29 @@ const OrganizationDashboard = () => {
                   <div className="flex items-center justify-between">
                     <div className="flex-1">
                       <div className="flex items-center space-x-3">
-                        <h4 className="text-sm font-medium text-gray-900">{case_.title}</h4>
-                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                          case_.severity === 'Critical' ? 'bg-red-100 text-red-800' :
-                          case_.severity === 'High' ? 'bg-orange-100 text-orange-800' :
-                          case_.severity === 'Medium' ? 'bg-yellow-100 text-yellow-800' :
-                          'bg-green-100 text-green-800'
-                        }`}>
+                        <h4 className="text-sm font-medium text-gray-900">
+                          {case_.title}
+                        </h4>
+                        <span
+                          className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                            case_.severity === "Critical"
+                              ? "bg-red-100 text-red-800"
+                              : case_.severity === "High"
+                                ? "bg-orange-100 text-orange-800"
+                                : case_.severity === "Medium"
+                                  ? "bg-yellow-100 text-yellow-800"
+                                  : "bg-green-100 text-green-800"
+                          }`}
+                        >
                           {case_.severity}
                         </span>
                         <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
                           {case_.incidentType}
                         </span>
                       </div>
-                      <p className="text-sm text-gray-500 mt-1">{case_.description}</p>
+                      <p className="text-sm text-gray-500 mt-1">
+                        {case_.description}
+                      </p>
                       <div className="flex items-center space-x-4 mt-2 text-xs text-gray-500">
                         <div className="flex items-center">
                           <MapPin className="h-3 w-3 mr-1" />
@@ -301,7 +344,8 @@ const OrganizationDashboard = () => {
                         </div>
                         <div className="flex items-center">
                           <Users className="h-3 w-3 mr-1" />
-                          {case_.affectedPeople?.injured || 0} injured, {case_.affectedPeople?.deceased || 0} deceased
+                          {case_.affectedPeople?.injured || 0} injured,{" "}
+                          {case_.affectedPeople?.deceased || 0} deceased
                         </div>
                       </div>
                     </div>
@@ -320,8 +364,12 @@ const OrganizationDashboard = () => {
             ) : (
               <div className="px-6 py-8 text-center">
                 <AlertTriangle className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                <h3 className="text-lg font-medium text-gray-900 mb-2">No cases found</h3>
-                <p className="text-gray-500">No emergency cases match your current filters.</p>
+                <h3 className="text-lg font-medium text-gray-900 mb-2">
+                  No cases found
+                </h3>
+                <p className="text-gray-500">
+                  No emergency cases match your current filters.
+                </p>
               </div>
             )}
           </div>

@@ -25,6 +25,7 @@ const emergencyCaseSchema = new mongoose.Schema(
         "Accident",
         "Natural Disaster",
         "Fire",
+        "Flood",
         "Medical Emergency",
         "Security Incident",
         "Other",
@@ -184,7 +185,7 @@ const emergencyCaseSchema = new mongoose.Schema(
     createdBy: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Admin",
-      required: true,
+      default: null,
     },
     createdAt: {
       type: Date,

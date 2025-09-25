@@ -8,6 +8,7 @@ import {
   useLoadScript,
 } from "@react-google-maps/api";
 import { toast, ToastContainer } from "react-toastify";
+import { useNavigate } from "react-router-dom"; // ✅ added
 import "react-toastify/dist/ReactToastify.css";
 import mapStyles from "./mapStyles.jsx";
 
@@ -29,6 +30,8 @@ export default function AcceptedTasks() {
     googleMapsApiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY,
     libraries,
   });
+
+  const navigate = useNavigate();
 
   // Fetch tasks every 10 seconds
   useEffect(() => {
@@ -110,6 +113,20 @@ export default function AcceptedTasks() {
     } catch (err) {
       console.error("Cancel Task Error:", err.response || err);
       toast.error("Failed to cancel task.");
+    }
+  };
+
+  // Request donations
+  const passDataToRequestDonations = async (task) => {
+    try {
+      await axios.post("http://localhost:3000/api/alerts/requestDonations", {
+        reportId: task.reportId,
+        emergencyType: task.emergencyType,
+      });
+      navigate("/request-donations", { state: { task } }); // ✅ navigate after posting
+    } catch (err) {
+      console.error("Request Donations Error:", err.response || err);
+      toast.error("Failed to request donations.");
     }
   };
 
@@ -238,7 +255,7 @@ export default function AcceptedTasks() {
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-100">
             <tr>
-              <th className="px-4 py-2 text-left text-sm font-medium text-gray-700 items-center">
+              <th className="px-4 py-2 text-left text-sm font-medium text-gray-700">
                 Report ID
               </th>
               <th className="px-4 py-2 text-left text-sm font-medium text-gray-700">
@@ -316,11 +333,10 @@ export default function AcceptedTasks() {
 
                   <button
                     className="bg-gray-400 text-white px-2 py-1 rounded hover:bg-gray-500 transition"
-                    onClick={() => window.open(`https://donationpage.example.com/request?taskId=${task._id}`, '_blank')}
+                    onClick={() => passDataToRequestDonations(task)}
                   >
                     Request Donations
                   </button>
-
                 </td>
               </tr>
             ))}

@@ -1,6 +1,14 @@
 import React, { useEffect, useState } from "react";
 import axios from "axios";
-import { Trash2, MapPin, Loader2, ArrowLeft, Edit3, Save } from "lucide-react";
+import {
+  Trash2,
+  MapPin,
+  Loader2,
+  ArrowLeft,
+  Edit3,
+  Save,
+  Crosshair,
+} from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
 function UserEmergencyRequest() {
@@ -12,6 +20,8 @@ function UserEmergencyRequest() {
     age: "",
     number: "",
     emergency: "",
+    latitude: "",
+    longitude: "",
   });
 
   const navigate = useNavigate();
@@ -35,7 +45,7 @@ function UserEmergencyRequest() {
 
         const res = await axios.get(
           `http://localhost:3000/api/sos/user/${userId}`,
-          { headers: { Authorization: `Bearer ${token}` } } // ✅ include token
+          { headers: { Authorization: `Bearer ${token}` } }
         );
 
         setRequests(res.data);
@@ -48,7 +58,7 @@ function UserEmergencyRequest() {
     fetchData();
   }, [navigate]);
 
-  // Delete request (public – no token required)
+  // Delete request
   const handleDelete = async (id) => {
     if (!window.confirm("Are you sure you want to delete this request?"))
       return;
@@ -69,21 +79,65 @@ function UserEmergencyRequest() {
       age: req.age,
       number: req.number,
       emergency: req.emergency,
+      latitude: req.location?.latitude || "",
+      longitude: req.location?.longitude || "",
     });
+  };
+
+  // Autofill location from browser
+  const handleGetLocation = () => {
+    if (!navigator.geolocation) {
+      alert("Geolocation is not supported by your browser");
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        setEditForm({
+          ...editForm,
+          latitude: pos.coords.latitude,
+          longitude: pos.coords.longitude,
+        });
+      },
+      (err) => {
+        console.error("Error getting location:", err);
+        alert("Unable to retrieve location");
+      }
+    );
   };
 
   // Update request
   const handleUpdate = async (id) => {
     try {
+      const token = localStorage.getItem("token");
+
+      const payload = {
+        name: editForm.name,
+        age: editForm.age,
+        number: editForm.number,
+        emergency: editForm.emergency,
+        location: {
+          latitude: editForm.latitude,
+          longitude: editForm.longitude,
+        },
+      };
+
       const res = await axios.put(
         `http://localhost:3000/api/sos/${id}`,
-        editForm
+        payload,
+        { headers: { Authorization: `Bearer ${token}` } }
       );
 
       setRequests(requests.map((req) => (req._id === id ? res.data : req)));
-
       setEditingId(null);
-      setEditForm({ name: "", age: "", number: "", emergency: "" });
+      setEditForm({
+        name: "",
+        age: "",
+        number: "",
+        emergency: "",
+        latitude: "",
+        longitude: "",
+      });
     } catch (error) {
       console.error("Error updating SOS request:", error);
     }
@@ -155,6 +209,31 @@ function UserEmergencyRequest() {
                     placeholder="Emergency Type"
                     className="border p-2 rounded w-full mb-2"
                   />
+                  <input
+                    type="number"
+                    value={editForm.latitude}
+                    onChange={(e) =>
+                      setEditForm({ ...editForm, latitude: e.target.value })
+                    }
+                    placeholder="Latitude"
+                    className="border p-2 rounded w-full mb-2"
+                  />
+                  <input
+                    type="number"
+                    value={editForm.longitude}
+                    onChange={(e) =>
+                      setEditForm({ ...editForm, longitude: e.target.value })
+                    }
+                    placeholder="Longitude"
+                    className="border p-2 rounded w-full mb-2"
+                  />
+
+                  <button
+                    onClick={handleGetLocation}
+                    className="flex items-center gap-2 bg-gray-600 text-white px-4 py-2 rounded hover:bg-gray-700 mb-3"
+                  >
+                    <Crosshair size={18} /> Use My Location
+                  </button>
 
                   <button
                     onClick={() => handleUpdate(req._id)}

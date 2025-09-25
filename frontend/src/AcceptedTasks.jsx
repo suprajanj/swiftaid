@@ -238,7 +238,7 @@ export default function AcceptedTasks() {
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-100">
             <tr>
-              <th className="px-4 py-2 text-left text-sm font-medium text-gray-700">
+              <th className="px-4 py-2 text-left text-sm font-medium text-gray-700 items-center">
                 Report ID
               </th>
               <th className="px-4 py-2 text-left text-sm font-medium text-gray-700">
@@ -313,6 +313,14 @@ export default function AcceptedTasks() {
                   >
                     View Route
                   </button>
+
+                  <button
+                    className="bg-gray-400 text-white px-2 py-1 rounded hover:bg-gray-500 transition"
+                    onClick={() => window.open(`https://donationpage.example.com/request?taskId=${task._id}`, '_blank')}
+                  >
+                    Request Donations
+                  </button>
+
                 </td>
               </tr>
             ))}

@@ -8,7 +8,7 @@ import {
   useLoadScript,
 } from "@react-google-maps/api";
 import { toast, ToastContainer } from "react-toastify";
-import { useNavigate } from "react-router-dom"; // ✅ added
+import { useNavigate } from "react-router-dom";
 import "react-toastify/dist/ReactToastify.css";
 import mapStyles from "./mapStyles.jsx";
 
@@ -33,20 +33,23 @@ export default function AcceptedTasks() {
 
   const navigate = useNavigate();
 
-  // Fetch tasks every 10 seconds
   useEffect(() => {
     fetchAcceptedTasks();
 
     if (navigator.geolocation) {
-      navigator.geolocation.watchPosition((pos) => {
-        setResponderLocation({
-          lat: pos.coords.latitude,
-          lng: pos.coords.longitude,
-        });
-      });
+      navigator.geolocation.watchPosition(
+        (pos) => {
+          setResponderLocation({
+            lat: pos.coords.latitude,
+            lng: pos.coords.longitude,
+          });
+        },
+        (err) => console.error("Geolocation error:", err),
+        { enableHighAccuracy: true }
+      );
     }
 
-    const interval = setInterval(fetchAcceptedTasks, 10000);
+    const interval = setInterval(fetchAcceptedTasks, 1000);
     return () => clearInterval(interval);
   }, []);
 
@@ -55,12 +58,11 @@ export default function AcceptedTasks() {
       const res = await axios.get("http://localhost:3000/api/alerts/accepted");
       setTasks(Array.isArray(res.data) ? res.data : res.data.data || []);
     } catch (err) {
-      console.error(err);
+      console.error("Fetch Tasks Error:", err);
       toast.error("Failed to fetch tasks.");
     }
   };
 
-  // Mark as reached
   const reachedTask = async (task) => {
     try {
       await axios.put(`http://localhost:3000/api/alerts/${task._id}/reached`);
@@ -69,12 +71,11 @@ export default function AcceptedTasks() {
       setShowCompleteForm(true);
       setCurrentTask(task);
     } catch (err) {
-      console.error(err);
+      console.error("Reached Task Error:", err);
       toast.error("Failed to update task status.");
     }
   };
 
-  // Complete task
   const completeTask = async (taskId) => {
     try {
       const formData = new FormData();
@@ -99,7 +100,6 @@ export default function AcceptedTasks() {
     }
   };
 
-  // Cancel task
   const cancelTask = async (taskId) => {
     try {
       await axios.put(`http://localhost:3000/api/alerts/${taskId}/cancel`, {
@@ -116,25 +116,29 @@ export default function AcceptedTasks() {
     }
   };
 
-  // Request donations
   const passDataToRequestDonations = async (task) => {
     try {
       await axios.post("http://localhost:3000/api/alerts/requestDonations", {
         reportId: task.reportId,
         emergencyType: task.emergencyType,
       });
-      navigate("/request-donations", { state: { task } }); // ✅ navigate after posting
+      navigate("/request-donations", { state: { task } });
     } catch (err) {
       console.error("Request Donations Error:", err.response || err);
       toast.error("Failed to request donations.");
     }
   };
 
-  // Show route to task
+  // ✅ Safer Directions API call
   const openRouteMap = (task) => {
+    if (!isLoaded || !window.google) {
+      toast.error("Google Maps not loaded yet.");
+      return;
+    }
+
     setCurrentTask(task);
     if (responderLocation && task.liveLocation?.coordinates) {
-      const service = new google.maps.DirectionsService();
+      const service = new window.google.maps.DirectionsService();
       service.route(
         {
           origin: responderLocation,
@@ -142,7 +146,7 @@ export default function AcceptedTasks() {
             lat: task.liveLocation.coordinates[1],
             lng: task.liveLocation.coordinates[0],
           },
-          travelMode: google.maps.TravelMode.DRIVING,
+          travelMode: window.google.maps.TravelMode.DRIVING,
         },
         (result, status) => {
           if (status === "OK") {
@@ -159,7 +163,6 @@ export default function AcceptedTasks() {
   if (loadError) return <p>Error loading map</p>;
   if (!isLoaded) return <p>Loading map...</p>;
 
-  // Handle cancel reason checkbox
   const handleReasonChange = (reason) => {
     setCancelReasons((prev) =>
       prev.includes(reason)
@@ -173,7 +176,7 @@ export default function AcceptedTasks() {
       <ToastContainer position="top-right" autoClose={3000} />
       <h1 className="text-2xl font-bold mb-4 text-primary">✅ Accepted Tasks</h1>
 
-      {/* Complete Task Form */}
+      {/* ✅ Complete Task Form */}
       {showCompleteForm && currentTask && (
         <div className="bg-white shadow-xl rounded-xl p-4 mb-4 border animate-fadeIn">
           <h2 className="text-lg font-bold mb-2">
@@ -208,7 +211,7 @@ export default function AcceptedTasks() {
         </div>
       )}
 
-      {/* Cancel Task Form */}
+      {/* ✅ Cancel Task Form */}
       {showCancelForm && currentTask && (
         <div className="bg-white shadow-xl rounded-xl p-4 mb-4 border animate-fadeIn">
           <h2 className="text-lg font-bold mb-2">
@@ -250,26 +253,16 @@ export default function AcceptedTasks() {
         </div>
       )}
 
-      {/* Tasks Table */}
+      {/* ✅ Tasks Table */}
       <div className="overflow-x-auto bg-white shadow-xl rounded-xl border animate-fadeIn">
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-100">
             <tr>
-              <th className="px-4 py-2 text-left text-sm font-medium text-gray-700">
-                Report ID
-              </th>
-              <th className="px-4 py-2 text-left text-sm font-medium text-gray-700">
-                Emergency
-              </th>
-              <th className="px-4 py-2 text-left text-sm font-medium text-gray-700">
-                Address
-              </th>
-              <th className="px-4 py-2 text-left text-sm font-medium text-gray-700">
-                Status
-              </th>
-              <th className="px-4 py-2 text-left text-sm font-medium text-gray-700">
-                Actions
-              </th>
+              <th className="px-4 py-2 text-left text-sm font-medium text-gray-700">Report ID</th>
+              <th className="px-4 py-2 text-left text-sm font-medium text-gray-700">Emergency</th>
+              <th className="px-4 py-2 text-left text-sm font-medium text-gray-700">Address</th>
+              <th className="px-4 py-2 text-left text-sm font-medium text-gray-700">Status</th>
+              <th className="px-4 py-2 text-left text-sm font-medium text-gray-700">Actions</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-200">
@@ -313,15 +306,11 @@ export default function AcceptedTasks() {
                   )}
 
                   {task.status === "completed" && (
-                    <span className="text-green-700 font-semibold">
-                      Completed ✅
-                    </span>
+                    <span className="text-green-700 font-semibold">Completed ✅</span>
                   )}
 
                   {task.status === "cancelled" && (
-                    <span className="text-red-700 font-semibold">
-                      Cancelled ❌
-                    </span>
+                    <span className="text-red-700 font-semibold">Cancelled ❌</span>
                   )}
 
                   <button
@@ -344,7 +333,7 @@ export default function AcceptedTasks() {
         </table>
       </div>
 
-      {/* Route Map Modal */}
+      {/* ✅ Route Map Modal */}
       {currentTask && directions && (
         <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center animate-fadeIn">
           <div className="bg-white rounded-xl shadow-xl w-3/4 h-3/4 p-4 relative">
@@ -366,9 +355,7 @@ export default function AcceptedTasks() {
               zoom={12}
               options={{ styles: mapStyles }}
             >
-              {responderLocation && (
-                <MarkerF position={responderLocation} label="🚑" />
-              )}
+              {responderLocation && <MarkerF position={responderLocation} label="🚑" />}
               {currentTask?.liveLocation?.coordinates && (
                 <MarkerF
                   position={{

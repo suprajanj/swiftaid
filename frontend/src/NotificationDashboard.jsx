@@ -34,7 +34,7 @@ export default function NotificationDashboard() {
         setUserLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude })
       );
     }
-    const interval = setInterval(fetchAlerts, 10000);
+    const interval = setInterval(fetchAlerts, 1000);
     return () => clearInterval(interval);
   }, []);
 

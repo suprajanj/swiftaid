@@ -25,7 +25,7 @@ export const createUser = async (req, res) => {
       dob,
       termsAccepted,
 
-      // ✅ new optional fields
+      //Optional
       blood,
       condition,
       allergy,
@@ -74,7 +74,7 @@ export const createUser = async (req, res) => {
       dob,
       termsAccepted,
 
-      // ✅ set optional fields if provided, else null
+      //set optional fields if provided, else null
       blood: blood || null,
       condition: condition || null,
       allergy: allergy || null,
@@ -181,18 +181,18 @@ export const verifyOTP = async (req, res) => {
     // OTP verified → remove record
     await Otp.deleteOne({ userId });
 
-    // ✅ Fetch user
+    //Fetch user
     const user = await User.findById(userId);
     if (!user) return res.status(404).json({ message: "User not found" });
 
-    // ✅ Generate JWT
+    //Generate JWT
     const token = generateToken(userId);
 
     res.status(200).json({
       message: "OTP verified successfully",
       userId,
       token,
-      role: user.role || "user", // ✅ include role
+      role: user.role || "user", //include role
     });
   } catch (error) {
     console.error("OTP verification error:", error);
@@ -268,7 +268,7 @@ export const getMe = async (req, res) => {
   try {
     if (!req.user) return res.status(404).json({ message: "User not found" });
 
-    // ✅ return all profile info (excluding password)
+    //return all profile info (excluding password)
     const user = await User.findById(req.user._id).select("-password");
     res.status(200).json(user);
   } catch (error) {

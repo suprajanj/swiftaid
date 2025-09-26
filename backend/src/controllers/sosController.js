@@ -32,7 +32,7 @@ export async function createSOS(req, res) {
     const mapLink = `https://www.google.com/maps?q=${location.latitude},${location.longitude}`;
 
     const sos = new SOS({
-      user: req.user._id, // <-- link SOS to the logged-in user
+      user: req.user._id, // Link SOS to the logged-in user
       name,
       age,
       number,

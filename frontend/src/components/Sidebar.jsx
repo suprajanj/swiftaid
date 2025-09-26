@@ -38,7 +38,7 @@ export function Sidebar() {
     },
   ];
 
-  // ✅ Simple Logout with confirmation
+  // Simple Logout with confirmation
   const handleLogout = () => {
     const confirmLogout = window.confirm("Are you sure you want to logout?");
     if (confirmLogout) {

@@ -18,7 +18,7 @@ function Emergencyform() {
 
   // Load Google Maps API
   const { isLoaded } = useLoadScript({
-    googleMapsApiKey: "AIzaSyBdD_eg0KYT3Lqovnm9FWJVZnWXrOi6klg", // 🔑 Replace with your key
+    googleMapsApiKey: "AIzaSyBdD_eg0KYT3Lqovnm9FWJVZnWXrOi6klg", // API KEY
   });
 
   // -------------------- Fetch logged-in user data --------------------

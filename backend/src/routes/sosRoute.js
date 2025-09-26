@@ -13,7 +13,7 @@ const router = express.Router();
 
 // Public routes
 router.get("/", getAllsos); // Get all SOS
-router.get("/user/:userId", protect, getSOSByUser); // ✅ must come before /:id
+router.get("/user/:userId", protect, getSOSByUser); // must come before /:id
 router.get("/:id", getSOSByID); // Get SOS by ID
 
 // Protected routes

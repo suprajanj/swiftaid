@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { Link } from "react-router-dom";
 
 export default function ResourceRequests() {
   const [requests, setRequests] = useState([]);
@@ -67,7 +68,7 @@ export default function ResourceRequests() {
     try {
       setLoading(true);
       setError(null);
-      const res = await fetch(API);
+      const res = await fetch(API);       // GET request
       const data = await res.json();
       if (res.ok && data.success && Array.isArray(data.data)) {
         setRequests(data.data);
@@ -119,6 +120,7 @@ export default function ResourceRequests() {
     setError(null);
   };
 
+  // Admin mode with password prompt
   const toggleAdmin = () => {
     if (!adminMode) {
       const pwd = prompt("Enter admin password");
@@ -568,6 +570,21 @@ export default function ResourceRequests() {
               {adminMode ? "Exit Admin" : "Admin Mode"}
             </button>
 
+            <Link to="/"
+              style={{
+                padding: "12px 24px",
+                backgroundColor: "#FF5722",
+                color: "white",
+                border: "none", 
+                borderRadius: "8px",
+                cursor: "pointer",
+                fontWeight: "bold",
+                fontSize: "16px",
+              }}
+            >
+              Logout
+            </Link>
+
             {adminMode && (
               <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
                 <button
@@ -755,7 +772,7 @@ export default function ResourceRequests() {
                   <option value="hospital">Hospital</option>
                   <option value="fire_department">Fire Dept</option>
                   <option value="police_station">Police</option>
-                  <option value="ngo">NGO</option>
+                  <option value="ngo">Charity Org.</option>
                   <option value="disaster_relief">Disaster Relief</option>
                   <option value="emergency_service">Emergency Service</option>
                   <option value="government_agency">Govt Agency</option>

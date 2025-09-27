@@ -312,7 +312,7 @@ export default function Donations() {
     const isFundraiser = selectedRequest?.resourceType === "fundraiser";
     
     if (isFundraiser && !editingId) {
-      setShowPaymentModal(true);
+      setShowPaymentModal(true); // open payment modal
       return;
     }
     
@@ -466,7 +466,7 @@ export default function Donations() {
     }
   };
 
-  // Download receipt as PDF
+  // Download receipt as text receipt
   const downloadReceipt = () => {
     if (!paymentSuccess) return;
 
@@ -869,7 +869,6 @@ Thank you for your generous donation!
                   <option value="approved">Approved</option>
                   <option value="contacted">Donor Contacted</option>
                   <option value="completed">Donation Completed</option>
-                  <option value="rejected">Rejected</option>
                   <option value="cancelled">Cancelled</option>
                 </select>
               </div>
@@ -1134,7 +1133,7 @@ Thank you for your generous donation!
 
                     {/* Blood Group Dropdown */}
                     <div>
-                      <label style={labelStyle}>Blood Group (if applicable)</label>
+                      <label style={labelStyle}>Blood Group</label>
                       <select 
                         name="bloodGroup" 
                         value={form.bloodGroup} 
@@ -1270,7 +1269,7 @@ Thank you for your generous donation!
                         <div style={{ lineHeight: "1.6" }}>
                           {isFundraiserDonation ? (
                             <>
-                              <p><strong>Donation Amount:</strong> ${d.donationDetails?.amount || 0}</p>
+                              <p><strong>Donation Amount:</strong> Rs.{d.donationDetails?.amount || 0}</p>
                               {d.donationDetails?.paymentInfo && (
                                 <>
                                   <p><strong>Transaction ID:</strong> {d.donationDetails.paymentInfo.transactionId}</p>

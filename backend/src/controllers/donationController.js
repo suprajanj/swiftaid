@@ -182,7 +182,6 @@ export const getDonationById = async (req, res) => {
 };
 
 // UPDATE donation status - WITH FUNDRAISER REVERSAL LOGIC
-// UPDATE donation status - WITH FUNDRAISER REVERSAL LOGIC
 export const updateDonationStatus = async (req, res) => {
     try {
         const { id } = req.params;
@@ -196,7 +195,7 @@ export const updateDonationStatus = async (req, res) => {
 
         let fundraiserAdjustment = 0;
 
-        // ✅ Case 1: Approving/Completing donation → ADD to collected
+        // Case 1: Approving/Completing donation → ADD to collected
         if (
             currentDonation.resourceRequest?.resourceType === 'fundraiser' &&
             ['approved', 'completed'].includes(status) &&
@@ -206,7 +205,7 @@ export const updateDonationStatus = async (req, res) => {
             fundraiserAdjustment = currentDonation.donationDetails.amount;
         }
 
-        // ✅ Case 2: Cancelling/Rejecting donation → SUBTRACT from collected (only if already counted before)
+        //  Case 2: Cancelling/Rejecting donation → SUBTRACT from collected (only if already counted before)
         if (
             currentDonation.resourceRequest?.resourceType === 'fundraiser' &&
             ['cancelled', 'rejected'].includes(status) &&

@@ -220,7 +220,7 @@ function AdminDashboard() {
       <audio ref={audioRef} src="/sos-alert.mp3" />
 
       <header className="mb-6 text-center">
-        <h1 className="text-4xl font-extrabold text-red-600 drop-shadow-sm">🚨 SwiftAid — Admin & Dispatcher</h1>
+        <h1 className="text-4xl font-extrabold text-red-600 drop-shadow-sm">🚨 SwiftAid — Dispatcher</h1>
         <p className="text-gray-600 mt-2">Manage SOS alerts & responders in real-time</p>
       </header>
 

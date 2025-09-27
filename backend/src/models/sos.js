@@ -11,7 +11,7 @@ const sosSchema = new mongoose.Schema(
     status: {
       type: String,
       enum: ["Pending", "Assigned", "In Progress", "Completed", "Cancelled"],
-      default: "Pending", // New SOS will start as Pending
+      default: "Pending", 
     },
     location: {
       latitude: { type: Number, required: true },

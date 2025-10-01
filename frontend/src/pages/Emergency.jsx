@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import axios from "axios";
 import { jsPDF } from "jspdf";
+// import autoTable from "jspdf-autotable";
 import { DownloadIcon, AlertCircleIcon, MapPinIcon } from "lucide-react";
 import { Sidebar } from "../components/Sidebar";
 
@@ -134,31 +135,66 @@ const EmergencyRequestList = ({ requests, onDownloadSingle }) => (
   </div>
 );
 
-// PDF download helper
+// PDF download helper (nice with autotable)
+// PDF download helper - modern card style
 const downloadPDF = (filename, data) => {
   const doc = new jsPDF();
-  let y = 10;
+  let y = 15;
 
+  // Title
+  doc.setFontSize(18);
+  doc.setFont("helvetica", "bold");
+  doc.text("SwiftAid - SOS Requests Report", 14, y);
+  y += 10;
+
+  // Timestamp
+  doc.setFontSize(10);
+  doc.setFont("helvetica", "normal");
+  doc.text(`Generated on: ${new Date().toLocaleString()}`, 14, y);
+  y += 10;
+
+  // Draw cards for each request
   data.forEach((item, index) => {
-    doc.setFontSize(12);
-    doc.text(`Request #${item._id || index + 1}`, 10, y);
-    y += 8;
-    doc.text(`Name: ${item.name || "N/A"}`, 10, y);
-    y += 6;
-    doc.text(`Age: ${item.age || "N/A"}`, 10, y);
-    y += 6;
-    doc.text(`Emergency: ${item.emergency || "N/A"}`, 10, y);
-    y += 6;
-    doc.text(`Contact: ${item.number || "N/A"}`, 10, y);
-    y += 6;
-    if (item.location?.mapLink)
-      doc.text(`Map: ${item.location.mapLink}`, 10, y);
-    y += 10;
+    // Card border
+    doc.setDrawColor(0, 0, 0);
+    doc.setLineWidth(0.5);
+    doc.rect(14, y, 182, 40, "S"); // x, y, width, height, style=S=stroke
 
-    if (y > 280) {
-      // Add new page if needed
+    // ID & Name
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(12);
+    doc.text(
+      `ID: ${item._id ? item._id.substring(0, 8) : index + 1}`,
+      18,
+      y + 8
+    );
+    doc.text(`Name: ${item.name || "N/A"}`, 60, y + 8);
+
+    // Age & Contact
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(10);
+    doc.text(`Age: ${item.age || "N/A"}`, 18, y + 16);
+    doc.text(`Contact: ${item.number || "N/A"}`, 60, y + 16);
+
+    // Emergency
+    doc.setFontSize(10);
+    doc.setFont("helvetica", "italic");
+    doc.text(`Emergency: ${item.emergency || "N/A"}`, 18, y + 24, {
+      maxWidth: 170,
+    });
+
+    // Map Link
+    if (item.location?.mapLink) {
+      doc.setTextColor(41, 128, 185);
+      doc.text(`Map: ${item.location.mapLink}`, 18, y + 32, { maxWidth: 170 });
+      doc.setTextColor(0, 0, 0); // reset color
+    }
+
+    y += 50; // move down for next card
+
+    if (y > 270) {
       doc.addPage();
-      y = 10;
+      y = 15;
     }
   });
 

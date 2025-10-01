@@ -113,12 +113,12 @@ export default function LoginandSignup() {
         { userId, otp: formData.otp }
       );
 
-      // ✅ Store JWT in localStorage
+      //Store JWT in localStorage
       localStorage.setItem("token", res.data.token);
 
       toast.success(res.data.message + " — Logged in successfully!");
 
-      // ✅ Role-based navigation
+      //Role-based navigation
       const role = res.data.role || "user";
       switch (role.toLowerCase()) {
         case "admin":

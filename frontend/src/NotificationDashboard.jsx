@@ -4,6 +4,7 @@ import {
   GoogleMap,
   MarkerF,
   InfoWindowF,
+  CircleF,
   useLoadScript,
 } from "@react-google-maps/api";
 import { toast, ToastContainer } from "react-toastify";
@@ -20,7 +21,7 @@ export default function NotificationDashboard() {
   const [selectedAlert, setSelectedAlert] = useState(null);
   const [userLocation, setUserLocation] = useState(defaultCenter);
   const [filter, setFilter] = useState("All");
-  const [files, setFiles] = useState([]);
+  const [radius, setRadius] = useState(20); // radius in km (default 20)
 
   const { isLoaded, loadError } = useLoadScript({
     googleMapsApiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY,
@@ -40,7 +41,7 @@ export default function NotificationDashboard() {
 
   useEffect(() => {
     applyFilter();
-  }, [alerts, filter, userLocation]);
+  }, [alerts, filter, userLocation, radius]);
 
   const fetchAlerts = async () => {
     try {
@@ -65,7 +66,7 @@ export default function NotificationDashboard() {
             alert.liveLocation.coordinates[1],
             alert.liveLocation.coordinates[0]
           );
-          return distance <= 10;
+          return distance <= radius; // ✅ use slider value
         })
       );
     } else {
@@ -89,7 +90,7 @@ export default function NotificationDashboard() {
 
   const getDistanceFromLatLonInKm = (lat1, lon1, lat2, lon2) => {
     const deg2rad = (deg) => deg * (Math.PI / 180);
-    const R = 6371;
+    const R = 6371; // radius of Earth in km
     const dLat = deg2rad(lat2 - lat1);
     const dLon = deg2rad(lon2 - lon1);
     const a =
@@ -100,6 +101,15 @@ export default function NotificationDashboard() {
     const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
     return R * c;
   };
+  
+  const slider = document.getElementById("radiusSlider");
+  const radiusValue = document.getElementById("radiusValue");
+
+  slider?.addEventListener("input", function() {
+    radiusValue.textContent = this.value + " km";
+    setRadius(Number(this.value));
+    applyFilter();
+  });
 
   const getStatusColor = (status) => {
     switch (status.toLowerCase()) {
@@ -130,10 +140,9 @@ export default function NotificationDashboard() {
         <h1 className="text-2xl font-bold text-primary">
           🚨 Emergency Responder Dashboard
         </h1>
-        <div
-          className="flex items-center space-x-4"
-          style={{ alignItems: "center" }}
-        >
+
+        <div className="flex items-center space-x-4">
+          {/* Dropdown */}
           <select
             className="mb-4 p-2 border rounded"
             value={filter}
@@ -144,18 +153,38 @@ export default function NotificationDashboard() {
             <option value="accepted">Accepted</option>
             <option value="cancelled">Cancelled</option>
           </select>
-          <label className="ml-4 flex items-center space-x-2 mb-4">
-            <input
-              type="checkbox"
-              checked={filter === "In My Area"}
-              onChange={(e) => setFilter(e.target.checked ? "In My Area" : "All")}
-            />
-            <span>In My Area</span>
-          </label>
+
+          <div className="flex items-center space-x-2">
+            <label className="ml-4 flex items-center space-x-2 mb-4">
+              <input
+                type="checkbox"
+                checked={filter === "In My Area"}
+                onChange={(e) => setFilter(e.target.checked ? "In My Area" : "All")}
+              />
+              <span>In My Area</span>
+            </label>
+          </div>
+
+          {/* Radius Slider (only visible in "In My Area") */}
+          {filter === "In My Area" && (
+            <div className="slider-container flex items-center space-x-2">
+              <label htmlFor="radiusSlider">Radius:</label>
+              <input
+                type="range"
+                id="radiusSlider"
+                min="1"
+                max="40"
+                value={radius}
+                onChange={(e) => setRadius(Number(e.target.value))}
+              />
+              <span>{radius} km</span>
+            </div>
+          )}
         </div>
+
         <button
           className="bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded shadow"
-          onClick={() => window.location.href = "/accepted-tasks"}
+          onClick={() => (window.location.href = "/accepted-tasks")}
         >
           Go to Accepted Tasks
         </button>
@@ -184,7 +213,11 @@ export default function NotificationDashboard() {
                 >
                   <h3 className="font-semibold">{alert.emergencyType.toUpperCase()}</h3>
                   <p className="text-sm text-gray-600">{alert.address}</p>
-                  <span className={`text-xs px-2 py-1 rounded ${getStatusColor(alert.status)}`}>
+                  <span
+                    className={`text-xs px-2 py-1 rounded ${getStatusColor(
+                      alert.status
+                    )}`}
+                  >
                     {alert.status}
                   </span>
                 </div>
@@ -192,7 +225,6 @@ export default function NotificationDashboard() {
           </div>
         </div>
 
-        {/* RIGHT: Map */}
         <div className="col-span-9 relative">
           <GoogleMap
             mapContainerStyle={mapContainerStyle}
@@ -200,7 +232,7 @@ export default function NotificationDashboard() {
             zoom={12}
             options={{ styles: mapStyles }}
           >
-            {/* User Location */}
+            {/* User Marker */}
             <MarkerF
               position={userLocation}
               icon={{
@@ -213,7 +245,21 @@ export default function NotificationDashboard() {
               }}
             />
 
-            {/* Alert markers */}
+            {filter === "In My Area" && (
+              <CircleF
+                center={userLocation}
+                radius={radius * 1000} // convert km → meters
+                options={{
+                  fillColor: "blue",
+                  fillOpacity: 0.1,
+                  strokeColor: "blue",
+                  strokeOpacity: 0.5,
+                  strokeWeight: 1,
+                }}
+              />
+            )}
+
+            {/* Alert Markers */}
             {Array.isArray(filteredAlerts) &&
               filteredAlerts.map(
                 (alert) =>
@@ -231,7 +277,8 @@ export default function NotificationDashboard() {
                           encodeURIComponent(
                             `<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40">
                               <text x="0" y="32" font-size="32">${
-                                alert.status === "accepted" || alert.status === "Accepted"
+                                alert.status === "accepted" ||
+                                alert.status === "Accepted"
                                   ? "⌛"
                                   : alert.status === "pending"
                                   ? "📢"
@@ -247,7 +294,7 @@ export default function NotificationDashboard() {
                   )
               )}
 
-            {/* InfoWindow */}
+            {/* Info Window */}
             {selectedAlert?.liveLocation?.coordinates && (
               <InfoWindowF
                 position={{
@@ -271,25 +318,42 @@ export default function NotificationDashboard() {
                         : setSelectedAlert(null)
                     }
                   >
-                    {selectedAlert.status === "pending" ? "Accept" :
-                      selectedAlert.status === "accepted" ? "Cancel" : "Close"}
+                    {selectedAlert.status === "pending"
+                      ? "Accept"
+                      : selectedAlert.status === "accepted"
+                      ? "Cancel"
+                      : "Close"}
                   </button>
                 </div>
               </InfoWindowF>
             )}
           </GoogleMap>
 
-          {/* Floating Alert Details */}
+          {/* Sidebar details */}
           {selectedAlert && (
             <div className="absolute top-12 right-4 w-80 bg-white shadow-xl rounded-2xl p-4 border z-50">
               <h2 className="text-lg font-bold mb-2">Alert Details</h2>
-              <p><strong>Report ID:</strong> {selectedAlert.reportId}</p>
-              <p><strong>User:</strong> {selectedAlert.userId}</p>
-              <p><strong>NIC:</strong> {selectedAlert.NIC}</p>
-              <p><strong>Contact:</strong> {selectedAlert.contactNumber}</p>
-              <p><strong>Emergency:</strong> {selectedAlert.emergencyType}</p>
-              <p><strong>Address:</strong> {selectedAlert.address}</p>
-              <p><strong>Status:</strong> {selectedAlert.status}</p>
+              <p>
+                <strong>Report ID:</strong> {selectedAlert.reportId}
+              </p>
+              <p>
+                <strong>User:</strong> {selectedAlert.userId}
+              </p>
+              <p>
+                <strong>NIC:</strong> {selectedAlert.NIC}
+              </p>
+              <p>
+                <strong>Contact:</strong> {selectedAlert.contactNumber}
+              </p>
+              <p>
+                <strong>Emergency:</strong> {selectedAlert.emergencyType}
+              </p>
+              <p>
+                <strong>Address:</strong> {selectedAlert.address}
+              </p>
+              <p>
+                <strong>Status:</strong> {selectedAlert.status}
+              </p>
 
               {selectedAlert.liveLocation?.link && (
                 <a

@@ -144,29 +144,76 @@ const markAsReached = async (req, res) => {
 const completeAlert = async (req, res) => {
   try {
     const { id } = req.params;
-    const { comment } = req.body;
+    const {
+      comment,
+      commentBy,
+      commentByNIC,
+      commentByContactNumber,
+      accuracyRating,
+      casualties,
+      fatalities,
+      criticalInjuries,
+      uninjured,
+      reason,
+    } = req.body;
+
     const files = req.files || [];
 
     if (!isValidId(id)) return res.status(400).json({ message: "Invalid ID" });
 
+    // Look for the alert in Accepted or Pending collections
     const alert =
       (await AcceptedAlert.findById(id)) || (await Alert.findById(id));
     if (!alert) return res.status(404).json({ message: "Alert not found" });
 
+    // Create CompletedAlert
     const completed = new CompletedAlert({
       ...alert.toObject(),
       comment,
-      files: files.map((f) => f.filename),
+      commentBy,
+      commentByNIC,
+      commentByContactNumber,
+      accuracyRating,
+      casualities: casualties, // notice schema typo → "casualities"
+      fatalities,
+      criticalInjuries,
+      uninjured,
+      reason,
+      media: files.map((f) => f.filename),
       completedAt: new Date(),
       status: "completed",
     });
 
     await completed.save();
 
+    // Remove from active collections
     await AcceptedAlert.findByIdAndDelete(id);
     await Alert.findByIdAndDelete(id);
 
-    res.json({ message: "Alert completed successfully", completed });
+    // 📝 Generate Completion Report
+    const report = {
+      reportId: completed.reportId,
+      userId: completed.userId,
+      emergencyType: completed.emergencyType,
+      address: completed.address,
+      status: completed.status,
+      completedAt: completed.completedAt,
+      comment: completed.comment,
+      commentBy: completed.commentBy,
+      commentByNIC: completed.commentByNIC,
+      commentByContactNumber: completed.commentByContactNumber,
+      accuracyRating: completed.accuracyRating,
+      casualties: {
+        total: completed.casualities || 0,
+        fatalities: completed.fatalities || 0,
+        criticalInjuries: completed.criticalInjuries || 0,
+        uninjured: completed.uninjured || 0,
+      },
+      reason: completed.reason,
+      media: completed.media,
+    };
+
+    res.json({ message: "✅ Alert completed successfully", report });
   } catch (error) {
     console.error("❌ completeAlert error:", error);
     res.status(500).json({ error: error.message });
@@ -224,6 +271,16 @@ const deleteAllAlerts = async (req, res) => {
   }
 };
 
+const getAllCompletedAlerts = async (req, res) => {
+  try {
+    const alerts = await CompletedAlert.find();
+    res.json(alerts);
+  } catch (error) {
+    console.error("❌ getAllCompletedAlerts error:", error);
+    res.status(500).json({ error: error.message });
+  }
+};
+
 export {
   getAllAlerts,
   getAllAcceptedAlerts,
@@ -237,4 +294,5 @@ export {
   updateResponderLocation,
   getRespondersForAlert,
   deleteAllAlerts,
+  getAllCompletedAlerts,
 };

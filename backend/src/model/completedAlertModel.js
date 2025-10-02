@@ -1,8 +1,9 @@
 import mongoose from "mongoose";
 
 const CompletedAlertSchema = new mongoose.Schema({
-  reportId: { type: String, required: true, unique: true },
-  userId: { type: String, required: true },
+    reportId: { type: String, required: true, unique: true },
+    completedBy: { type: String, required: true },
+    userId: { type: String, required: true },
     NIC: { type: String, required: true },
     contactNumber: { type: String, required: true },
     emergencyType: {
@@ -31,6 +32,12 @@ const CompletedAlertSchema = new mongoose.Schema({
     commentBy: { type: String },
     commentByNIC: { type: String },
     commentByContactNumber: { type: String },
+    accuracyRating: { type: Number, min: 1, max: 5 },
+    casualities: { type: Number },
+    fatalities: { type: Number },
+    criticalInjuries: { type: Number },
+    uninjured: { type: Number },
+    reason: { type: String },
 });
 
 export default mongoose.model("CompletedAlert", CompletedAlertSchema);

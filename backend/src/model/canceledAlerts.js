@@ -2,6 +2,7 @@ import mongoose from "mongoose";
 
 const canceledAlertSchema = new mongoose.Schema({
   reportId: String,
+  acceptedBy: { type: String, required: true },
   userId: String,
   NIC: String,
   contactNumber: String,

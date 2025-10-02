@@ -51,7 +51,8 @@ const EmergencyReportSchema = new mongoose.Schema({
     type: String,
     enum: ["low", "medium", "high", "critical"],
     default: "medium"
-  }
+  },
+  acceptedBy: { type: String, default: "" },
 });
 
 const EmergencyReport = mongoose.model("EmergencyReport", EmergencyReportSchema);

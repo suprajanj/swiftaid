@@ -1,13 +1,17 @@
 import express from "express";
 import multer from "multer";
 import * as controller from "../controller/controller.js";
+import * as responderController from "../controller/responderController.js";
 
 const router = express.Router();
 const upload = multer({ dest: "uploads/" });
 
+router.post("/create-responders", responderController.createNewResponder);
+
 router.get("/alerts", controller.getAllAlerts);
 router.get("/alerts/accepted", controller.getAllAcceptedAlerts);
 router.get("/alerts/status/:status", controller.getAlertsByStatus);
+router.get("/alerts/completed", controller.getAllCompletedAlerts);
 
 router.post("/alerts", controller.addAlert);
 router.get("/alerts/:id", controller.displayAlertDetails);

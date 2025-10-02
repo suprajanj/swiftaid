@@ -20,16 +20,32 @@ export default function AcceptedTasks() {
   const [currentTask, setCurrentTask] = useState(null);
   const [showCompleteForm, setShowCompleteForm] = useState(false);
   const [showCancelForm, setShowCancelForm] = useState(false);
+
+  // ✅ Declare all form states
   const [files, setFiles] = useState([]);
   const [comment, setComment] = useState("");
+  const [commentBy, setCommentBy] = useState("");
+  const [commentByNIC, setCommentByNIC] = useState("");
+  const [commentByContactNumber, setCommentByContactNumber] = useState("");
+  const [accuracyRating, setAccuracyRating] = useState("");
+  const [casualties, setCasualties] = useState("");
+  const [fatalities, setFatalities] = useState("");
+  const [criticalInjuries, setCriticalInjuries] = useState("");
+  const [uninjured, setUninjured] = useState("");
   const [cancelReasons, setCancelReasons] = useState([]);
+
   const [responderLocation, setResponderLocation] = useState(null);
   const [directions, setDirections] = useState(null);
 
+  // at top of AcceptedTasks.jsx, before your component
+  const libraries = ["places"];
+
   const { isLoaded, loadError } = useLoadScript({
     googleMapsApiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY,
-    libraries,
+    libraries, // ✅ reuses same array
   });
+
+
 
   const navigate = useNavigate();
 
@@ -80,7 +96,17 @@ export default function AcceptedTasks() {
     try {
       const formData = new FormData();
       Array.from(files).forEach((file) => formData.append("files", file));
+
+      // ✅ append all form values
       formData.append("comment", comment);
+      formData.append("commentBy", commentBy);
+      formData.append("commentByNIC", commentByNIC);
+      formData.append("commentByContactNumber", commentByContactNumber);
+      formData.append("accuracyRating", accuracyRating);
+      formData.append("casualties", casualties);
+      formData.append("fatalities", fatalities);
+      formData.append("criticalInjuries", criticalInjuries);
+      formData.append("uninjured", uninjured);
 
       await axios.put(
         `http://localhost:3000/api/alerts/${taskId}/complete`,
@@ -90,8 +116,7 @@ export default function AcceptedTasks() {
 
       toast.success("Task completed successfully!");
       setShowCompleteForm(false);
-      setFiles([]);
-      setComment("");
+      resetForm();
       setCurrentTask(null);
       fetchAcceptedTasks();
     } catch (err) {
@@ -129,7 +154,6 @@ export default function AcceptedTasks() {
     }
   };
 
-  // ✅ Safer Directions API call
   const openRouteMap = (task) => {
     if (!isLoaded || !window.google) {
       toast.error("Google Maps not loaded yet.");
@@ -160,9 +184,6 @@ export default function AcceptedTasks() {
     }
   };
 
-  if (loadError) return <p>Error loading map</p>;
-  if (!isLoaded) return <p>Loading map...</p>;
-
   const handleReasonChange = (reason) => {
     setCancelReasons((prev) =>
       prev.includes(reason)
@@ -170,6 +191,22 @@ export default function AcceptedTasks() {
         : [...prev, reason]
     );
   };
+
+  const resetForm = () => {
+    setFiles([]);
+    setComment("");
+    setCommentBy("");
+    setCommentByNIC("");
+    setCommentByContactNumber("");
+    setAccuracyRating("");
+    setCasualties("");
+    setFatalities("");
+    setCriticalInjuries("");
+    setUninjured("");
+  };
+
+  if (loadError) return <p>Error loading map</p>;
+  if (!isLoaded) return <p>Loading map...</p>;
 
   return (
     <div className="p-6 bg-gray-50 min-h-screen">
@@ -182,18 +219,89 @@ export default function AcceptedTasks() {
           <h2 className="text-lg font-bold mb-2">
             Complete Task: {currentTask.reportId}
           </h2>
+
+          {/* Comment */}
+          <input
+            type="text"
+            placeholder="Add a comment (optional)"
+            value={comment}
+            onChange={(e) => setComment(e.target.value)}
+            className="mb-2 border p-1 w-full"
+          />
+
+          {/* Reporter Info */}
+          <input
+            type="text"
+            placeholder="Your Name"
+            value={commentBy}
+            onChange={(e) => setCommentBy(e.target.value)}
+            className="mb-2 border p-1 w-full"
+          />
+          <input
+            type="text"
+            placeholder="Your NIC"
+            value={commentByNIC}
+            onChange={(e) => setCommentByNIC(e.target.value)}
+            className="mb-2 border p-1 w-full"
+          />
+          <input
+            type="text"
+            placeholder="Your Contact Number"
+            value={commentByContactNumber}
+            onChange={(e) => setCommentByContactNumber(e.target.value)}
+            className="mb-2 border p-1 w-full"
+          />
+
+          {/* Ratings */}
+          <input
+            type="number"
+            min="1"
+            max="5"
+            placeholder="Accuracy Rating (1-5)"
+            value={accuracyRating}
+            onChange={(e) => setAccuracyRating(e.target.value)}
+            className="mb-2 border p-1 w-full"
+          />
+
+          {/* Casualties */}
+          <input
+            type="number"
+            placeholder="Casualties"
+            value={casualties}
+            onChange={(e) => setCasualties(e.target.value)}
+            className="mb-2 border p-1 w-full"
+          />
+          <input
+            type="number"
+            placeholder="Fatalities"
+            value={fatalities}
+            onChange={(e) => setFatalities(e.target.value)}
+            className="mb-2 border p-1 w-full"
+          />
+          <input
+            type="number"
+            placeholder="Critical Injuries"
+            value={criticalInjuries}
+            onChange={(e) => setCriticalInjuries(e.target.value)}
+            className="mb-2 border p-1 w-full"
+          />
+          <input
+            type="number"
+            placeholder="Uninjured"
+            value={uninjured}
+            onChange={(e) => setUninjured(e.target.value)}
+            className="mb-2 border p-1 w-full"
+          />
+
+          {/* File Upload */}
+          <p className="text-sm mb-2">Select files:</p>
           <input
             type="file"
             multiple
             onChange={(e) => setFiles(e.target.files)}
             className="mb-2"
           />
-          <textarea
-            className="w-full border p-2 mb-2 rounded"
-            placeholder="Add a comment"
-            value={comment}
-            onChange={(e) => setComment(e.target.value)}
-          />
+
           <div className="flex gap-2">
             <button
               className="bg-green-600 text-white px-3 py-1 rounded hover:bg-green-700 transition"
@@ -211,7 +319,7 @@ export default function AcceptedTasks() {
         </div>
       )}
 
-      {/* ✅ Cancel Task Form */}
+      {/* ✅ Cancel Form */}
       {showCancelForm && currentTask && (
         <div className="bg-white shadow-xl rounded-xl p-4 mb-4 border animate-fadeIn">
           <h2 className="text-lg font-bold mb-2">

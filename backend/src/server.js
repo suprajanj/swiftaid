@@ -15,6 +15,7 @@ const HOST = process.env.HOST || "127.0.0.1";
 const MONGO_URI_ALL = process.env.MONGO_URI_ALL;
 const MONGO_URI_ACCEPTED = process.env.MONGO_URI_ACCEPTED;
 const MONGO_URI_COMPLETED = process.env.MONGO_URI_COMPLETED;
+const MONGO_URI_RESPONDERS = process.env.MONGO_URI_RESPONDERS;
 
 // Middleware
 app.use(cors({ origin: "http://localhost:5001" })); // frontend dev server
@@ -27,10 +28,11 @@ console.log("Loaded ENV:", {
   MONGO_URI_ALL: MONGO_URI_ALL ? "[HIDDEN]" : "❌ NOT FOUND",
   MONGO_URI_ACCEPTED: MONGO_URI_ACCEPTED ? "[HIDDEN]" : "❌ NOT FOUND",
   MONGO_URI_COMPLETED: MONGO_URI_COMPLETED ? "[HIDDEN]" : "❌ NOT FOUND",
+  MONGO_URI_RESPONDERS: MONGO_URI_RESPONDERS ? "[HIDDEN]" : "❌ NOT FOUND",
 });
 
 // 🚨 Fail fast if no DB URIs
-if (!MONGO_URI_ALL || !MONGO_URI_ACCEPTED || !MONGO_URI_COMPLETED) {
+if (!MONGO_URI_ALL || !MONGO_URI_ACCEPTED || !MONGO_URI_COMPLETED || !MONGO_URI_RESPONDERS) {
   console.error("❌ Missing Mongo URIs. Check your .env file.");
   process.exit(1);
 }
@@ -74,10 +76,29 @@ const connectDatabases = async () => {
       console.error("❌ completedAlerts DB error:", err);
     });
 
+    const respondersDB = mongoose.createConnection(MONGO_URI_RESPONDERS, {
+      family: 4,
+      serverSelectionTimeoutMS: 5000,
+      socketTimeoutMS: 45000,
+    });
+    respondersDB.once("open", () => {
+      console.log("✅ Connected to responders database");
+    });
+    respondersDB.on("error", (err) => {
+      console.error("❌ responders DB error:", err);
+    });
+
+    // Sync models
+    await acceptedAlertsDB.model("AcceptedAlert").syncIndexes();
+    await completedAlertsDB.model("CompletedAlert").syncIndexes();
+    await respondersDB.model("Responder").syncIndexes();
+    console.log("✅ Synced indexes for all models");
+
     // Store in global for controllers
     global.allAlertsDB = mongoose.connection;
     global.acceptedAlertsDB = acceptedAlertsDB;
     global.completedAlertsDB = completedAlertsDB;
+    global.respondersDB = respondersDB;
   } catch (error) {
     console.error("❌ MongoDB connection error:", error);
     process.exit(1);

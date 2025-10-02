@@ -1,4 +1,3 @@
-// routes/userRoute.js (partial — add this)
 import express from "express";
 import { protect } from "../middleware/authMiddleware.js";
 import {

@@ -55,21 +55,23 @@ const userSchema = new mongoose.Schema(
       type: Boolean,
       required: true,
     },
-    // New field
+    // 🔹 Updated roles
     role: {
       type: String,
       enum: [
-        "admin",
-        "responder",
-        "dispatcher",
-        "fund raiser",
-        "organization",
-        "user",
+        "User",
+        "Dispatcher",
+        "Responder - Hospital",
+        "Responder - Fire",
+        "Responder - Police",
+        "Supportive organization",
+        "Fund raiser",
+        "Admin",
       ],
-      default: "user",
+      default: "User",
     },
 
-    // 🔹 New optional fields
+    // 🔹 Optional fields
     blood: {
       type: String,
       default: null,

@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from "react";
 import axios from "axios";
 import { jsPDF } from "jspdf";
-// import autoTable from "jspdf-autotable";
 import { DownloadIcon, AlertCircleIcon, MapPinIcon } from "lucide-react";
 import { Sidebar } from "../components/Sidebar";
 

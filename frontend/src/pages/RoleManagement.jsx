@@ -25,15 +25,18 @@ export function RoleManagement() {
     gender: "",
     dob: "",
     termsAccepted: false,
+    role: "User", // ✅ default role
   });
 
   const roles = [
-    "Admin",
-    "Dispatcher",
     "User",
-    "Fund Raiser",
+    "Dispatcher",
+    "Responder - Hospital",
+    "Responder - Fire",
+    "Responder - Police",
     "Supportive organization",
-    "Responder",
+    "Fund raiser",
+    "Admin",
   ];
 
   useEffect(() => {
@@ -93,17 +96,12 @@ export function RoleManagement() {
 
     const missingFields = requiredFields.filter(
       (field) =>
-        newUser[field] === "" ||
-        newUser[field] === null ||
-        newUser[field] === undefined ||
+        !newUser[field] ||
         (field === "termsAccepted" && newUser[field] !== true)
     );
 
     if (missingFields.length > 0) {
-      alert(
-        "Please fill all required fields before saving:\n" +
-          missingFields.join(", ")
-      );
+      alert("Please fill all required fields: " + missingFields.join(", "));
       return;
     }
 
@@ -133,16 +131,12 @@ export function RoleManagement() {
         gender: "",
         dob: "",
         termsAccepted: false,
-        role: "User",
+        role: "User", // ✅ reset role to default
       });
     } catch (err) {
-      console.error(
-        "Failed to add user:",
-        err.response?.data || err.message || err
-      );
+      console.error("Failed to add user:", err.response?.data || err.message);
       alert(
-        "Failed to add user: " +
-          JSON.stringify(err.response?.data || err.message || err)
+        "Failed to add user: " + (err.response?.data?.message || err.message)
       );
     }
   };
@@ -161,12 +155,12 @@ export function RoleManagement() {
     } catch (err) {
       console.error("Failed to save user:", err);
       alert(
-        "Failed to save user: " + (err.response?.data || err.message || err)
+        "Failed to save user: " + (err.response?.data?.message || err.message)
       );
     }
   };
 
-  // ✅ Filtered users based on search
+  // ✅ Filtered users
   const filteredUsers = users.filter((u) =>
     `${u.firstName} ${u.lastName} ${u.email} ${u.role}`
       .toLowerCase()
@@ -190,13 +184,13 @@ export function RoleManagement() {
               <input
                 type="text"
                 placeholder="Search users..."
-                className="px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                className="px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-red-500"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
               <button
                 onClick={() => setShowModal(true)}
-                className="px-4 py-2 bg-red-600 text-white rounded-md text-sm hover:bg-red-700 transition-colors"
+                className="px-4 py-2 bg-red-600 text-white rounded-md text-sm hover:bg-red-700"
               >
                 Add User
               </button>
@@ -210,16 +204,16 @@ export function RoleManagement() {
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
                   <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
                       Name
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
                       Email
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
                       Role
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
                       Actions
                     </th>
                   </tr>
@@ -228,46 +222,21 @@ export function RoleManagement() {
                   {filteredUsers.map((user) => (
                     <tr key={user._id} className="hover:bg-gray-50">
                       <td
-                        className="px-6 py-4 whitespace-nowrap cursor-pointer"
+                        className="px-6 py-4 cursor-pointer"
                         onClick={() => {
                           setViewUser({ ...user });
                           setEditing(false);
                         }}
                       >
-                        <div className="flex items-center">
-                          <div className="h-8 w-8 rounded-full bg-gray-200 flex items-center justify-center text-gray-600">
-                            {user.firstName?.charAt(0)}
-                          </div>
-                          <div className="ml-3">
-                            <div className="text-sm font-medium text-gray-900">
-                              {user.firstName} {user.lastName}
-                            </div>
-                          </div>
-                        </div>
+                        {user.firstName} {user.lastName}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-gray-700">
-                          {user.email}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span
-                          className={`px-2 py-1 text-xs rounded-full ${
-                            user.role === "Admin"
-                              ? "bg-purple-100 text-purple-800"
-                              : user.role === "Dispatcher"
-                                ? "bg-blue-100 text-blue-800"
-                                : user.role === "Fund Raiser"
-                                  ? "bg-green-100 text-green-800"
-                                  : user.role === "Supportive organization"
-                                    ? "bg-yellow-100 text-yellow-800"
-                                    : "bg-gray-100 text-gray-800"
-                          }`}
-                        >
+                      <td className="px-6 py-4">{user.email}</td>
+                      <td className="px-6 py-4">
+                        <span className="px-2 py-1 text-xs rounded-full bg-gray-100 text-gray-800">
                           {user.role}
                         </span>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm flex gap-2">
+                      <td className="px-6 py-4 flex gap-2">
                         <div className="relative">
                           <button
                             onClick={() =>
@@ -275,13 +244,13 @@ export function RoleManagement() {
                                 dropdownOpen === user._id ? null : user._id
                               )
                             }
-                            className="flex items-center justify-between w-24 px-3 py-1 border border-gray-300 rounded-md bg-white text-gray-700 hover:bg-gray-50"
+                            className="flex items-center w-24 px-3 py-1 border rounded-md"
                           >
                             <span>Change</span>
                             <ChevronDownIcon size={16} />
                           </button>
                           {dropdownOpen === user._id && (
-                            <div className="absolute z-10 mt-1 w-36 bg-white rounded-md shadow-lg border border-gray-200">
+                            <div className="absolute z-10 mt-1 w-36 bg-white rounded-md shadow-lg border">
                               {roles.map((role) => (
                                 <button
                                   key={role}
@@ -289,7 +258,7 @@ export function RoleManagement() {
                                     handleRoleChange(user._id, role);
                                     setDropdownOpen(null);
                                   }}
-                                  className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                                  className="block w-full text-left px-4 py-2 text-sm hover:bg-gray-100"
                                 >
                                   {role}
                                 </button>
@@ -299,7 +268,7 @@ export function RoleManagement() {
                         </div>
                         <button
                           onClick={() => handleDeleteUser(user._id)}
-                          className="flex items-center gap-1 px-3 py-1 border border-red-300 text-red-600 rounded-md hover:bg-red-50"
+                          className="px-3 py-1 border text-red-600 rounded-md hover:bg-red-50 flex items-center gap-1"
                         >
                           <Trash2Icon size={16} />
                           Delete
@@ -319,14 +288,13 @@ export function RoleManagement() {
         <div className="fixed inset-0 flex items-center justify-center bg-white/30 backdrop-blur-sm z-50">
           <div className="bg-white w-full max-w-md rounded-lg shadow-lg p-6">
             <div className="flex justify-between items-center mb-4">
-              <h2 className="text-lg font-bold text-gray-800">Add New User</h2>
+              <h2 className="text-lg font-bold">Add New User</h2>
               <button onClick={() => setShowModal(false)}>
-                <X className="text-gray-500 hover:text-gray-700" />
+                <X className="text-gray-500" />
               </button>
             </div>
 
             <form onSubmit={handleAddUser} className="space-y-4">
-              {/* All input fields */}
               <input
                 type="text"
                 placeholder="First Name"
@@ -334,7 +302,7 @@ export function RoleManagement() {
                 onChange={(e) =>
                   setNewUser({ ...newUser, firstName: e.target.value })
                 }
-                className="w-full border px-3 py-2 rounded-md text-sm"
+                className="w-full border px-3 py-2 rounded-md"
                 required
               />
               <input
@@ -344,7 +312,7 @@ export function RoleManagement() {
                 onChange={(e) =>
                   setNewUser({ ...newUser, lastName: e.target.value })
                 }
-                className="w-full border px-3 py-2 rounded-md text-sm"
+                className="w-full border px-3 py-2 rounded-md"
                 required
               />
               <input
@@ -354,7 +322,7 @@ export function RoleManagement() {
                 onChange={(e) =>
                   setNewUser({ ...newUser, nic: e.target.value })
                 }
-                className="w-full border px-3 py-2 rounded-md text-sm"
+                className="w-full border px-3 py-2 rounded-md"
                 required
               />
               <input
@@ -364,7 +332,7 @@ export function RoleManagement() {
                 onChange={(e) =>
                   setNewUser({ ...newUser, email: e.target.value })
                 }
-                className="w-full border px-3 py-2 rounded-md text-sm"
+                className="w-full border px-3 py-2 rounded-md"
                 required
               />
               <input
@@ -374,7 +342,7 @@ export function RoleManagement() {
                 onChange={(e) =>
                   setNewUser({ ...newUser, password: e.target.value })
                 }
-                className="w-full border px-3 py-2 rounded-md text-sm"
+                className="w-full border px-3 py-2 rounded-md"
                 required
               />
               <input
@@ -384,7 +352,7 @@ export function RoleManagement() {
                 onChange={(e) =>
                   setNewUser({ ...newUser, confirmPassword: e.target.value })
                 }
-                className="w-full border px-3 py-2 rounded-md text-sm"
+                className="w-full border px-3 py-2 rounded-md"
                 required
               />
               <input
@@ -394,7 +362,7 @@ export function RoleManagement() {
                 onChange={(e) =>
                   setNewUser({ ...newUser, mobile: e.target.value })
                 }
-                className="w-full border px-3 py-2 rounded-md text-sm"
+                className="w-full border px-3 py-2 rounded-md"
                 required
               />
               <input
@@ -404,7 +372,7 @@ export function RoleManagement() {
                 onChange={(e) =>
                   setNewUser({ ...newUser, address: e.target.value })
                 }
-                className="w-full border px-3 py-2 rounded-md text-sm"
+                className="w-full border px-3 py-2 rounded-md"
                 required
               />
               <select
@@ -412,7 +380,7 @@ export function RoleManagement() {
                 onChange={(e) =>
                   setNewUser({ ...newUser, gender: e.target.value })
                 }
-                className="w-full border px-3 py-2 rounded-md text-sm"
+                className="w-full border px-3 py-2 rounded-md"
                 required
               >
                 <option value="">Select Gender</option>
@@ -426,7 +394,7 @@ export function RoleManagement() {
                 onChange={(e) =>
                   setNewUser({ ...newUser, dob: e.target.value })
                 }
-                className="w-full border px-3 py-2 rounded-md text-sm"
+                className="w-full border px-3 py-2 rounded-md"
                 required
               />
 
@@ -439,10 +407,11 @@ export function RoleManagement() {
                   }
                   required
                 />
-                <label className="text-sm text-gray-700">
+                <label className="text-sm">
                   I accept the terms and conditions
                 </label>
               </div>
+
               <button
                 type="submit"
                 className="w-full bg-red-600 text-white py-2 rounded-md hover:bg-red-700"
@@ -459,9 +428,9 @@ export function RoleManagement() {
         <div className="fixed inset-0 flex items-center justify-center bg-white/30 backdrop-blur-sm z-50">
           <div className="bg-white w-full max-w-md rounded-lg shadow-lg p-6">
             <div className="flex justify-between items-center mb-4">
-              <h2 className="text-lg font-bold text-gray-800">User Details</h2>
+              <h2 className="text-lg font-bold">User Details</h2>
               <button onClick={() => setViewUser(null)}>
-                <X className="text-gray-500 hover:text-gray-700" />
+                <X className="text-gray-500" />
               </button>
             </div>
             <div className="space-y-3">
@@ -484,7 +453,7 @@ export function RoleManagement() {
                       onChange={(e) =>
                         setViewUser({ ...viewUser, [field]: e.target.value })
                       }
-                      className="w-full border px-3 py-2 rounded-md text-sm"
+                      className="w-full border px-3 py-2 rounded-md"
                     />
                   ) : (
                     <div className="text-gray-700">{viewUser[field]}</div>
@@ -499,9 +468,8 @@ export function RoleManagement() {
                     onChange={(e) =>
                       setViewUser({ ...viewUser, gender: e.target.value })
                     }
-                    className="w-full border px-3 py-2 rounded-md text-sm"
+                    className="w-full border px-3 py-2 rounded-md"
                   >
-                    <option value="">Select Gender</option>
                     <option value="Male">Male</option>
                     <option value="Female">Female</option>
                     <option value="Other">Other</option>
@@ -519,7 +487,7 @@ export function RoleManagement() {
                     onChange={(e) =>
                       setViewUser({ ...viewUser, dob: e.target.value })
                     }
-                    className="w-full border px-3 py-2 rounded-md text-sm"
+                    className="w-full border px-3 py-2 rounded-md"
                   />
                 ) : (
                   <div className="text-gray-700">
@@ -535,7 +503,7 @@ export function RoleManagement() {
                     onChange={(e) =>
                       setViewUser({ ...viewUser, role: e.target.value })
                     }
-                    className="w-full border px-3 py-2 rounded-md text-sm"
+                    className="w-full border px-3 py-2 rounded-md"
                   >
                     {roles.map((role) => (
                       <option key={role} value={role}>

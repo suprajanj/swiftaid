@@ -570,20 +570,7 @@ export default function ResourceRequests() {
               {adminMode ? "Exit Admin" : "Admin Mode"}
             </button>
 
-            <Link to="/"
-              style={{
-                padding: "12px 24px",
-                backgroundColor: "#FF5722",
-                color: "white",
-                border: "none", 
-                borderRadius: "8px",
-                cursor: "pointer",
-                fontWeight: "bold",
-                fontSize: "16px",
-              }}
-            >
-              Logout
-            </Link>
+            
 
             {adminMode && (
               <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
@@ -874,14 +861,33 @@ export default function ResourceRequests() {
                 </Input>
               )}
 
-              <Input label="Required By">
+              <Input label="Required By *">
                 <input
                   type="date"
                   name="requiredBy"
                   value={form.requiredBy}
                   onChange={onChange}
-                  style={inputStyle}
+                  required
+                  min={new Date().toISOString().split('T')[0]}
+                  style={{
+                    ...inputStyle,
+                    cursor: 'pointer',
+                    backgroundColor: '#ffffff',
+                    '&::-webkit-calendar-picker-indicator': {
+                      cursor: 'pointer'
+                    }
+                  }}
+                  onFocus={(e) => e.target.showPicker()}
+                  onClick={(e) => e.target.showPicker()}
                 />
+                <small style={{ 
+                  display: 'block', 
+                  marginTop: '4px', 
+                  color: '#666',
+                  fontSize: '12px'
+                }}>
+                  Click to open calendar
+                </small>
               </Input>
 
               {adminMode && (
@@ -934,148 +940,150 @@ export default function ResourceRequests() {
           </form>
         </div>
 
-        {/* List */}
-        <h2 style={{ color: "#4CAF50", margin: "8px 0 16px" }}>
-          Active Resource Requests ({requests.length})
-        </h2>
+        {/* List - Only visible in admin mode */}
+        {adminMode && (
+          <>
+            <h2 style={{ color: "#4CAF50", margin: "8px 0 16px" }}>
+              Active Resource Requests ({requests.length})
+            </h2>
 
-        {loading ? (
-          <div style={cardMuted}>Loading requests...</div>
-        ) : requests.length === 0 ? (
-          <div style={cardMuted}>
-            <h3 style={{ marginTop: 0 }}>No resource requests found</h3>
-            <p>Create the first one using the form above.</p>
-          </div>
-        ) : (
-          <div style={{ display: "grid", gap: 18 }}>
-            {requests.map((r) => (
-              <div key={r._id} style={listCard}>
-                <div
-                  style={{
-                    display: "grid",
-                    gridTemplateColumns: "1.2fr 1fr",
-                    gap: 16,
-                    alignItems: "start"
-                  }}
-                >
-                  {/* Left */}
-                  <div>
-                    <h3 style={{ margin: "0 0 8px 0", color: "#4CAF50" }}>
-                      {r.organizationName}
-                    </h3>
-                    <p style={{ margin: "4px 0" }}>
-                      <strong>Request ID:</strong> {r._id}
-                    </p>
-                    <p style={{ margin: "4px 0" }}>
-                      <strong>Contact:</strong> {r?.contactPerson?.name} | {r?.contactPerson?.phone}
-                    </p>
-                    <p style={{ margin: "4px 0" }}>
-                      <strong>Email:</strong> {r?.contactPerson?.email}
-                    </p>
-                    <p style={{ margin: "4px 0" }}>
-                      <strong>Location:</strong> {r?.location?.city}, {r?.location?.district}
-                    </p>
-                    <p style={{ margin: "4px 0" }}>
-                      <strong>Type:</strong> {r.organizationType}
-                    </p>
-                  </div>
+            {loading ? (
+              <div style={cardMuted}>Loading requests...</div>
+            ) : requests.length === 0 ? (
+              <div style={cardMuted}>
+                <h3 style={{ marginTop: 0 }}>No resource requests found</h3>
+                <p>No requests have been submitted yet.</p>
+              </div>
+            ) : (
+              <div style={{ display: "grid", gap: 18 }}>
+                {requests.map((r) => (
+                  <div key={r._id} style={listCard}>
+                    <div
+                      style={{
+                        display: "grid",
+                        gridTemplateColumns: "1.2fr 1fr",
+                        gap: 16,
+                        alignItems: "start"
+                      }}
+                    >
+                      {/* Left */}
+                      <div>
+                        <h3 style={{ margin: "0 0 8px 0", color: "#4CAF50" }}>
+                          {r.organizationName}
+                        </h3>
+                        <p style={{ margin: "4px 0" }}>
+                          <strong>Request ID:</strong> {r._id}
+                        </p>
+                        <p style={{ margin: "4px 0" }}>
+                          <strong>Contact:</strong> {r?.contactPerson?.name} | {r?.contactPerson?.phone}
+                        </p>
+                        <p style={{ margin: "4px 0" }}>
+                          <strong>Email:</strong> {r?.contactPerson?.email}
+                        </p>
+                        <p style={{ margin: "4px 0" }}>
+                          <strong>Location:</strong> {r?.location?.city}, {r?.location?.district}
+                        </p>
+                        <p style={{ margin: "4px 0" }}>
+                          <strong>Type:</strong> {r.organizationType}
+                        </p>
+                      </div>
 
-                  {/* Right */}
-                  <div>
-                    <h4 style={{ margin: "0 0 10px 0", color: "#FFA726" }}>Request Details</h4>
-                    <p style={{ margin: "4px 0" }}>
-                      <strong>Emergency:</strong> {r.emergencyType}
-                    </p>
-                    <p style={{ margin: "4px 0" }}>
-                      <strong>Resource:</strong> {r.resourceType}
-                      {r?.resourceDetails?.bloodGroup ? ` (${r.resourceDetails.bloodGroup})` : ""}
-                    </p>
-                    <p style={{ margin: "4px 0" }}>
-                      <strong>Quantity:</strong> {r?.resourceDetails?.quantity}{" "}
-                      {r?.resourceDetails?.unit}
-                    </p>
-                    {r.requiredBy && (
-                      <p style={{ margin: "4px 0" }}>
-                        <strong>Required By:</strong>{" "}
-                        {new Date(r.requiredBy).toLocaleDateString()}
-                      </p>
-                    )}
-                    <p style={{ margin: "4px 0" }}>
-                      <strong>Created:</strong> {new Date(r.createdAt).toLocaleDateString()}
-                    </p>
+                      {/* Right */}
+                      <div>
+                        <h4 style={{ margin: "0 0 10px 0", color: "#FFA726" }}>Request Details</h4>
+                        <p style={{ margin: "4px 0" }}>
+                          <strong>Emergency:</strong> {r.emergencyType}
+                        </p>
+                        <p style={{ margin: "4px 0" }}>
+                          <strong>Resource:</strong> {r.resourceType}
+                          {r?.resourceDetails?.bloodGroup ? ` (${r.resourceDetails.bloodGroup})` : ""}
+                        </p>
+                        <p style={{ margin: "4px 0" }}>
+                          <strong>Quantity:</strong> {r?.resourceDetails?.quantity}{" "}
+                          {r?.resourceDetails?.unit}
+                        </p>
+                        {r.requiredBy && (
+                          <p style={{ margin: "4px 0" }}>
+                            <strong>Required By:</strong>{" "}
+                            {new Date(r.requiredBy).toLocaleDateString()}
+                          </p>
+                        )}
+                        <p style={{ margin: "4px 0" }}>
+                          <strong>Created:</strong> {new Date(r.createdAt).toLocaleDateString()}
+                        </p>
 
-                    {r.resourceType === "fundraiser" && (
-                      <p style={{ margin: "4px 0", color: "#4CAF50", fontWeight: "bold" }}>
-                        Target: Rs.{r.fundraiser?.targetAmount || 0} | Collected: Rs.{r.fundraiser?.collectedAmount || 0}
-                      </p>
-                    )}
+                        {r.resourceType === "fundraiser" && (
+                          <p style={{ margin: "4px 0", color: "#4CAF50", fontWeight: "bold" }}>
+                            Target: Rs.{r.fundraiser?.targetAmount || 0} | Collected: Rs.{r.fundraiser?.collectedAmount || 0}
+                          </p>
+                        )}
 
-                  </div>
-                </div>
+                      </div>
+                    </div>
 
-                {/* Description */}
-                {r?.resourceDetails?.description && (
-                  <div
-                    style={{
-                      marginTop: 12,
-                      background: "#dfeee6",
-                      padding: 12,
-                      borderRadius: 8,
-                      border: "1px solid #c7c2c2ff"
-                    }}
-                  >
-                    <strong style={{ color: "#FFA726" }}>Description:</strong>
-                    <div style={{ marginTop: 6 }}>{r.resourceDetails.description}</div>
-                  </div>
-                )}
-
-                <div
-                  style={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    alignItems: "center",
-                    marginTop: 14,
-                    paddingTop: 12,
-                    borderTop: "1px solid #333",
-                    gap: 12,
-                    flexWrap: "wrap"
-                  }}
-                >
-                  <div>
-                    <span style={{ marginRight: 10 }}>
-                      <strong>Urgency:</strong>{" "}
-                      <span
+                    {/* Description */}
+                    {r?.resourceDetails?.description && (
+                      <div
                         style={{
-                          color: urgencyColor(r.urgencyLevel),
-                          background: `${urgencyColor(r.urgencyLevel)}22`,
-                          padding: "4px 10px",
-                          borderRadius: 20,
-                          fontWeight: 700,
-                          textTransform: "uppercase"
+                          marginTop: 12,
+                          background: "#dfeee6",
+                          padding: 12,
+                          borderRadius: 8,
+                          border: "1px solid #c7c2c2ff"
                         }}
                       >
-                        {r.urgencyLevel}
-                      </span>
-                    </span>
-                    <span>
-                      <strong>Status:</strong> {r.status}
-                    </span>
-                  </div>
-
-                  <div style={{ display: "flex", gap: 10 }}>
-                    <button onClick={() => handleEdit(r)} style={editBtn}>
-                      Edit
-                    </button>
-                    {adminMode && (
-                      <button onClick={() => handleDelete(r._id)} style={delBtn}>
-                        Delete
-                      </button>
+                        <strong style={{ color: "#FFA726" }}>Description:</strong>
+                        <div style={{ marginTop: 6 }}>{r.resourceDetails.description}</div>
+                      </div>
                     )}
+
+                    <div
+                      style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                        marginTop: 14,
+                        paddingTop: 12,
+                        borderTop: "1px solid #333",
+                        gap: 12,
+                        flexWrap: "wrap"
+                      }}
+                    >
+                      <div>
+                        <span style={{ marginRight: 10 }}>
+                          <strong>Urgency:</strong>{" "}
+                          <span
+                            style={{
+                              color: urgencyColor(r.urgencyLevel),
+                              background: `${urgencyColor(r.urgencyLevel)}22`,
+                              padding: "4px 10px",
+                              borderRadius: 20,
+                              fontWeight: 700,
+                              textTransform: "uppercase"
+                            }}
+                          >
+                            {r.urgencyLevel}
+                          </span>
+                        </span>
+                        <span>
+                          <strong>Status:</strong> {r.status}
+                        </span>
+                      </div>
+
+                      <div style={{ display: "flex", gap: 10 }}>
+                        <button onClick={() => handleEdit(r)} style={editBtn}>
+                          Admin Edit
+                        </button>
+                        <button onClick={() => handleDelete(r._id)} style={delBtn}>
+                          Delete
+                        </button>
+                      </div>
+                    </div>
                   </div>
-                </div>
+                ))}
               </div>
-            ))}
-          </div>
+            )}
+          </>
         )}
       </div>
     </div>

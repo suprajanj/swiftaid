@@ -2,15 +2,81 @@
 import Donation from '../model/Donation.js';
 import ResourceRequest from '../model/ResourceRequest.js';
 import Stripe from 'stripe';
+import nodemailer from 'nodemailer';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
-// CREATE - Add new donation (includes fundraiser with Stripe Checkout)
+// === DEBUG: Check if env variables are loaded ===
+console.log('=== EMAIL CONFIG DEBUG ===');
+console.log('EMAIL_USER:', process.env.EMAIL_USER);
+console.log('EMAIL_PASS:', process.env.EMAIL_PASS ? '***LOADED***' : 'MISSING');
+console.log('EMAIL_PASS length:', process.env.EMAIL_PASS?.length);
+console.log('========================');
+
+// Configure Nodemailer (Gmail SMTP)
+// DON'T create transporter immediately - wait until env is loaded
+let transporter = null;
+
+// Create transporter function - called when needed
+function getTransporter() {
+    if (!transporter) {
+        console.log('Creating email transporter...');
+        console.log('EMAIL_USER:', process.env.EMAIL_USER);
+        console.log('EMAIL_PASS:', process.env.EMAIL_PASS ? 'LOADED' : 'MISSING');
+        
+        transporter = nodemailer.createTransport({
+            host: "smtp.gmail.com",
+            port: 465,
+            secure: true,
+            auth: {
+                user: process.env.EMAIL_USER,
+                pass: process.env.EMAIL_PASS
+            }
+        });
+    }
+    return transporter;
+}
+
+// Helper: Send thank you email
+export async function sendThankYouEmail(to, donorName, organizationName) {
+    try {
+        console.log(`Attempting to send thank you email to: ${to}`);
+        
+        const emailTransporter = getTransporter();
+        if (!emailTransporter) {
+            throw new Error('Email transporter not initialized');
+        }
+        
+        const info = await emailTransporter.sendMail({
+            from: `"SwiftAid" <${process.env.EMAIL_USER}>`,
+            to,
+            subject: "Thank You for Your Donation",
+            html: `
+                <h2>Dear ${donorName},</h2>
+                <p>We are pleased to inform you that your donation has been <b>recorded</b> successfully.</p>
+                <p>Your generosity is helping <b>${organizationName}</b> achieve its goals.</p>
+                <p>Thank you for your valuable contribution!</p>
+                <br/>
+                <p>Best regards,<br/>SwiftAid Team</p>
+            `
+        });
+        
+        console.log(`Email sent successfully!`);
+        console.log(`Message ID: ${info.messageId}`);
+        console.log(`Response: ${info.response}`);
+        return { success: true, messageId: info.messageId };
+    } catch (error) {
+        console.error('Failed to send email:', error.message);
+        console.error('Full error:', error);
+        return { success: false, error: error.message };
+    }
+}
+
+// CREATE - Add new donation (Stripe + normal)
 export const createDonation = async (req, res) => {
     try {
         const { resourceRequest, donor, donationDetails, paymentAmount } = req.body;
 
-        // Verify resource request exists
         const request = await ResourceRequest.findById(resourceRequest);
         if (!request) {
             return res.status(404).json({ success: false, message: 'Resource request not found' });
@@ -19,7 +85,6 @@ export const createDonation = async (req, res) => {
             return res.status(400).json({ success: false, message: 'This resource request is no longer active' });
         }
 
-        // If fundraiser → Create Stripe Checkout session
         if (request.resourceType === 'fundraiser') {
             if (!paymentAmount || paymentAmount <= 0) {
                 return res.status(400).json({ success: false, message: 'Invalid payment amount' });
@@ -30,11 +95,11 @@ export const createDonation = async (req, res) => {
                 line_items: [
                     {
                         price_data: {
-                            currency: 'rs',
+                            currency: 'lkr',
                             product_data: {
                                 name: `${request.organizationName} - Fundraiser`
                             },
-                            unit_amount: paymentAmount * 100 // cents
+                            unit_amount: paymentAmount * 100
                         },
                         quantity: 1
                     }
@@ -44,7 +109,6 @@ export const createDonation = async (req, res) => {
                 cancel_url: `${process.env.FRONTEND_URL}/cancel`
             });
 
-            // Store donation with status "pending_payment"
             const donation = new Donation({
                 resourceRequest,
                 donor,
@@ -63,21 +127,36 @@ export const createDonation = async (req, res) => {
             });
         }
 
-        // Regular (non-fundraiser) donations
         const donation = new Donation(req.body);
         await donation.save();
 
+        if (donation?.donor?.email) {
+            console.log(`Sending thank you email for normal donation to: ${donation.donor.email}`);
+            const emailResult = await sendThankYouEmail(
+                donation.donor.email,
+                donation.donor.fullName || "Donor",
+                request.organizationName || "the campaign"
+            );
+            
+            if (emailResult.success) {
+                console.log('Thank you email sent successfully for new donation');
+            } else {
+                console.error('Failed to send thank you email for new donation:', emailResult.error);
+            }
+        }
+
         res.status(201).json({
             success: true,
-            message: 'Donation submitted successfully',
+            message: 'Donation submitted successfully & email sent',
             data: donation
         });
     } catch (error) {
+        console.error('Error creating donation:', error);
         res.status(400).json({ success: false, message: 'Error submitting donation', error: error.message });
     }
 };
 
-// STRIPE PaymentIntent (for card form via Stripe Elements)
+// STRIPE PaymentIntent
 export const createPaymentIntent = async (req, res) => {
     try {
         const { amount } = req.body;
@@ -86,8 +165,8 @@ export const createPaymentIntent = async (req, res) => {
         }
 
         const paymentIntent = await stripe.paymentIntents.create({
-            amount: amount * 100, // cents
-            currency: "rs",
+            amount: amount * 100,
+            currency: "lkr",
             automatic_payment_methods: { enabled: true },
         });
 
@@ -101,7 +180,7 @@ export const createPaymentIntent = async (req, res) => {
     }
 };
 
-// STRIPE Webhook - confirm fundraiser payment
+// STRIPE Webhook
 export const handleStripeWebhook = async (req, res) => {
     try {
         const sig = req.headers['stripe-signature'];
@@ -110,21 +189,33 @@ export const handleStripeWebhook = async (req, res) => {
         if (event.type === 'checkout.session.completed') {
             const session = event.data.object;
 
-            // Find donation by session id
             const donation = await Donation.findOne({ paymentSessionId: session.id }).populate('resourceRequest');
             if (!donation) return res.status(404).json({ success: false, message: 'Donation not found' });
 
-            // Mark donation as completed
             donation.status = 'completed';
             donation.paymentStatus = 'paid';
             await donation.save();
 
-            // Update fundraiser collectedAmount
             if (donation.resourceRequest?.resourceType === 'fundraiser') {
                 await ResourceRequest.findByIdAndUpdate(
                     donation.resourceRequest._id,
                     { $inc: { "fundraiser.collectedAmount": donation.paymentAmount } }
                 );
+            }
+
+            if (donation?.donor?.email) {
+                console.log(`Sending thank you email for Stripe payment to: ${donation.donor.email}`);
+                const emailResult = await sendThankYouEmail(
+                    donation.donor.email,
+                    donation.donor.fullName || "Donor",
+                    donation.resourceRequest?.organizationName || "the campaign"
+                );
+                
+                if (emailResult.success) {
+                    console.log('Thank you email sent successfully after Stripe payment');
+                } else {
+                    console.error('Failed to send thank you email after Stripe payment:', emailResult.error);
+                }
             }
         }
 
@@ -166,6 +257,7 @@ export const getAllDonations = async (req, res) => {
             }
         });
     } catch (error) {
+        console.error('Error fetching donations:', error);
         res.status(500).json({ success: false, message: 'Error fetching donations', error: error.message });
     }
 };
@@ -177,17 +269,19 @@ export const getDonationById = async (req, res) => {
         if (!donation) return res.status(404).json({ success: false, message: 'Donation not found' });
         res.status(200).json({ success: true, data: donation });
     } catch (error) {
+        console.error('Error fetching donation:', error);
         res.status(500).json({ success: false, message: 'Error fetching donation', error: error.message });
     }
 };
 
-// UPDATE donation status - WITH FUNDRAISER REVERSAL LOGIC
+// UPDATE donation status + EMAIL
 export const updateDonationStatus = async (req, res) => {
     try {
         const { id } = req.params;
         const { status, adminNotes, rejectionReason } = req.body;
 
-        // Get the current donation with populated resource request
+        console.log(`Updating donation ${id} to status: ${status}`);
+
         const currentDonation = await Donation.findById(id).populate('resourceRequest');
         if (!currentDonation) {
             return res.status(404).json({ success: false, message: 'Donation not found' });
@@ -195,34 +289,29 @@ export const updateDonationStatus = async (req, res) => {
 
         let fundraiserAdjustment = 0;
 
-        // Case 1: Approving/Completing donation → ADD to collected
         if (
             currentDonation.resourceRequest?.resourceType === 'fundraiser' &&
             ['approved', 'completed'].includes(status) &&
             currentDonation.donationDetails?.amount > 0 &&
-            !['approved', 'completed'].includes(currentDonation.status) // avoid double adding
+            !['approved', 'completed'].includes(currentDonation.status)
         ) {
             fundraiserAdjustment = currentDonation.donationDetails.amount;
         }
 
-        //  Case 2: Cancelling/Rejecting donation → SUBTRACT from collected (only if already counted before)
         if (
             currentDonation.resourceRequest?.resourceType === 'fundraiser' &&
             ['cancelled', 'rejected'].includes(status) &&
             currentDonation.donationDetails?.amount > 0 &&
-            ['approved', 'completed'].includes(currentDonation.status) // only reverse if it was already added
+            ['approved', 'completed'].includes(currentDonation.status)
         ) {
             fundraiserAdjustment = -currentDonation.donationDetails.amount;
         }
 
-        // Apply fundraiser adjustment if needed
         if (fundraiserAdjustment !== 0) {
             await ResourceRequest.findByIdAndUpdate(
                 currentDonation.resourceRequest._id,
                 { $inc: { 'fundraiser.collectedAmount': fundraiserAdjustment } }
             );
-
-            // Ensure collectedAmount never goes below 0
             const updatedRequest = await ResourceRequest.findById(currentDonation.resourceRequest._id);
             if (updatedRequest.fundraiser.collectedAmount < 0) {
                 await ResourceRequest.findByIdAndUpdate(
@@ -232,7 +321,6 @@ export const updateDonationStatus = async (req, res) => {
             }
         }
 
-        // Update the donation status
         const updateData = { status };
         if (adminNotes) updateData.adminNotes = adminNotes;
         if (status === 'rejected' && rejectionReason) updateData.rejectionReason = rejectionReason;
@@ -243,11 +331,33 @@ export const updateDonationStatus = async (req, res) => {
             id,
             updateData,
             { new: true, runValidators: true }
-        ).populate('resourceRequest', 'organizationName resourceType urgencyLevel fundraiser');
+        ).populate('resourceRequest', 'organizationName resourceType urgencyLevel fundraiser donor');
+
+        let emailSent = false;
+        if (status === 'completed' && updatedDonation?.donor?.email) {
+            console.log(`Admin marked donation as completed. Sending thank you email to: ${updatedDonation.donor.email}`);
+            
+            try {
+                const emailResult = await sendThankYouEmail(
+                    updatedDonation.donor.email,
+                    updatedDonation.donor.fullName || "Donor",
+                    updatedDonation.resourceRequest?.organizationName || "the campaign"
+                );
+                
+                if (emailResult.success) {
+                    console.log('Thank you email sent successfully after admin status update');
+                    emailSent = true;
+                } else {
+                    console.error('Failed to send thank you email after admin status update:', emailResult.error);
+                }
+            } catch (emailError) {
+                console.error('Error sending thank you email:', emailError);
+            }
+        }
 
         res.json({
             success: true,
-            message: `Donation status updated to ${status}${fundraiserAdjustment !== 0 ? '. Fundraiser amount adjusted.' : ''}`,
+            message: `Donation status updated to ${status}${fundraiserAdjustment !== 0 ? '. Fundraiser amount adjusted.' : ''}${emailSent ? ' Thank you email sent to donor.' : ''}`,
             data: updatedDonation
         });
 
@@ -261,54 +371,39 @@ export const updateDonationStatus = async (req, res) => {
     }
 };
 
-
-
-// DELETE donation - WITH FUNDRAISER REVERSAL
+// DELETE donation
 export const deleteDonation = async (req, res) => {
     try {
-        // Get donation with resource request details before deletion
         const donation = await Donation.findById(req.params.id).populate('resourceRequest');
         if (!donation) return res.status(404).json({ success: false, message: 'Donation not found' });
 
-        // Check if this is a completed fundraiser donation that needs amount reversal
-        const needsFundraiserReversal = 
+        const needsFundraiserReversal =
             donation.resourceRequest?.resourceType === 'fundraiser' &&
             ['completed', 'approved'].includes(donation.status) &&
             donation.donationDetails?.amount > 0;
 
         if (needsFundraiserReversal) {
-            console.log('Reversing fundraiser amount on deletion:', donation.donationDetails.amount);
-            
-            // Subtract the donation amount from collected amount
             await ResourceRequest.findByIdAndUpdate(
                 donation.resourceRequest._id,
-                {
-                    $inc: {
-                        'fundraiser.collectedAmount': -donation.donationDetails.amount
-                    }
-                }
+                { $inc: { 'fundraiser.collectedAmount': -donation.donationDetails.amount } }
             );
-
-            // Ensure collected amount doesn't go negative
             const updatedRequest = await ResourceRequest.findById(donation.resourceRequest._id);
             if (updatedRequest.fundraiser.collectedAmount < 0) {
                 await ResourceRequest.findByIdAndUpdate(
                     donation.resourceRequest._id,
-                    {
-                        'fundraiser.collectedAmount': 0
-                    }
+                    { 'fundraiser.collectedAmount': 0 }
                 );
             }
         }
 
-        // Now delete the donation
         await Donation.findByIdAndDelete(req.params.id);
 
-        res.status(200).json({ 
-            success: true, 
-            message: `Donation deleted successfully${needsFundraiserReversal ? '. Fundraiser amount adjusted.' : ''}` 
+        res.status(200).json({
+            success: true,
+            message: `Donation deleted successfully${needsFundraiserReversal ? '. Fundraiser amount adjusted.' : ''}`
         });
     } catch (error) {
+        console.error('Error deleting donation:', error);
         res.status(500).json({ success: false, message: 'Error deleting donation', error: error.message });
     }
 };

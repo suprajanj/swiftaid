@@ -1171,8 +1171,26 @@ Thank you for your generous donation!
                     value={form.preferredDate} 
                     onChange={handleChange} 
                     required 
-                    style={inputStyle} 
+                    min={new Date().toISOString().split('T')[0]}
+                    style={{
+                      ...inputStyle,
+                      cursor: 'pointer',
+                      backgroundColor: '#ffffff',
+                      '&::-webkit-calendar-picker-indicator': {
+                        cursor: 'pointer'
+                      }
+                    }}
+                    onFocus={(e) => e.target.showPicker()}
+                    onClick={(e) => e.target.showPicker()}
                   />
+                  <small style={{ 
+                    display: 'block', 
+                    marginTop: '4px', 
+                    color: '#666',
+                    fontSize: '12px'
+                  }}>
+                    Select your preferred donation date
+                  </small>
                 </div>
 
                 <div>
@@ -1222,155 +1240,155 @@ Thank you for your generous donation!
           </div>
         )}
 
-        {/* Donations List */}
-        <div style={{ marginTop: "40px" }}>
-          <h2 style={{ marginBottom: "25px", fontSize: "2rem", color: "#4CAF50" }}>
-            All Donations ({donations.length})
-          </h2>
-          
-          {donations.length === 0 ? (
-            <div style={{ 
-              textAlign: "center", 
-              padding: "60px 20px", 
-              background: "#ffffff", 
-              borderRadius: "12px",
-              color: "#666" 
-            }}>
-              <h3 style={{ fontSize: "1.5rem", marginBottom: "15px" }}>No donations yet</h3>
-              <p style={{ fontSize: "1.1rem" }}>Be the first to submit a donation offer and help those in need!</p>
-            </div>
-          ) : (
-            <div style={{ display: "grid", gap: "25px" }}>
-              {donations.map((d) => {
-                const donationRequest = requests.find(r => r._id === d.resourceRequest?._id || d.resourceRequest);
-                const isFundraiserDonation = donationRequest?.resourceType === "fundraiser";
-                
-                return (
-                  <div key={d._id} style={cardStyle}>
-                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "20px", marginBottom: "20px" }}>
-                      
-                      {/* Left Column - Personal Info */}
-                      <div>
-                        <h3 style={{ margin: "0 0 15px 0", color: "#4CAF50", fontSize: "1.4rem" }}>
-                          {d.donor?.fullName}
-                        </h3>
-                        <div style={{ lineHeight: "1.6" }}>
-                          <p><strong>Phone:</strong> {d.donor?.phone}</p>
-                          <p><strong>Email:</strong> {d.donor?.email}</p>
-                          <p><strong>NIC:</strong> {d.donor?.nic}</p>
-                          <p><strong>Location:</strong> {d.donor?.city}, {d.donor?.district}</p>
-                          <p><strong>Address:</strong> {d.donor?.address}</p>
-                        </div>
-                      </div>
-                      
-                      {/* Right Column - Donation Details */}
-                      <div>
-                        <h4 style={{ color: "#FFA726", marginBottom: "15px" }}>Donation Details</h4>
-                        <div style={{ lineHeight: "1.6" }}>
-                          {isFundraiserDonation ? (
-                            <>
-                              <p><strong>Donation Amount:</strong> Rs.{d.donationDetails?.amount || 0}</p>
-                              {d.donationDetails?.paymentInfo && (
-                                <>
-                                  <p><strong>Transaction ID:</strong> {d.donationDetails.paymentInfo.transactionId}</p>
-                                  {d.donationDetails.paymentInfo.transferId && (
-                                    <p><strong>Transfer ID:</strong> {d.donationDetails.paymentInfo.transferId}</p>
-                                  )}
-                                  {d.donationDetails.paymentInfo.cardLast4 && (
-                                    <p><strong>Card:</strong> ****{d.donationDetails.paymentInfo.cardLast4}</p>
-                                  )}
-                                  <p><strong>Payment Status:</strong> 
-                                    <span style={{ 
-                                      color: d.donationDetails.paymentInfo.paymentStatus === 'completed' ? '#4CAF50' : '#FFA726',
-                                      fontWeight: 'bold',
-                                      textTransform: 'capitalize'
-                                    }}>
-                                      {d.donationDetails.paymentInfo.paymentStatus}
-                                    </span>
-                                  </p>
-                                </>
-                              )}
-                            </>
-                          ) : (
-                            <>
-                              <p><strong>Quantity:</strong> {d.donationDetails?.quantity} units</p>
-                              {d.donationDetails?.bloodGroup && (
-                                <p><strong>Blood Group:</strong> {d.donationDetails?.bloodGroup}</p>
-                              )}
-                              {d.donationDetails?.medicalConditions && (
-                                <p><strong>Medical Notes:</strong> {d.donationDetails.medicalConditions}</p>
-                              )}
-                            </>
-                          )}
-                          <p><strong>Preferred:</strong> {d.availability?.preferredDate?.split("T")[0]} ({d.availability?.preferredTime})</p>
-                          <p><strong>Flexible:</strong> {d.availability?.isFlexible ? "Yes" : "No"}</p>
-                          <p><strong>For Request:</strong> {donationRequest?.organizationName || d.resourceRequest?.organizationName || "N/A"}</p>
-                          <p><strong>Request Type:</strong> {donationRequest?.resourceType || "N/A"}</p>
-                        </div>
-                      </div>
-                    </div>
-                    
-                    {/* Status and Actions */}
-                    <div style={{ 
-                      paddingTop: "20px", 
-                      borderTop: "2px solid #ccc",
-                      display: "flex",
-                      justifyContent: "space-between",
-                      alignItems: "center",
-                      flexWrap: "wrap",
-                      gap: "15px"
-                    }}>
-                      <div>
-                        <p style={{ margin: "0 0 10px 0" }}>
-                          <strong>Status:</strong>{" "}
-                          <span style={{ 
-                            color: getStatusColor(d.status),
-                            fontWeight: "bold",
-                            textTransform: "uppercase",
-                            fontSize: "1.1rem",
-                            padding: "4px 12px",
-                            borderRadius: "20px",
-                            background: `${getStatusColor(d.status)}20`
-                          }}>
-                            {d.status || "pending"}
-                          </span>
-                        </p>
+        {/* Donations List - Only visible in admin mode */}
+        {adminMode && (
+          <div style={{ marginTop: "40px" }}>
+            <h2 style={{ marginBottom: "25px", fontSize: "2rem", color: "#4CAF50" }}>
+              All Donations ({donations.length})
+            </h2>
+            
+            {donations.length === 0 ? (
+              <div style={{ 
+                textAlign: "center", 
+                padding: "60px 20px", 
+                background: "#ffffff", 
+                borderRadius: "12px",
+                color: "#666" 
+              }}>
+                <h3 style={{ fontSize: "1.5rem", marginBottom: "15px" }}>No donations yet</h3>
+                <p style={{ fontSize: "1.1rem" }}>No donations have been submitted yet.</p>
+              </div>
+            ) : (
+              <div style={{ display: "grid", gap: "25px" }}>
+                {donations.map((d) => {
+                  const donationRequest = requests.find(r => r._id === d.resourceRequest?._id || d.resourceRequest);
+                  const isFundraiserDonation = donationRequest?.resourceType === "fundraiser";
+                  
+                  return (
+                    <div key={d._id} style={cardStyle}>
+                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "20px", marginBottom: "20px" }}>
                         
-                        {d.adminNotes && (
-                          <p style={{ margin: "0 0 10px 0", color: "#FFA726" }}>
-                            <strong>Admin Notes:</strong> {d.adminNotes}
+                        {/* Left Column - Personal Info */}
+                        <div>
+                          <h3 style={{ margin: "0 0 15px 0", color: "#4CAF50", fontSize: "1.4rem" }}>
+                            {d.donor?.fullName}
+                          </h3>
+                          <div style={{ lineHeight: "1.6" }}>
+                            <p><strong>Phone:</strong> {d.donor?.phone}</p>
+                            <p><strong>Email:</strong> {d.donor?.email}</p>
+                            <p><strong>NIC:</strong> {d.donor?.nic}</p>
+                            <p><strong>Location:</strong> {d.donor?.city}, {d.donor?.district}</p>
+                            <p><strong>Address:</strong> {d.donor?.address}</p>
+                          </div>
+                        </div>
+                        
+                        {/* Right Column - Donation Details */}
+                        <div>
+                          <h4 style={{ color: "#FFA726", marginBottom: "15px" }}>Donation Details</h4>
+                          <div style={{ lineHeight: "1.6" }}>
+                            {isFundraiserDonation ? (
+                              <>
+                                <p><strong>Donation Amount:</strong> Rs.{d.donationDetails?.amount || 0}</p>
+                                {d.donationDetails?.paymentInfo && (
+                                  <>
+                                    <p><strong>Transaction ID:</strong> {d.donationDetails.paymentInfo.transactionId}</p>
+                                    {d.donationDetails.paymentInfo.transferId && (
+                                      <p><strong>Transfer ID:</strong> {d.donationDetails.paymentInfo.transferId}</p>
+                                    )}
+                                    {d.donationDetails.paymentInfo.cardLast4 && (
+                                      <p><strong>Card:</strong> ****{d.donationDetails.paymentInfo.cardLast4}</p>
+                                    )}
+                                    <p><strong>Payment Status:</strong> 
+                                      <span style={{ 
+                                        color: d.donationDetails.paymentInfo.paymentStatus === 'completed' ? '#4CAF50' : '#FFA726',
+                                        fontWeight: 'bold',
+                                        textTransform: 'capitalize'
+                                      }}>
+                                        {d.donationDetails.paymentInfo.paymentStatus}
+                                      </span>
+                                    </p>
+                                  </>
+                                )}
+                              </>
+                            ) : (
+                              <>
+                                <p><strong>Quantity:</strong> {d.donationDetails?.quantity} units</p>
+                                {d.donationDetails?.bloodGroup && (
+                                  <p><strong>Blood Group:</strong> {d.donationDetails?.bloodGroup}</p>
+                                )}
+                                {d.donationDetails?.medicalConditions && (
+                                  <p><strong>Medical Notes:</strong> {d.donationDetails.medicalConditions}</p>
+                                )}
+                              </>
+                            )}
+                            <p><strong>Preferred:</strong> {d.availability?.preferredDate?.split("T")[0]} ({d.availability?.preferredTime})</p>
+                            <p><strong>Flexible:</strong> {d.availability?.isFlexible ? "Yes" : "No"}</p>
+                            <p><strong>For Request:</strong> {donationRequest?.organizationName || d.resourceRequest?.organizationName || "N/A"}</p>
+                            <p><strong>Request Type:</strong> {donationRequest?.resourceType || "N/A"}</p>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      {/* Status and Actions */}
+                      <div style={{ 
+                        paddingTop: "20px", 
+                        borderTop: "2px solid #ccc",
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                        flexWrap: "wrap",
+                        gap: "15px"
+                      }}>
+                        <div>
+                          <p style={{ margin: "0 0 10px 0" }}>
+                            <strong>Status:</strong>{" "}
+                            <span style={{ 
+                              color: getStatusColor(d.status),
+                              fontWeight: "bold",
+                              textTransform: "uppercase",
+                              fontSize: "1.1rem",
+                              padding: "4px 12px",
+                              borderRadius: "20px",
+                              background: `${getStatusColor(d.status)}20`
+                            }}>
+                              {d.status || "pending"}
+                            </span>
                           </p>
-                        )}
+                          
+                          {d.adminNotes && (
+                            <p style={{ margin: "0 0 10px 0", color: "#FFA726" }}>
+                              <strong>Admin Notes:</strong> {d.adminNotes}
+                            </p>
+                          )}
+                          
+                          <p style={{ margin: "10px 0 0 0", fontSize: "0.9rem", color: "#888" }}>
+                            <strong>Created:</strong> {new Date(d.createdAt).toLocaleDateString()}
+                          </p>
+                        </div>
                         
-                        <p style={{ margin: "10px 0 0 0", fontSize: "0.9rem", color: "#888" }}>
-                          <strong>Created:</strong> {new Date(d.createdAt).toLocaleDateString()}
-                        </p>
-                      </div>
-                      
-                      <div style={{ display: "flex", gap: "12px" }}>
-                        <button 
-                          onClick={() => handleEdit(d)} 
-                          style={editButton}
-                        >
-                          {adminMode ? "Admin Edit" : "Edit"}
-                        </button>
-                        
-                        {(adminMode || d.status === 'pending') && (
+                        <div style={{ display: "flex", gap: "12px" }}>
+                          <button 
+                            onClick={() => handleEdit(d)} 
+                            style={editButton}
+                          >
+                            Admin Edit
+                          </button>
+                          
                           <button 
                             onClick={() => handleDelete(d._id)} 
                             style={deleteButton}
                           >
                             Delete
                           </button>
-                        )}
+                        </div>
                       </div>
                     </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );

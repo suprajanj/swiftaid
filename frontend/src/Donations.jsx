@@ -498,6 +498,232 @@ Thank you for your generous donation!
     URL.revokeObjectURL(url);
   };
 
+  // Generate CSV report
+  const generateCSV = () => {
+    try {
+      // Create CSV headers
+      const headers = [
+        'Donation ID',
+        'Resource Request ID',
+        'Donor Name',
+        'Phone',
+        'Email',
+        'NIC',
+        'Address',
+        'District',
+        'City',
+        'Blood Group',
+        'Medical Conditions',
+        'Quantity',
+        'Preferred Date',
+        'Preferred Time',
+        'Is Flexible',
+        'Status',
+        'Admin Notes',
+        'Payment Amount',
+        'Created Date'
+      ];
+
+      // Create CSV rows
+      const rows = donations.map(d => [
+        d._id || '',
+        d.resourceRequest?._id || '',
+        d.donor?.fullName || '',
+        d.donor?.phone || '',
+        d.donor?.email || '',
+        d.donor?.nic || '',
+        d.donor?.address || '',
+        d.donor?.district || '',
+        d.donor?.city || '',
+        d.donationDetails?.bloodGroup || '',
+        d.donationDetails?.medicalConditions || '',
+        d.donationDetails?.quantity || '',
+        d.availability?.preferredDate ? new Date(d.availability.preferredDate).toLocaleDateString() : '',
+        d.availability?.preferredTime || '',
+        d.availability?.isFlexible ? 'Yes' : 'No',
+        d.status || '',
+        d.adminNotes || '',
+        d.donationDetails?.amount ? `Rs.${d.donationDetails.amount}` : '',
+        new Date(d.createdAt).toLocaleDateString()
+      ]);
+
+      // Combine headers and rows
+      const csvContent = [headers, ...rows]
+        .map(row => row.map(field => `"${field}"`).join(','))
+        .join('\n');
+
+      // Create and download CSV
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const link = document.createElement('a');
+      const url = URL.createObjectURL(blob);
+      link.setAttribute('href', url);
+      link.setAttribute('download', `SwiftAid_Donations_Report_${new Date().toISOString().split('T')[0]}.csv`);
+      link.style.visibility = 'hidden';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
+      alert("CSV report downloaded successfully!");
+      
+    } catch (error) {
+      console.error("CSV generation error:", error);
+      alert("Failed to generate CSV report.");
+    }
+  };
+
+  // Generate PDF report
+  const generatePDF = async () => {
+    try {
+      console.log('Starting PDF generation...');
+      
+      // Check if jsPDF is already loaded
+      if (!window.jspdf) {
+        console.log('Loading jsPDF libraries...');
+        
+        // Load jsPDF with timeout
+        await Promise.race([
+          new Promise((resolve, reject) => {
+            const script = document.createElement('script');
+            script.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
+            script.onload = () => {
+              console.log('jsPDF core loaded');
+              
+              // Load AutoTable plugin
+              const autoTableScript = document.createElement('script');
+              autoTableScript.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js';
+              autoTableScript.onload = () => {
+                console.log('AutoTable plugin loaded');
+                resolve();
+              };
+              autoTableScript.onerror = () => reject(new Error('Failed to load AutoTable'));
+              document.head.appendChild(autoTableScript);
+            };
+            script.onerror = () => reject(new Error('Failed to load jsPDF'));
+            document.head.appendChild(script);
+          }),
+          new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout loading libraries')), 10000))
+        ]);
+        
+        // Wait a bit more to ensure everything is ready
+        await new Promise(resolve => setTimeout(resolve, 500));
+      }
+
+      // Verify jsPDF is available
+      if (!window.jspdf || !window.jspdf.jsPDF) {
+        throw new Error('jsPDF not properly loaded');
+      }
+
+      console.log('Creating PDF document...');
+      
+      // Create PDF using the global jsPDF
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF();
+
+      // Title
+      doc.setFontSize(20);
+      doc.setTextColor(40, 40, 40);
+      doc.text("SwiftAid - Donations Report", 14, 20);
+
+      // Add generation date
+      doc.setFontSize(12);
+      doc.setTextColor(100, 100, 100);
+      doc.text(`Generated on: ${new Date().toLocaleDateString()}`, 14, 30);
+
+      // Check if we have donations
+      if (donations.length === 0) {
+        doc.setFontSize(14);
+        doc.setTextColor(100, 100, 100);
+        doc.text("No donations found.", 14, 50);
+      } else {
+        // Prepare table columns
+        const tableColumn = [
+          "Donor Name",
+          "Phone",
+          "Location",
+          "Resource",
+          "Quantity/Amount",
+          "Preferred Date",
+          "Status",
+          "Payment Status"
+        ];
+
+        // Prepare table rows
+        const tableRows = donations.map((d) => [
+          d.donor?.fullName || "N/A",
+          d.donor?.phone || "N/A",
+          `${d.donor?.city || "N/A"}/${d.donor?.district || "N/A"}`,
+          d.donationDetails?.bloodGroup ? `Blood (${d.donationDetails.bloodGroup})` : "N/A",
+          d.donationDetails?.amount ? 
+            `Rs.${d.donationDetails.amount}` :
+            `${d.donationDetails?.quantity || "N/A"} units`,
+          d.availability?.preferredDate ? new Date(d.availability.preferredDate).toLocaleDateString() : "N/A",
+          d.status || "pending",
+          d.donationDetails?.paymentInfo?.paymentStatus || "N/A"
+        ]);
+
+        console.log('Adding table to PDF...');
+
+        // Generate table with improved styling
+        doc.autoTable({
+          head: [tableColumn],
+          body: tableRows,
+          startY: 40,
+          styles: { 
+            fontSize: 8,
+            cellPadding: 2,
+            overflow: 'linebreak'
+          },
+          headStyles: { 
+            fillColor: [76, 175, 80],
+            textColor: [255, 255, 255],
+            fontSize: 9,
+            fontStyle: 'bold'
+          },
+          alternateRowStyles: {
+            fillColor: [245, 245, 245]
+          },
+          columnStyles: {
+            0: { cellWidth: 25 }, // Donor Name
+            1: { cellWidth: 20 }, // Phone
+            2: { cellWidth: 25 }, // Location
+            3: { cellWidth: 25 }, // Resource
+            4: { cellWidth: 25 }, // Quantity/Amount
+            5: { cellWidth: 25 }, // Preferred Date
+            6: { cellWidth: 20 }, // Status
+            7: { cellWidth: 25 }  // Payment Status
+          }
+        });
+      }
+
+      // Add footer
+      const pageCount = doc.internal.getNumberOfPages();
+      for (let i = 1; i <= pageCount; i++) {
+        doc.setPage(i);
+        doc.setFontSize(10);
+        doc.setTextColor(150, 150, 150);
+        doc.text(`Page ${i} of ${pageCount}`, doc.internal.pageSize.getWidth() - 30, doc.internal.pageSize.getHeight() - 10);
+        doc.text(`Total Donations: ${donations.length}`, 14, doc.internal.pageSize.getHeight() - 10);
+      }
+
+      console.log('Saving PDF...');
+
+      // Save PDF
+      doc.save(`SwiftAid_Donations_Report_${new Date().toISOString().split('T')[0]}.pdf`);
+      
+      alert("PDF downloaded successfully!");
+
+    } catch (error) {
+      console.error("PDF generation error:", error);
+      
+      // Offer CSV as fallback
+      if (window.confirm("PDF generation failed. Would you like to download a CSV report instead?")) {
+        generateCSV();
+      } else {
+        alert("Failed to generate PDF. Please check your internet connection and try again.");
+      }
+    }
+  };
+
   // Reset form
   const resetForm = () => {
     setForm({
@@ -562,6 +788,48 @@ Thank you for your generous donation!
             >
               {adminMode ? "Exit Admin" : "Admin Mode"}
             </button>
+
+            {adminMode && (
+              <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
+                <button
+                  onClick={generatePDF}
+                  style={{
+                    padding: "12px 24px",
+                    backgroundColor: "#2196F3",
+                    color: "white",
+                    border: "none",
+                    borderRadius: "8px",
+                    cursor: "pointer",
+                    fontWeight: "bold",
+                    fontSize: "16px",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "8px"
+                  }}
+                >
+                  Download PDF
+                </button>
+                
+                <button
+                  onClick={generateCSV}
+                  style={{
+                    padding: "12px 24px",
+                    backgroundColor: "#4CAF50",
+                    color: "white",
+                    border: "none",
+                    borderRadius: "8px",
+                    cursor: "pointer",
+                    fontWeight: "bold",
+                    fontSize: "16px",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "8px"
+                  }}
+                >
+                  Download CSV
+                </button>
+              </div>
+            )}
           </div>
         </div>
 

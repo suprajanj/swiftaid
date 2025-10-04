@@ -36,6 +36,7 @@ export default function ResourceRequests() {
     // Backend-valid status enum
     status: "pending", // pending | in_progress | completed | cancelled
     additionalNotes: "",
+    adminNotes: "",
 
     // Fundraiser fields
     fundraiserTarget: 0,
@@ -494,6 +495,7 @@ export default function ResourceRequests() {
 
       status: r.status || "pending",
       additionalNotes: r.additionalNotes || "",
+      adminNotes: r.adminNotes || "",
       
       // Fundraiser fields
       fundraiserTarget: r?.fundraiser?.targetAmount || 0,
@@ -631,23 +633,98 @@ export default function ResourceRequests() {
             {error}
           </div>
         )}
-
-        {/* Form Card */}
-        <div
-          style={{
-            background: "linear-gradient(135deg, #fbfafaff 0%, #ece9e9ff 100%)",
-            border: "1px solid #333",
+        
+        {/* Admin Edit Panel */}
+        {adminMode && editingId && (
+          <div style={{
+            background: "linear-gradient(135deg, #fff5e6 0%, #ffe0b2 100%)",
+            border: "1px solid #FFB74D",
             borderRadius: 14,
-            boxShadow: "0 8px 26px rgba(238, 231, 231, 0.45)",
             padding: 26,
             marginBottom: 28
-          }}
-        >
-          <h2 style={{ marginTop: 0, color: "#4CAF50" }}>
-            {editingId ? "Update Resource Request" : "Create New Resource Request"}
-          </h2>
+          }}>
+            <h2 style={{ margin: "0 0 20px 0", color: "#F57C00" }}>Admin Panel: Update Request Status</h2>
+            
+            <div style={{ display: "grid", gap: 16, maxWidth: 600 }}>
+              <Input label="Status">
+                <select
+                  name="status"
+                  value={form.status}
+                  onChange={onChange}
+                  style={inputStyle}
+                >
+                  <option value="pending">Pending</option>
+                  <option value="in_progress">In Progress</option>
+                  <option value="completed">Completed</option>
+                  <option value="cancelled">Cancelled</option>
+                </select>
+              </Input>
 
-          <form onSubmit={handleSubmit} style={{ display: "grid", gap: 18 }}>
+              <Input label="Admin Notes">
+                <textarea
+                  name="adminNotes"
+                  value={form.adminNotes || ""}
+                  onChange={onChange}
+                  style={{ ...inputStyle, minHeight: 100, width: "100%" }}
+                  placeholder="Add notes about this request, contact details, etc..."
+                />
+              </Input>
+
+              <div style={{ display: "flex", gap: 12, marginTop: 10 }}>
+                <button 
+                  type="button"
+                  onClick={handleSubmit}
+                  style={{
+                    padding: "12px 24px",
+                    background: "linear-gradient(135deg, #4CAF50 0%, #45a049 100%)",
+                    color: "white",
+                    border: "none",
+                    borderRadius: 8,
+                    cursor: "pointer",
+                    fontWeight: "bold",
+                    fontSize: "16px"
+                  }}
+                >
+                  Update Status
+                </button>
+                <button
+                  type="button"
+                  onClick={resetForm}
+                  style={{
+                    padding: "12px 24px",
+                    background: "#666",
+                    color: "white",
+                    border: "none",
+                    borderRadius: 8,
+                    cursor: "pointer",
+                    fontWeight: "bold",
+                    fontSize: "16px"
+                  }}
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Form Card - Only show when not in admin mode */}
+        {!adminMode && (
+          <div
+            style={{
+              background: "linear-gradient(135deg, #fbfafaff 0%, #ece9e9ff 100%)",
+              border: "1px solid #333",
+              borderRadius: 14,
+              boxShadow: "0 8px 26px rgba(238, 231, 231, 0.45)",
+              padding: 26,
+              marginBottom: 28
+            }}
+          >
+            <h2 style={{ marginTop: 0, color: "#4CAF50" }}>
+              {editingId ? "Update Resource Request" : "Create New Resource Request"}
+            </h2>
+
+            <form onSubmit={handleSubmit} style={{ display: "grid", gap: 18 }}>
             <div
               style={{
                 display: "grid",
@@ -939,6 +1016,7 @@ export default function ResourceRequests() {
             </div>
           </form>
         </div>
+        )}
 
         {/* List - Only visible in admin mode */}
         {adminMode && (

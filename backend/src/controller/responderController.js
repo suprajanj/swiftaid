@@ -1,18 +1,22 @@
-import getResponderModel from "../model/getResponderModel.js";
+import bcrypt from "bcryptjs";
+import jwt from "jsonwebtoken";
+
+// Get Responder model from global connection
+const getResponderModel = () => global.respondersDB.model("Responder");
 
 // Create new responder
 export const createNewResponder = async (req, res) => {
   try {
-    const Responder = getResponderModel(); // ✅ call here, after DB connected
-
+    const Responder = getResponderModel();
     const { NIC, name, contactNumber, email, address, password, position, responderType } = req.body;
 
-    if (!/^([0-9]{9}[vVxX]|[0-9]{12})$/.test(NIC)) {
-      return res.status(400).json({ error: "Invalid NIC format" });
-    }
+    if (!password) return res.status(400).json({ error: "Password is required" });
+    if (!/^([0-9]{9}[vVxX]|[0-9]{12})$/.test(NIC)) return res.status(400).json({ error: "Invalid NIC format" });
 
     const existing = await Responder.findOne({ NIC });
     if (existing) return res.status(400).json({ error: "NIC already exists" });
+
+    const hashedPassword = await bcrypt.hash(password, 10);
 
     const newResponder = new Responder({
       NIC,
@@ -22,54 +26,60 @@ export const createNewResponder = async (req, res) => {
       address,
       position,
       responderType,
+      password: hashedPassword
     });
 
     await newResponder.save();
     return res.status(201).json({ message: "Responder created successfully", responder: newResponder });
-  } catch (error) {
-    console.error("Create responder error:", error);
-    return res.status(500).json({ error: error.message });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ error: err.message });
   }
 };
 
+// Login responder
 export const loginResponder = async (req, res) => {
   try {
     const { email, password } = req.body;
+    const Responder = getResponderModel();
 
-    // Find responder by email
     const responder = await Responder.findOne({ email });
-    if (!responder) {
-      return res.status(400).json({ error: "Responder not found" });
-    }
+    if (!responder) return res.status(400).json({ error: "Responder not found" });
+    if (!responder.password) return res.status(400).json({ error: "Password not set" });
 
-    // Simple password check (use bcrypt for real projects)
-    if (responder.password !== password) {
-      return res.status(400).json({ error: "Invalid credentials" });
-    }
+    const isMatch = await bcrypt.compare(password, responder.password);
+    if (!isMatch) return res.status(400).json({ error: "Invalid credentials" });
 
-    // Success
+    const token = jwt.sign(
+      { id: responder._id, email: responder.email, responderType: responder.responderType },
+      process.env.JWT_SECRET,
+      { expiresIn: "1d" }
+    );
+
     return res.status(200).json({
       message: "Login successful",
+      token,
       responder: {
         id: responder._id,
         name: responder.name,
         email: responder.email,
-        responderType: responder.responderType,
-      },
+        responderType: responder.responderType
+      }
     });
-  } catch (error) {
-    console.error("Login error:", error);
+  } catch (err) {
+    console.error(err);
     return res.status(500).json({ error: "Server error" });
   }
 };
 
+// Get all responders
 export const getAllResponders = async (req, res) => {
   try {
-    const Responder = getResponderModel(); // ✅ call here too
-    const responders = await Responder.find();
+    const Responder = getResponderModel();
+    const responders = await Responder.find().select("-password");
     return res.status(200).json(responders);
-  } catch (error) {
-    console.error(error);
-    return res.status(500).json({ error: error.message });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ error: err.message });
   }
 };

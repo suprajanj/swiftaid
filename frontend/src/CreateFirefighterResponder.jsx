@@ -66,6 +66,11 @@ const CreateFirefighterResponder = () => {
             Create Firefighter Account
           </button>
         </form>
+        <div>
+          <button className="mt-4 text-center bg-red-600 py-2 rounded hover:bg-red-950">
+            <a href="/login" className="text-white hover:underline">Already have an account? Login</a>
+          </button>
+        </div>
       </div>
     </div>
   );

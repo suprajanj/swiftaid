@@ -68,6 +68,11 @@ const CreatePoliceResponder = () => {
             Create Police Account
           </button>
         </form>
+        <div>
+          <button className="mt-4 text-center bg-blue-600 py-2 rounded hover:bg-blue-950">
+            <a href="/login" className="text-white hover:underline">Already have an account? Login</a>
+          </button>
+        </div>
       </div>
     </div>
   );

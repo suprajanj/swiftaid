@@ -66,6 +66,11 @@ const CreateHospitalResponder = () => {
             Create Medical Account
           </button>
         </form>
+        <div>
+          <button className="mt-4 text-center bg-green-600 py-2 rounded hover:bg-green-950">
+            <a href="/login" className="text-white hover:underline">Already have an account? Login</a>
+          </button>
+        </div>
       </div>
     </div>
   );

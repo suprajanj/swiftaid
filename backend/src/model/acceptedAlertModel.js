@@ -16,4 +16,4 @@ const AcceptedAlertSchema = new mongoose.Schema({
   acceptedAt: { type: Date, default: Date.now },
 });
 
-export default mongoose.model("AcceptedAlert", AcceptedAlertSchema);
+export default AcceptedAlertSchema;

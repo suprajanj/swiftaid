@@ -13,4 +13,4 @@ const CompletedAlertSchema = new mongoose.Schema({
   comment: { type: String },
 });
 
-export default mongoose.model("CompletedAlert", CompletedAlertSchema);
+export default CompletedAlertSchema;

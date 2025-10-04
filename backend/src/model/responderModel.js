@@ -5,6 +5,7 @@ const ResponderSchema = new mongoose.Schema({
   name: { type: String, required: true },
   contactNumber: { type: String, required: true },
   email: { type: String, required: true },
+  password: { type: String, required: true },
   address: { type: String, required: true },
   responderType: { type: String, required: true }, // police, hospital, firefighter
   status: { type: String, default: "available" },

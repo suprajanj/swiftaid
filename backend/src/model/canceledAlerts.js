@@ -13,4 +13,4 @@ const CanceledAlertSchema = new mongoose.Schema({
   reasonToReject: { type: String },
 });
 
-export default mongoose.model("CanceledAlert", CanceledAlertSchema);
+export default CanceledAlertSchema;

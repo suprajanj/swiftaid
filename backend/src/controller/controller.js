@@ -1,4 +1,3 @@
-// src/controllers/controller.js
 import mongoose from "mongoose";
 
 const isValidId = (id) => mongoose.Types.ObjectId.isValid(id);
@@ -6,16 +5,22 @@ const isValidId = (id) => mongoose.Types.ObjectId.isValid(id);
 // helper to get models from global (throws if not present)
 const getModels = () => {
   const {
-    AlertModel,
-    AcceptedAlertModel,
-    CompletedAlertModel,
-    CanceledAlertModel,
-    ResponderModel,
+    allAlertsDB,
+    acceptedAlertsDB,
+    completedAlertsDB,
+    canceledAlertsDB,
+    respondersDB,
   } = global;
 
-  if (!AlertModel || !AcceptedAlertModel || !CompletedAlertModel || !CanceledAlertModel || !ResponderModel) {
+  if (!allAlertsDB || !acceptedAlertsDB || !completedAlertsDB || !canceledAlertsDB || !respondersDB) {
     throw new Error("Models are not registered on DB connections (server.js must register schemas)");
   }
+
+  const AlertModel = allAlertsDB.model("AlertModel");
+  const AcceptedAlertModel = acceptedAlertsDB.model("AcceptedAlertModel");
+  const CompletedAlertModel = completedAlertsDB.model("CompletedAlertModel");
+  const CanceledAlertModel = canceledAlertsDB.model("CanceledAlertModel");
+  const ResponderModel = respondersDB.model("ResponderModel");
 
   return { AlertModel, AcceptedAlertModel, CompletedAlertModel, CanceledAlertModel, ResponderModel };
 };
@@ -74,7 +79,6 @@ const displayAlertDetails = async (req, res) => {
 
     const { AlertModel, AcceptedAlertModel, CompletedAlertModel } = getModels();
 
-    // Try lookup across collections by _id
     const alert =
       (await AlertModel.findById(id)) ||
       (await AcceptedAlertModel.findById(id)) ||
@@ -107,7 +111,6 @@ const acceptAlert = async (req, res) => {
       acceptedAt: new Date(),
     });
 
-    // ensure we don't accidentally include _id duplicates
     delete accepted._id;
     await accepted.save();
 
@@ -139,8 +142,10 @@ const cancelAlert = async (req, res) => {
     await canceled.save();
 
     await AcceptedAlertModel.findByIdAndDelete(id);
-    // mark pending collection status too if that exists
-    await AlertModel.findOneAndUpdate({ reportId: alert.reportId }, { status: "cancelled", reasonToReject: canceled.reasonToReject });
+    await AlertModel.findOneAndUpdate(
+      { reportId: alert.reportId },
+      { status: "cancelled", reasonToReject: canceled.reasonToReject }
+    );
 
     res.json({ message: "Alert cancelled successfully", canceled });
   } catch (error) {
@@ -155,7 +160,6 @@ const markAsReached = async (req, res) => {
     if (!isValidId(id)) return res.status(400).json({ message: "Invalid ID" });
 
     const { AcceptedAlertModel, AlertModel } = getModels();
-
     const update = { status: "reached" };
 
     const alert =
@@ -187,7 +191,6 @@ const completeAlert = async (req, res) => {
       reason,
     } = req.body;
 
-    // files are optional — if you're using multer you'll get req.files
     const files = req.files || [];
 
     if (!isValidId(id)) return res.status(400).json({ message: "Invalid ID" });
@@ -217,11 +220,9 @@ const completeAlert = async (req, res) => {
     delete completed._id;
     await completed.save();
 
-    // clean up from active collections
     if (await AcceptedAlertModel.exists({ _id: id })) await AcceptedAlertModel.findByIdAndDelete(id);
     if (await AlertModel.exists({ _id: id })) await AlertModel.findByIdAndDelete(id);
 
-    // build a report object to return
     const report = {
       reportId: completed.reportId,
       userId: completed.userId,
@@ -258,7 +259,6 @@ const updateResponderLocation = async (req, res) => {
     if (!isValidId(id)) return res.status(400).json({ message: "Invalid ID" });
 
     const { AcceptedAlertModel, AlertModel } = getModels();
-
     const update = { responderLocation: { lat, lng } };
 
     const alert =

@@ -23,4 +23,4 @@ const EmergencyReportSchema = new mongoose.Schema({
   },
 });
 
-export default mongoose.model("EmergencyReport", EmergencyReportSchema);
+export default EmergencyReportSchema;

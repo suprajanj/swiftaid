@@ -1,11 +1,10 @@
-// src/routes/route.js
 import express from "express";
-import * as controller from "../controller/controller.js"; // your alerts controller
+import * as controller from "../controller/controller.js"; // Alerts controller
 import * as responderController from "../controller/responderController.js";
 
 const router = express.Router();
 
-// Alerts
+// Alerts routes
 router.get("/alerts", controller.getAllAlerts);
 router.post("/alerts", controller.addAlert);
 router.get("/alerts/status/:status", controller.getAlertsByStatus);
@@ -21,7 +20,7 @@ router.delete("/alerts", controller.deleteAllAlerts);
 router.get("/accepted", controller.getAllAcceptedAlerts);
 router.get("/completed", controller.getAllCompletedAlerts);
 
-// Responders
+// Responder routes
 router.post("/create-responder", responderController.createNewResponder);
 router.get("/responders", responderController.getAllResponders);
 router.post("/login", responderController.loginResponder);

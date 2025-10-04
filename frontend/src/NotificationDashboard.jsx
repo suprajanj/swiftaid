@@ -10,6 +10,7 @@ import {
 import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import mapStyles from "./mapStyles.jsx";
+import { useNavigate } from "react-router-dom";
 
 const libraries = ["places"];
 const mapContainerStyle = { width: "100%", height: "80vh", borderRadius: "10px" };
@@ -21,7 +22,12 @@ export default function NotificationDashboard() {
   const [selectedAlert, setSelectedAlert] = useState(null);
   const [userLocation, setUserLocation] = useState(defaultCenter);
   const [filter, setFilter] = useState("All");
-  const [radius, setRadius] = useState(20); // radius in km (default 20)
+  const [radius, setRadius] = useState(20);
+
+  const navigate = useNavigate();
+
+  // ✅ Get responder info from localStorage
+  const responder = JSON.parse(localStorage.getItem("responder"));
 
   const { isLoaded, loadError } = useLoadScript({
     googleMapsApiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY,
@@ -35,7 +41,7 @@ export default function NotificationDashboard() {
         setUserLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude })
       );
     }
-    const interval = setInterval(fetchAlerts, 1000);
+    const interval = setInterval(fetchAlerts, 2000);
     return () => clearInterval(interval);
   }, []);
 
@@ -66,7 +72,7 @@ export default function NotificationDashboard() {
             alert.liveLocation.coordinates[1],
             alert.liveLocation.coordinates[0]
           );
-          return distance <= radius; // ✅ use slider value
+          return distance <= radius;
         })
       );
     } else {
@@ -90,7 +96,7 @@ export default function NotificationDashboard() {
 
   const getDistanceFromLatLonInKm = (lat1, lon1, lat2, lon2) => {
     const deg2rad = (deg) => deg * (Math.PI / 180);
-    const R = 6371; // radius of Earth in km
+    const R = 6371;
     const dLat = deg2rad(lat2 - lat1);
     const dLon = deg2rad(lon2 - lon1);
     const a =
@@ -101,15 +107,6 @@ export default function NotificationDashboard() {
     const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
     return R * c;
   };
-  
-  const slider = document.getElementById("radiusSlider");
-  const radiusValue = document.getElementById("radiusValue");
-
-  slider?.addEventListener("input", function() {
-    radiusValue.textContent = this.value + " km";
-    setRadius(Number(this.value));
-    applyFilter();
-  });
 
   const getStatusColor = (status) => {
     switch (status.toLowerCase()) {
@@ -117,15 +114,18 @@ export default function NotificationDashboard() {
         return "bg-red-500 text-white";
       case "accepted":
         return "bg-yellow-400 text-black";
-      case "reached":
-        return "bg-blue-500 text-white";
-      case "cancelled":
-        return "bg-gray-400 text-white";
       case "resolved":
         return "bg-green-800 text-white";
       default:
         return "bg-gray-200";
     }
+  };
+
+  // ✅ Logout
+  const handleLogout = () => {
+    localStorage.removeItem("responder");
+    toast.info("Logged out");
+    navigate("/login");
   };
 
   if (loadError) return <p>Error loading map</p>;
@@ -142,9 +142,9 @@ export default function NotificationDashboard() {
         </h1>
 
         <div className="flex items-center space-x-4">
-          {/* Dropdown */}
+          {/* Filter Dropdown */}
           <select
-            className="mb-4 p-2 border rounded"
+            className="p-2 border rounded"
             value={filter}
             onChange={(e) => setFilter(e.target.value)}
           >
@@ -154,77 +154,72 @@ export default function NotificationDashboard() {
             <option value="cancelled">Cancelled</option>
           </select>
 
-          <div className="flex items-center space-x-2">
-            <label className="ml-4 flex items-center space-x-2 mb-4">
-              <input
-                type="checkbox"
-                checked={filter === "In My Area"}
-                onChange={(e) => setFilter(e.target.checked ? "In My Area" : "All")}
-              />
-              <span>In My Area</span>
-            </label>
-          </div>
-
-          {/* Radius Slider (only visible in "In My Area") */}
-          {filter === "In My Area" && (
-            <div className="slider-container flex items-center space-x-2">
-              <label htmlFor="radiusSlider">Radius:</label>
-              <input
-                type="range"
-                id="radiusSlider"
-                min="1"
-                max="40"
-                value={radius}
-                onChange={(e) => setRadius(Number(e.target.value))}
-              />
-              <span>{radius} km</span>
+          {/* User Info Button */}
+          {responder && (
+            <div className="relative group">
+              <button className="bg-indigo-600 text-white py-2 px-4 rounded shadow">
+                {responder.name} ⬇
+              </button>
+              <div className="absolute right-0 mt-2 w-56 bg-white rounded shadow-lg p-4 hidden group-hover:block">
+                <p><strong>Name:</strong> {responder.name}</p>
+                <p><strong>Email:</strong> {responder.email}</p>
+                <p><strong>Type:</strong> {responder.responderType}</p>
+                <button
+                  className="mt-3 w-full bg-red-500 hover:bg-red-600 text-white py-1 rounded"
+                  onClick={handleLogout}
+                >
+                  Logout
+                </button>
+              </div>
             </div>
           )}
-        </div>
 
-        <button
-          className="bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded shadow"
-          onClick={() => (window.location.href = "/accepted-tasks")}
-        >
-          Go to Accepted Tasks
-        </button>
+          {/* Accepted Tasks Button */}
+          <button
+            className="bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded shadow"
+            onClick={() => navigate("/accepted-tasks")}
+          >
+            Go to Accepted Tasks
+          </button>
+        </div>
       </div>
 
+      {/* Dashboard Grid */}
       <div className="grid grid-cols-12 gap-6">
-        {/* LEFT: Alerts List + Filter */}
+        {/* LEFT: Alerts List */}
         <div className="col-span-3 bg-white shadow-xl rounded-2xl p-4 border max-h-[80vh] flex flex-col">
           <h2 className="text-xl font-bold mb-2 text-primary">Alert List</h2>
 
           <div className="space-y-3 overflow-y-auto flex-1">
-            {Array.isArray(filteredAlerts) && filteredAlerts.length === 0 && (
+            {filteredAlerts.length === 0 && (
               <p className="text-gray-500 text-center mt-4">No alerts</p>
             )}
 
-            {Array.isArray(filteredAlerts) &&
-              filteredAlerts.map((alert) => (
-                <div
-                  key={alert._id}
-                  className={`p-3 rounded-xl border cursor-pointer hover:bg-blue-50 transition ${
-                    selectedAlert?._id === alert._id
-                      ? "border-blue-400 bg-blue-50"
-                      : "border-gray-200"
-                  }`}
-                  onClick={() => setSelectedAlert(alert)}
+            {filteredAlerts.map((alert) => (
+              <div
+                key={alert._id}
+                className={`p-3 rounded-xl border cursor-pointer hover:bg-blue-50 transition ${
+                  selectedAlert?._id === alert._id
+                    ? "border-blue-400 bg-blue-50"
+                    : "border-gray-200"
+                }`}
+                onClick={() => setSelectedAlert(alert)}
+              >
+                <h3 className="font-semibold">{alert.emergencyType.toUpperCase()}</h3>
+                <p className="text-sm text-gray-600">{alert.address}</p>
+                <span
+                  className={`text-xs px-2 py-1 rounded ${getStatusColor(
+                    alert.status
+                  )}`}
                 >
-                  <h3 className="font-semibold">{alert.emergencyType.toUpperCase()}</h3>
-                  <p className="text-sm text-gray-600">{alert.address}</p>
-                  <span
-                    className={`text-xs px-2 py-1 rounded ${getStatusColor(
-                      alert.status
-                    )}`}
-                  >
-                    {alert.status}
-                  </span>
-                </div>
-              ))}
+                  {alert.status}
+                </span>
+              </div>
+            ))}
           </div>
         </div>
 
+        {/* RIGHT: Map + Info */}
         <div className="col-span-9 relative">
           <GoogleMap
             mapContainerStyle={mapContainerStyle}
@@ -248,7 +243,7 @@ export default function NotificationDashboard() {
             {filter === "In My Area" && (
               <CircleF
                 center={userLocation}
-                radius={radius * 1000} // convert km → meters
+                radius={radius * 1000}
                 options={{
                   fillColor: "blue",
                   fillOpacity: 0.1,
@@ -260,39 +255,37 @@ export default function NotificationDashboard() {
             )}
 
             {/* Alert Markers */}
-            {Array.isArray(filteredAlerts) &&
-              filteredAlerts.map(
-                (alert) =>
-                  alert.liveLocation?.coordinates && (
-                    <MarkerF
-                      key={alert._id}
-                      position={{
-                        lat: alert.liveLocation.coordinates[1],
-                        lng: alert.liveLocation.coordinates[0],
-                      }}
-                      onClick={() => setSelectedAlert(alert)}
-                      icon={{
-                        url:
-                          "data:image/svg+xml;charset=UTF-8," +
-                          encodeURIComponent(
-                            `<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40">
-                              <text x="0" y="32" font-size="32">${
-                                alert.status === "accepted" ||
-                                alert.status === "Accepted"
-                                  ? "⌛"
-                                  : alert.status === "pending"
-                                  ? "📢"
-                                  : alert.status === "resolved"
-                                  ? "✅"
-                                  : "⚪"
-                              }</text>
-                            </svg>`
-                          ),
-                        scaledSize: new google.maps.Size(40, 40),
-                      }}
-                    />
-                  )
-              )}
+            {filteredAlerts.map(
+              (alert) =>
+                alert.liveLocation?.coordinates && (
+                  <MarkerF
+                    key={alert._id}
+                    position={{
+                      lat: alert.liveLocation.coordinates[1],
+                      lng: alert.liveLocation.coordinates[0],
+                    }}
+                    onClick={() => setSelectedAlert(alert)}
+                    icon={{
+                      url:
+                        "data:image/svg+xml;charset=UTF-8," +
+                        encodeURIComponent(
+                          `<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40">
+                            <text x="0" y="32" font-size="32">${
+                              alert.status === "accepted"
+                                ? "⌛"
+                                : alert.status === "pending"
+                                ? "📢"
+                                : alert.status === "resolved"
+                                ? "✅"
+                                : "⚪"
+                            }</text>
+                          </svg>`
+                        ),
+                      scaledSize: new google.maps.Size(40, 40),
+                    }}
+                  />
+                )
+            )}
 
             {/* Info Window */}
             {selectedAlert?.liveLocation?.coordinates && (
@@ -328,45 +321,6 @@ export default function NotificationDashboard() {
               </InfoWindowF>
             )}
           </GoogleMap>
-
-          {/* Sidebar details */}
-          {selectedAlert && (
-            <div className="absolute top-12 right-4 w-80 bg-white shadow-xl rounded-2xl p-4 border z-50">
-              <h2 className="text-lg font-bold mb-2">Alert Details</h2>
-              <p>
-                <strong>Report ID:</strong> {selectedAlert.reportId}
-              </p>
-              <p>
-                <strong>User:</strong> {selectedAlert.userId}
-              </p>
-              <p>
-                <strong>NIC:</strong> {selectedAlert.NIC}
-              </p>
-              <p>
-                <strong>Contact:</strong> {selectedAlert.contactNumber}
-              </p>
-              <p>
-                <strong>Emergency:</strong> {selectedAlert.emergencyType}
-              </p>
-              <p>
-                <strong>Address:</strong> {selectedAlert.address}
-              </p>
-              <p>
-                <strong>Status:</strong> {selectedAlert.status}
-              </p>
-
-              {selectedAlert.liveLocation?.link && (
-                <a
-                  href={selectedAlert.liveLocation.link}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-block mt-2 bg-blue-500 text-white py-1 px-3 rounded hover:bg-blue-600 transition"
-                >
-                  View Live Location
-                </a>
-              )}
-            </div>
-          )}
         </div>
       </div>
     </div>

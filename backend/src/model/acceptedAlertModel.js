@@ -1,35 +1,19 @@
-// models/AcceptedAlert.js
 import mongoose from "mongoose";
 
 const AcceptedAlertSchema = new mongoose.Schema({
   reportId: { type: String, required: true, unique: true },
-  acceptedBy: { type: String, required: true },
+  acceptedBy: { type: String, default: "" },
   userId: { type: String, required: true },
   NIC: { type: String, required: true },
   contactNumber: { type: String, required: true },
-  emergencyType: { 
-    type: String, 
+  emergencyType: {
+    type: String,
+    enum: ["medical", "fire", "assault", "hospital", "accident", "other"],
     required: true,
-    enum: ["medical", "fire", "assault", "hospital", "accident", "other"], // all lowercase
   },
   address: { type: String, required: true },
   status: { type: String, default: "accepted" },
-  liveLocation: {
-    type: {
-      type: String,
-      enum: ["Point"],
-      default: "Point",
-    },
-    coordinates: {
-      type: [Number], // [lng, lat]
-      default: [0, 0],
-    },
-    link: { type: String, default: "" },
-  },
   acceptedAt: { type: Date, default: Date.now },
-  completedAt: { type: Date },
 });
-
-AcceptedAlertSchema.index({ liveLocation: "2dsphere" });
 
 export default mongoose.model("AcceptedAlert", AcceptedAlertSchema);

@@ -121,21 +121,35 @@ export default function LoginandSignup() {
       });
 
       //Role-based navigation
+      //   "User",
+      //   "Dispatcher",
+      //   "Responder - Hospital",
+      //   "Responder - Fire",
+      //   "Responder - Police",
+      //   "Supportive organization",
+      //   "Fund raiser",
+      //   "Admin",
       const role = res.data.role || "user";
-      switch (role.toLowerCase()) {
-        case "admin":
+      switch (role) {
+        case "Admin":
           navigate("/dashboard");
           break;
-        case "responder":
+        case "Responder - Hospital":
           navigate("/responder");
           break;
-        case "dispatcher":
+        case "Responder - Fire":
+          navigate("/responder");
+          break;
+        case "Responder - Police":
+          navigate("/responder");
+          break;
+        case "Dispatcher":
           navigate("/dispatcher");
           break;
-        case "fund raiser":
+        case "Fund raiser":
           navigate("/funds");
           break;
-        case "organization":
+        case "Supportive organization":
           navigate("/org");
           break;
         default:

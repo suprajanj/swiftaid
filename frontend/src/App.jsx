@@ -3,7 +3,7 @@ import { Routes, Route } from "react-router-dom";
 import Homepage from "./pages/Homepage";
 import Emergencyform from "./pages/Emergencyform";
 import Userprofile from "./pages/Userprofile";
-import UserEmergencyRequest from "./pages/UserEmergencyRequest";
+// import UserEmergencyRequest from "./pages/UserEmergencyRequest";
 import ChangePassword from "./pages/ChangePassword";
 import LoginandSignup from "./pages/LoginandSignup";
 import LandingPage from "./pages/LandingPage";
@@ -21,7 +21,7 @@ function App() {
         <Route path="/homepage" element={<Homepage />} />
         <Route path="/form/:type" element={<Emergencyform />} />
         <Route path="/profile" element={<Userprofile />} />
-        <Route path="/userRequests" element={<UserEmergencyRequest />} />
+        {/* <Route path="/userRequests" element={<UserEmergencyRequest />} /> */}
         <Route path="/changePassword" element={<ChangePassword />} />
         <Route path="/dashboard" element={<AdminDashboard />} />
         <Route path="/roles" element={<RoleManagement />} />

@@ -75,110 +75,129 @@ function Homepage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 font-inter">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 font-inter">
       <Navbar />
 
       <div className="container mx-auto px-4 py-8 max-w-6xl">
         {/* Header Section */}
-        <header className="flex flex-col md:flex-row justify-between items-center mb-12">
-          <div className="flex items-center mb-4 md:mb-0">
-            <div className="bg-red-100 p-3 rounded-full mr-4">
+        <header className="flex flex-col md:flex-row justify-between items-center mb-16">
+          <div className="flex items-center mb-6 md:mb-0">
+            <div className="bg-white p-4 rounded-2xl shadow-lg mr-6 border border-gray-100">
               <i
                 data-feather="alert-triangle"
-                className="text-red-600 w-8 h-8"
+                className="text-red-500 w-10 h-10"
               ></i>
             </div>
             <div>
-              <h1 className="text-3xl font-bold text-red-600">
-                SwiftAid Emergency Dashboard
+              <h1 className="text-4xl font-bold text-gray-800 mb-2">
+                SwiftAid Emergency
               </h1>
-              <p className="text-gray-600">
+              <p className="text-gray-600 text-lg">
                 {user
-                  ? `Welcome, ${user.firstName} ${user.lastName}`
+                  ? `Welcome back, ${user.firstName} ${user.lastName}`
                   : "Your safety is our priority"}
               </p>
             </div>
           </div>
-          <div className="bg-gray-900 text-white px-6 py-3 rounded-lg shadow-md">
-            <div className="text-xl font-mono font-bold">{time}</div>
-            <div className="text-sm opacity-80">{date}</div>
+          <div className="bg-white text-gray-800 px-8 py-4 rounded-2xl shadow-lg border border-gray-100">
+            <div className="text-2xl font-mono font-semibold tracking-tight">
+              {time}
+            </div>
+            <div className="text-sm text-gray-500 mt-1">{date}</div>
           </div>
         </header>
 
         {/* Emergency Services Section */}
-        <section className="mb-16" data-aos="fade-up">
-          <h2 className="text-2xl font-bold text-gray-800 mb-6">
-            Emergency Services
-          </h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-            <button
-              onClick={() => handleEmergencyClick("fire")}
-              className="emergency-btn bg-red-500 hover:bg-red-600 text-white p-6 rounded-xl shadow-md flex flex-col items-center transition duration-300"
-            >
-              <i data-feather="alert-circle" className="w-10 h-10 mb-3"></i>
-              <span className="font-semibold text-lg">Fire Accident</span>
-            </button>
-
-            <button
-              onClick={() => handleEmergencyClick("road")}
-              className="emergency-btn bg-orange-500 hover:bg-orange-600 text-white p-6 rounded-xl shadow-md flex flex-col items-center transition duration-300"
-            >
-              <i data-feather="alert-octagon" className="w-10 h-10 mb-3"></i>
-              <span className="font-semibold text-lg">Road Accident</span>
-            </button>
-
-            <button
-              onClick={() => handleEmergencyClick("assault")}
-              className="emergency-btn bg-blue-500 hover:bg-blue-600 text-white p-6 rounded-xl shadow-md flex flex-col items-center transition duration-300"
-            >
-              <i data-feather="user-x" className="w-10 h-10 mb-3"></i>
-              <span className="font-semibold text-lg">Assault</span>
-            </button>
-
-            <button
-              onClick={() => handleEmergencyClick("medical")}
-              className="emergency-btn bg-green-500 hover:bg-green-600 text-white p-6 rounded-xl shadow-md flex flex-col items-center transition duration-300"
-            >
-              <i data-feather="activity" className="w-10 h-10 mb-3"></i>
-              <span className="font-semibold text-lg">Medical Emergency</span>
-            </button>
-
-            <button
-              onClick={() => handleEmergencyClick("natural")}
-              className="emergency-btn bg-purple-500 hover:bg-purple-600 text-white p-6 rounded-xl shadow-md flex flex-col items-center transition duration-300"
-            >
-              <i data-feather="wind" className="w-10 h-10 mb-3"></i>
-              <span className="font-semibold text-lg">Natural Disaster</span>
-            </button>
+        <section className="mb-20" data-aos="fade-up">
+          <div className="flex items-center mb-8">
+            <div className="w-1 h-8 bg-red-500 rounded-full mr-4"></div>
+            <h2 className="text-3xl font-semibold text-gray-800">
+              Emergency Services
+            </h2>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-5">
+            {[
+              {
+                type: "fire",
+                label: "Fire Accident",
+                icon: "alert-circle",
+                color: "red",
+              },
+              {
+                type: "road",
+                label: "Road Accident",
+                icon: "alert-octagon",
+                color: "orange",
+              },
+              {
+                type: "assault",
+                label: "Assault",
+                icon: "user-x",
+                color: "blue",
+              },
+              {
+                type: "medical",
+                label: "Medical Emergency",
+                icon: "activity",
+                color: "green",
+              },
+              {
+                type: "natural",
+                label: "Natural Disaster",
+                icon: "wind",
+                color: "purple",
+              },
+            ].map((service) => (
+              <button
+                key={service.type}
+                onClick={() => handleEmergencyClick(service.type)}
+                className="group bg-white hover:bg-gray-50 border border-gray-200 rounded-2xl p-6 shadow-sm hover:shadow-md transition-all duration-300 flex flex-col items-center transform hover:-translate-y-1"
+              >
+                <div
+                  className={`bg-${service.color}-50 p-4 rounded-xl mb-4 group-hover:scale-110 transition-transform duration-300`}
+                >
+                  <i
+                    data-feather={service.icon}
+                    className={`w-8 h-8 text-${service.color}-500`}
+                  ></i>
+                </div>
+                <span className="font-medium text-gray-800 text-center group-hover:text-gray-900 transition-colors">
+                  {service.label}
+                </span>
+              </button>
+            ))}
           </div>
         </section>
 
         {/* Emergency Information Section */}
         <section data-aos="fade-up">
-          <h2 className="text-2xl font-bold text-gray-800 mb-6">
-            Your Emergency Information
-          </h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="flex items-center mb-8">
+            <div className="w-1 h-8 bg-blue-500 rounded-full mr-4"></div>
+            <h2 className="text-3xl font-semibold text-gray-800">
+              Your Emergency Information
+            </h2>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             {/* Personal Details Card */}
-            <div className="bg-white rounded-xl shadow-md p-6">
-              <div className="flex items-center mb-4">
-                <div className="bg-blue-100 p-2 rounded-full mr-3">
-                  <i data-feather="user" className="text-blue-500 w-5 h-5"></i>
+            <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-8 hover:shadow-md transition-shadow duration-300">
+              <div className="flex items-center mb-6">
+                <div className="bg-blue-50 p-3 rounded-xl mr-4">
+                  <i data-feather="user" className="text-blue-500 w-6 h-6"></i>
                 </div>
-                <h3 className="font-semibold text-lg text-gray-800">
+                <h3 className="font-semibold text-xl text-gray-800">
                   Personal Details
                 </h3>
               </div>
-              <div className="space-y-3">
-                <div>
-                  <p className="text-sm text-gray-500">Name</p>
-                  <p className="font-medium">
+              <div className="space-y-4">
+                <div className="pb-3 border-b border-gray-100">
+                  <p className="text-sm text-gray-500 mb-1">Full Name</p>
+                  <p className="font-medium text-gray-800 text-lg">
                     {user ? `${user.firstName} ${user.lastName}` : "John Doe"}
                   </p>
                 </div>
                 <div>
-                  <p className="text-sm text-gray-500">Phone Number</p>
-                  <p className="font-medium">
+                  <p className="text-sm text-gray-500 mb-1">Phone Number</p>
+                  <p className="font-medium text-gray-800 text-lg">
                     {user?.mobile || "Not Provided"}
                   </p>
                 </div>
@@ -186,23 +205,27 @@ function Homepage() {
             </div>
 
             {/* Health Details Card */}
-            <div className="bg-white rounded-xl shadow-md p-6">
-              <div className="flex items-center mb-4">
-                <div className="bg-red-100 p-2 rounded-full mr-3">
-                  <i data-feather="heart" className="text-red-500 w-5 h-5"></i>
+            <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-8 hover:shadow-md transition-shadow duration-300">
+              <div className="flex items-center mb-6">
+                <div className="bg-red-50 p-3 rounded-xl mr-4">
+                  <i data-feather="heart" className="text-red-500 w-6 h-6"></i>
                 </div>
-                <h3 className="font-semibold text-lg text-gray-800">
+                <h3 className="font-semibold text-xl text-gray-800">
                   Health Details
                 </h3>
               </div>
-              <div className="space-y-3">
-                <div>
-                  <p className="text-sm text-gray-500">Blood Group</p>
-                  <p className="font-medium">{user?.blood || "Not Provided"}</p>
+              <div className="space-y-4">
+                <div className="pb-3 border-b border-gray-100">
+                  <p className="text-sm text-gray-500 mb-1">Blood Group</p>
+                  <p className="font-medium text-gray-800 text-lg">
+                    {user?.blood || "Not Provided"}
+                  </p>
                 </div>
                 <div>
-                  <p className="text-sm text-gray-500">Emergency Contact</p>
-                  <p className="font-medium">
+                  <p className="text-sm text-gray-500 mb-1">
+                    Emergency Contact
+                  </p>
+                  <p className="font-medium text-gray-800 text-lg">
                     {user?.emergencyNumber || "Not Provided"}
                   </p>
                 </div>
@@ -210,20 +233,20 @@ function Homepage() {
             </div>
 
             {/* Location Card */}
-            <div className="bg-white rounded-xl shadow-md p-6">
-              <div className="flex items-center mb-4">
-                <div className="bg-green-100 p-2 rounded-full mr-3">
+            <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-8 hover:shadow-md transition-shadow duration-300">
+              <div className="flex items-center mb-6">
+                <div className="bg-green-50 p-3 rounded-xl mr-4">
                   <i
                     data-feather="map-pin"
-                    className="text-green-500 w-5 h-5"
+                    className="text-green-500 w-6 h-6"
                   ></i>
                 </div>
-                <h3 className="font-semibold text-lg text-gray-800">Address</h3>
+                <h3 className="font-semibold text-xl text-gray-800">Address</h3>
               </div>
-              <div className="space-y-3">
+              <div className="space-y-4">
                 <div>
-                  <p className="text-sm text-gray-500">Home Address</p>
-                  <p className="font-medium">
+                  <p className="text-sm text-gray-500 mb-1">Home Address</p>
+                  <p className="font-medium text-gray-800 text-lg leading-relaxed">
                     {user?.address || "Not Provided"}
                   </p>
                 </div>

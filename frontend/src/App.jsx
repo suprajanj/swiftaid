@@ -3,12 +3,9 @@ import { Routes, Route } from "react-router-dom";
 import Homepage from "./pages/Homepage";
 import Emergencyform from "./pages/Emergencyform";
 import Userprofile from "./pages/Userprofile";
-// import UserEmergencyRequest from "./pages/UserEmergencyRequest";
-import ChangePassword from "./pages/ChangePassword";
 import LoginandSignup from "./pages/LoginandSignup";
 import LandingPage from "./pages/LandingPage";
 import { RoleManagement } from "./pages/RoleManagement";
-// import { Analytics } from "./pages/Analytics";
 import Emergency from "./pages/Emergency";
 import { AdminDashboard } from "./pages/AdminDashboard";
 
@@ -21,11 +18,8 @@ function App() {
         <Route path="/homepage" element={<Homepage />} />
         <Route path="/form/:type" element={<Emergencyform />} />
         <Route path="/profile" element={<Userprofile />} />
-        {/* <Route path="/userRequests" element={<UserEmergencyRequest />} /> */}
-        <Route path="/changePassword" element={<ChangePassword />} />
         <Route path="/dashboard" element={<AdminDashboard />} />
         <Route path="/roles" element={<RoleManagement />} />
-        {/* <Route path="/analytics" element={<Analytics />} /> */}
         <Route path="/requests" element={<Emergency />} />
       </Routes>
     </div>

@@ -11,6 +11,9 @@ import {
   deleteUser,
   getMe,
   changePassword,
+  requestPasswordReset,
+  verifyResetOTP,
+  resetPassword,
 } from "../controllers/userController.js";
 
 const router = express.Router();
@@ -23,6 +26,10 @@ router.post("/logout", logoutUser); // no protect
 
 router.get("/me", protect, getMe);
 router.put("/change-password", protect, changePassword);
+
+router.post("/forgot-password", requestPasswordReset);
+router.post("/verify-reset-otp", verifyResetOTP);
+router.post("/reset-password", resetPassword);
 
 // Backwards-compatible update endpoint (optional)
 router.put("/update/:id", updateUser);

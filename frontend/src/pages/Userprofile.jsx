@@ -1,4 +1,3 @@
-// Userprofile.jsx
 import React, { useState, useEffect } from "react";
 import {
   Bell,
@@ -19,6 +18,12 @@ import {
   Shield,
   Heart,
   UserCircle,
+  Clock,
+  CheckCircle,
+  XCircle,
+  UserCheck,
+  Truck,
+  Target,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
@@ -93,13 +98,7 @@ function Userprofile() {
   }, [navigate]);
 
   // ✅ Fetch emergency requests when emergency section is active
-  useEffect(() => {
-    if (activeSection === "emergencyRequests") {
-      fetchEmergencyRequests();
-    }
-  }, [activeSection]);
-
-  const fetchEmergencyRequests = async () => {
+  const fetchEmergencyRequests = React.useCallback(async () => {
     try {
       setLoading(true);
       const token = localStorage.getItem("token");
@@ -125,7 +124,13 @@ function Userprofile() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [navigate]);
+
+  useEffect(() => {
+    if (activeSection === "emergencyRequests") {
+      fetchEmergencyRequests();
+    }
+  }, [activeSection, fetchEmergencyRequests]);
 
   // Profile functions
   const openEdit = (section) => {
@@ -203,6 +208,56 @@ function Userprofile() {
     } catch {
       return dateString;
     }
+  };
+
+  // Status Badge Component
+  const StatusBadge = ({ status }) => {
+    const getStatusConfig = (status) => {
+      const config = {
+        Pending: {
+          color: "bg-yellow-100 text-yellow-800 border-yellow-200",
+          icon: Clock,
+          iconColor: "text-yellow-600",
+        },
+        Assigned: {
+          color: "bg-blue-100 text-blue-800 border-blue-200",
+          icon: UserCheck,
+          iconColor: "text-blue-600",
+        },
+        Accepted: {
+          color: "bg-purple-100 text-purple-800 border-purple-200",
+          icon: CheckCircle,
+          iconColor: "text-purple-600",
+        },
+        Reached: {
+          color: "bg-indigo-100 text-indigo-800 border-indigo-200",
+          icon: Target,
+          iconColor: "text-indigo-600",
+        },
+        Completed: {
+          color: "bg-green-100 text-green-800 border-green-200",
+          icon: CheckCircle,
+          iconColor: "text-green-600",
+        },
+        Cancel: {
+          color: "bg-red-100 text-red-800 border-red-200",
+          icon: XCircle,
+          iconColor: "text-red-600",
+        },
+      };
+      return config[status] || config.Pending;
+    };
+
+    const { color, icon: Icon, iconColor } = getStatusConfig(status);
+
+    return (
+      <span
+        className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium border ${color}`}
+      >
+        <Icon size={14} className={iconColor} />
+        {status}
+      </span>
+    );
   };
 
   // Emergency requests functions
@@ -313,18 +368,19 @@ function Userprofile() {
     doc.text(`Name: ${request.name}`, 20, 60);
     doc.text(`Age: ${request.age} years`, 20, 70);
     doc.text(`Phone: ${request.number}`, 20, 80);
+    doc.text(`Status: ${request.status || "Pending"}`, 20, 90);
 
     // Add location details
     if (request.location) {
       doc.text(
         `Location: Latitude ${request.location.latitude}, Longitude ${request.location.longitude}`,
         20,
-        95
+        105
       );
       doc.text(
         `Google Maps: https://www.google.com/maps?q=${request.location.latitude},${request.location.longitude}`,
         20,
-        105
+        115
       );
     }
 
@@ -332,8 +388,24 @@ function Userprofile() {
     doc.text(
       `Created: ${new Date(request.createdAt).toLocaleString()}`,
       20,
-      120
+      130
     );
+
+    // Add status timeline if available
+    if (request.acceptedAt) {
+      doc.text(
+        `Accepted: ${new Date(request.acceptedAt).toLocaleString()}`,
+        20,
+        140
+      );
+    }
+    if (request.completedAt) {
+      doc.text(
+        `Completed: ${new Date(request.completedAt).toLocaleString()}`,
+        20,
+        150
+      );
+    }
 
     // Add footer
     doc.setFontSize(10);
@@ -690,19 +762,22 @@ function Userprofile() {
                     <div className="p-6">
                       <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6">
                         <div className="flex-1">
-                          <div className="flex items-center gap-3 mb-4">
-                            <div className="p-2 bg-blue-100 rounded-lg">
-                              <AlertTriangle
-                                size={24}
-                                className="text-blue-600"
-                              />
+                          <div className="flex items-center justify-between mb-4">
+                            <div className="flex items-center gap-3">
+                              <div className="p-2 bg-blue-100 rounded-lg">
+                                <AlertTriangle
+                                  size={24}
+                                  className="text-blue-600"
+                                />
+                              </div>
+                              <h2 className="text-2xl font-bold text-gray-800 capitalize">
+                                {req.emergency}
+                              </h2>
                             </div>
-                            <h2 className="text-2xl font-bold text-gray-800 capitalize">
-                              {req.emergency}
-                            </h2>
+                            <StatusBadge status={req.status || "Pending"} />
                           </div>
 
-                          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
+                          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
                             <div className="flex items-center gap-3 bg-gray-50 rounded-lg p-3">
                               <User size={18} className="text-gray-600" />
                               <div>
@@ -729,6 +804,16 @@ function Userprofile() {
                                 <p className="text-gray-500 text-sm">Phone</p>
                                 <p className="font-semibold text-gray-800">
                                   {req.number}
+                                </p>
+                              </div>
+                            </div>
+
+                            <div className="flex items-center gap-3 bg-gray-50 rounded-lg p-3">
+                              <Clock size={18} className="text-gray-600" />
+                              <div>
+                                <p className="text-gray-500 text-sm">Status</p>
+                                <p className="font-semibold text-gray-800 capitalize">
+                                  {req.status || "Pending"}
                                 </p>
                               </div>
                             </div>

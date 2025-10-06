@@ -13,26 +13,26 @@ createRoot(document.getElementById("root")).render(
         position="top-left"
         toastOptions={{
           duration: 3000,
-          success: {
-            style: {
-              background: "#4ade80",
-              color: "#fff",
-            },
-            iconTheme: {
-              primary: "#fff",
-              secondary: "#16a34a",
-            },
-          },
-          error: {
-            style: {
-              background: "#f87171",
-              color: "#fff",
-            },
-            iconTheme: {
-              primary: "#fff",
-              secondary: "#b91c1c",
-            },
-          },
+          // success: {
+          //   style: {
+          //     background: "#4ade80",
+          //     color: "#fff",
+          //   },
+          //   iconTheme: {
+          //     primary: "#fff",
+          //     secondary: "#16a34a",
+          //   },
+          // },
+          // error: {
+          //   style: {
+          //     background: "#f87171",
+          //     color: "#fff",
+          //   },
+          //   iconTheme: {
+          //     primary: "#fff",
+          //     secondary: "#b91c1c",
+          //   },
+          // },
         }}
       />
     </BrowserRouter>

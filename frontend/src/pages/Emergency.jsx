@@ -22,7 +22,7 @@ const downloadPDF = (filename, data) => {
   data.forEach((item, index) => {
     doc.setDrawColor(0, 0, 0);
     doc.setLineWidth(0.5);
-    doc.rect(14, y, 182, 40, "S");
+    doc.rect(14, y, 182, 50, "S");
 
     doc.setFont("helvetica", "bold");
     doc.setFontSize(12);
@@ -37,20 +37,21 @@ const downloadPDF = (filename, data) => {
     doc.setFontSize(10);
     doc.text(`Age: ${item.age || "N/A"}`, 18, y + 16);
     doc.text(`Contact: ${item.number || "N/A"}`, 60, y + 16);
+    doc.text(`Status: ${item.status || "Pending"}`, 18, y + 24);
 
     doc.setFontSize(10);
     doc.setFont("helvetica", "italic");
-    doc.text(`Emergency: ${item.emergency || "N/A"}`, 18, y + 24, {
+    doc.text(`Emergency: ${item.emergency || "N/A"}`, 18, y + 32, {
       maxWidth: 170,
     });
 
     if (item.location?.mapLink) {
       doc.setTextColor(41, 128, 185);
-      doc.text(`Map: ${item.location.mapLink}`, 18, y + 32, { maxWidth: 170 });
+      doc.text(`Map: ${item.location.mapLink}`, 18, y + 40, { maxWidth: 170 });
       doc.setTextColor(0, 0, 0);
     }
 
-    y += 50;
+    y += 60;
     if (y > 270) {
       doc.addPage();
       y = 15;
@@ -58,6 +59,31 @@ const downloadPDF = (filename, data) => {
   });
 
   doc.save(filename);
+};
+
+// -------------------- Status Badge Component --------------------
+const StatusBadge = ({ status }) => {
+  const getStatusConfig = (status) => {
+    const config = {
+      Pending: { color: "bg-yellow-100 text-yellow-800 border-yellow-200" },
+      Assigned: { color: "bg-blue-100 text-blue-800 border-blue-200" },
+      Accepted: { color: "bg-purple-100 text-purple-800 border-purple-200" },
+      Reached: { color: "bg-indigo-100 text-indigo-800 border-indigo-200" },
+      Completed: { color: "bg-green-100 text-green-800 border-green-200" },
+      Cancel: { color: "bg-red-100 text-red-800 border-red-200" },
+    };
+    return config[status] || config.Pending;
+  };
+
+  const { color } = getStatusConfig(status);
+
+  return (
+    <span
+      className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${color}`}
+    >
+      {status}
+    </span>
+  );
 };
 
 // -------------------- Header Component --------------------
@@ -112,6 +138,9 @@ const EmergencyRequestItem = ({ request, onDownload }) => {
       <td className="px-6 py-4 text-sm text-gray-500">
         {formatDate(request?.createdAt)}
       </td>
+      <td className="px-6 py-4 text-sm">
+        <StatusBadge status={request?.status || "Pending"} />
+      </td>
       <td className="px-6 py-4 text-sm text-gray-500 flex space-x-2">
         {request?.location?.mapLink && (
           <button
@@ -163,6 +192,9 @@ const EmergencyRequestList = ({ requests, onDownloadSingle }) => (
             </th>
             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
               Time
+            </th>
+            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              Status
             </th>
             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
               Actions

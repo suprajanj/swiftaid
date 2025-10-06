@@ -9,16 +9,28 @@ import AdminDashboard from "./pages/AdminDashboard";
 import EmergencyCasesPage from "./pages/EmergencyCasesPage";
 import CaseDetailPage from "./pages/CaseDetailPage";
 import AdminPanel from "./pages/AdminPanel";
+import ResourceManagementPage from "./pages/ResourceManagementPage";
 
 const App = () => {
   return (
     <div className="relative h-full w-full min-h-screen">
-      <div className="absolute inset-0 -z-10 h-full w-full items-center px-5 py-24 [background:radial-gradient(125%_125%_at_50%_10%,#000_60%,#00FF9D40_100%)]" />
+      {/* Light radial gradient background */}
+      <div
+        className="absolute inset-0 -z-10 h-full w-full"
+        style={{
+          background:
+            "radial-gradient(125% 125% at 50% 10%, #ffffff 0%, #00FF9D40 100%)",
+        }}
+      />
+
+      {/* Toaster for notifications */}
       <Toaster position="top-right" />
+
+      {/* Routes */}
       <Routes>
         <Route path="/" element={<HomePage />} />
-        <Route path="/create" element={<CreatePage />} />
-        <Route path="/note/:id" element={<NoteDetailPage />} />
+        {/* <Route path="/create" element={<CreatePage />} /> */}
+        {/* <Route path="/note/:id" element={<NoteDetailPage />} /> */}
         <Route
           path="/organization/dashboard"
           element={<OrganizationDashboard />}
@@ -27,6 +39,7 @@ const App = () => {
         <Route path="/emergency-cases" element={<EmergencyCasesPage />} />
         <Route path="/emergency-cases/:id" element={<CaseDetailPage />} />
         <Route path="/admin/panel" element={<AdminPanel />} />
+        <Route path="/resources" element={<ResourceManagementPage />} />
       </Routes>
     </div>
   );

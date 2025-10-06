@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
+import Navigation from "../components/Navigation";
+import api from "../services/api";
 import {
   Search,
   Filter,
@@ -13,6 +15,7 @@ import {
   ChevronRight,
   Shield,
   Clock,
+  RefreshCw,
 } from "lucide-react";
 import toast from "react-hot-toast";
 
@@ -45,32 +48,28 @@ const EmergencyCasesPage = () => {
     try {
       setLoading(true);
 
-      // Basic pagination query
-      const queryParams = new URLSearchParams({
+      // Build query parameters
+      const params = {
         page: pagination.currentPage,
         limit: pagination.itemsPerPage,
-      });
+        ...Object.fromEntries(
+          Object.entries(filters).filter(([_, value]) => value !== "")
+        ),
+      };
 
-      const response = await fetch(
-        `http://localhost:3000/api/cases?${queryParams}`
-      );
+      const response = await api.getCases(params);
 
-      if (response.ok) {
-        const data = await response.json();
-
-        // Make sure data exists
-        setCases(data.data || []);
-        setPagination((prev) => ({
-          ...prev,
-          ...data.pagination,
-        }));
-      } else {
-        toast.error("Failed to load emergency cases");
-        console.error("Fetch failed with status:", response.status);
-      }
+      // Make sure data exists
+      setCases(response.data || []);
+      setPagination((prev) => ({
+        ...prev,
+        ...response.pagination,
+      }));
+      
+      toast.success("Cases loaded successfully");
     } catch (error) {
       console.error("Error fetching cases:", error);
-      toast.error("Failed to load emergency cases");
+      toast.error(error.message || "Failed to load emergency cases");
     } finally {
       setLoading(false);
     }
@@ -97,31 +96,24 @@ const EmergencyCasesPage = () => {
 
   const handleExport = async () => {
     try {
-      const queryParams = new URLSearchParams({
-        format: "csv",
-        ...Object.fromEntries(
-          Object.entries(filters).filter(([_, value]) => value !== "")
-        ),
-      });
-
-      const response = await fetch(
-        `http://localhost:3000/api/cases?${queryParams}`
-      );
-      if (response.ok) {
-        const blob = await response.blob();
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = "emergency_cases.csv";
-        document.body.appendChild(a);
-        a.click();
-        window.URL.revokeObjectURL(url);
-        document.body.removeChild(a);
-        toast.success("Data exported successfully");
-      }
+      toast.loading("Preparing export...");
+      const blob = await api.exportCases('csv');
+      
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `emergency_cases_${new Date().toISOString().split('T')[0]}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+      
+      toast.dismiss();
+      toast.success("Data exported successfully");
     } catch (error) {
       console.error("Error exporting data:", error);
-      toast.error("Failed to export data");
+      toast.dismiss();
+      toast.error(error.message || "Failed to export data");
     }
   };
 
@@ -159,14 +151,18 @@ const EmergencyCasesPage = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-green-500"></div>
+      <div className="min-h-screen">
+        <Navigation />
+        <div className="flex items-center justify-center min-h-[calc(100vh-4rem)]">
+          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-500"></div>
+        </div>
       </div>
     );
   }
 
   return (
     <div className="min-h-screen bg-gray-50">
+      <Navigation />
       {/* Header */}
       <div className="bg-white shadow-sm border-b">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -179,17 +175,24 @@ const EmergencyCasesPage = () => {
                 View and filter verified emergency case data
               </p>
             </div>
-            <div className="flex space-x-3">
+            <div className="flex flex-wrap gap-3">
+              <button
+                onClick={fetchCases}
+                className="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-lg text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
+              >
+                <RefreshCw className="h-4 w-4 mr-2" />
+                Refresh
+              </button>
               <button
                 onClick={() => setShowFilters(!showFilters)}
-                className="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                className="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-lg text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
               >
                 <Filter className="h-4 w-4 mr-2" />
                 {showFilters ? "Hide" : "Show"} Filters
               </button>
               <button
                 onClick={handleExport}
-                className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
+                className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-lg text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 shadow-lg hover:shadow-xl transition-all"
               >
                 <Download className="h-4 w-4 mr-2" />
                 Export Data

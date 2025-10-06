@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
+import Navigation from "../components/Navigation";
+import api from "../services/api";
 import {
   BarChart3,
   Download,
@@ -12,6 +14,7 @@ import {
   Eye,
   FileText,
   Shield,
+  RefreshCw,
 } from "lucide-react";
 import toast from "react-hot-toast";
 
@@ -38,27 +41,35 @@ const OrganizationDashboard = () => {
   const fetchDashboardData = async () => {
     try {
       setLoading(true);
-      // Simulate API calls - replace with actual API endpoints
-      const [casesResponse, statsResponse] = await Promise.all([
-        fetch("/api/emergency-cases?limit=5&isVerified=true"),
-        fetch("/api/emergency-cases/stats"),
-      ]);
+      
+      // Fetch cases first
+      const casesResponse = await api.getCases({ limit: 5 });
+      const allCases = casesResponse.data || [];
+      
+      // Calculate stats from cases
+      const verifiedCount = allCases.filter(c => c.verificationStatus?.isVerified).length;
 
-      if (casesResponse.ok && statsResponse.ok) {
-        const casesData = await casesResponse.json();
-        const statsData = await statsResponse.json();
-
-        setRecentCases(casesData.data || []);
-        setStats({
-          totalCases: statsData.data?.total || 0,
-          verifiedCases: statsData.data?.verified || 0,
-          recentCases: casesData.data?.length || 0,
-          myReports: 0, // This would come from a separate API call
-        });
-      }
+      setRecentCases(allCases);
+      setStats({
+        totalCases: casesResponse.pagination?.totalItems || allCases.length,
+        verifiedCases: verifiedCount,
+        recentCases: allCases.length,
+        myReports: 0, // This would come from a separate API call
+      });
+      
+      toast.success("Dashboard data loaded successfully");
     } catch (error) {
       console.error("Error fetching dashboard data:", error);
-      toast.error("Failed to load dashboard data");
+      toast.error(error.message || "Failed to load dashboard data");
+      
+      // Set empty state on error
+      setRecentCases([]);
+      setStats({
+        totalCases: 0,
+        verifiedCases: 0,
+        recentCases: 0,
+        myReports: 0,
+      });
     } finally {
       setLoading(false);
     }
@@ -66,22 +77,24 @@ const OrganizationDashboard = () => {
 
   const handleExport = async () => {
     try {
-      const response = await fetch("/api/emergency-cases/export?format=csv");
-      if (response.ok) {
-        const blob = await response.blob();
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = "emergency_cases.csv";
-        document.body.appendChild(a);
-        a.click();
-        window.URL.revokeObjectURL(url);
-        document.body.removeChild(a);
-        toast.success("Data exported successfully");
-      }
+      toast.loading("Preparing export...");
+      const blob = await api.exportCases('csv');
+      
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `emergency_cases_${new Date().toISOString().split('T')[0]}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+      
+      toast.dismiss();
+      toast.success("Data exported successfully");
     } catch (error) {
       console.error("Error exporting data:", error);
-      toast.error("Failed to export data");
+      toast.dismiss();
+      toast.error(error.message || "Failed to export data");
     }
   };
 
@@ -89,22 +102,41 @@ const OrganizationDashboard = () => {
     setFilters((prev) => ({ ...prev, [key]: value }));
   };
 
-  const applyFilters = () => {
-    // This would trigger a new API call with filters
-    console.log("Applying filters:", filters);
-    toast.success("Filters applied");
+  const applyFilters = async () => {
+    try {
+      setLoading(true);
+      const casesResponse = await api.getCases({
+        limit: 5,
+        isVerified: true,
+        ...Object.fromEntries(
+          Object.entries(filters).filter(([_, value]) => value !== "")
+        ),
+      });
+      
+      setRecentCases(casesResponse.data || []);
+      toast.success("Filters applied successfully");
+    } catch (error) {
+      console.error("Error applying filters:", error);
+      toast.error(error.message || "Failed to apply filters");
+    } finally {
+      setLoading(false);
+    }
   };
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-green-500"></div>
+      <div className="min-h-screen">
+        <Navigation />
+        <div className="flex items-center justify-center min-h-[calc(100vh-4rem)]">
+          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-green-500"></div>
+        </div>
       </div>
     );
   }
 
   return (
     <div className="min-h-screen bg-gray-50">
+      <Navigation />
       {/* Header */}
       <div className="bg-white shadow-sm border-b">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -117,17 +149,24 @@ const OrganizationDashboard = () => {
                 Access verified emergency case data
               </p>
             </div>
-            <div className="flex space-x-3">
+            <div className="flex flex-wrap gap-3">
+              <button
+                onClick={fetchDashboardData}
+                className="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-lg text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
+              >
+                <RefreshCw className="h-4 w-4 mr-2" />
+                Refresh
+              </button>
               <button
                 onClick={handleExport}
-                className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
+                className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-lg text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 shadow-lg hover:shadow-xl transition-all"
               >
                 <Download className="h-4 w-4 mr-2" />
                 Export Data
               </button>
               <Link
                 to="/emergency-cases"
-                className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-lg text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 shadow-lg hover:shadow-xl transition-all"
               >
                 <Eye className="h-4 w-4 mr-2" />
                 View All Cases

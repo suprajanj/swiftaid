@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
+import Navigation from "../components/Navigation";
+import api from "../services/api";
 import {
   ArrowLeft,
   MapPin,
@@ -33,18 +35,12 @@ const CaseDetailPage = () => {
   const fetchCaseDetails = async () => {
     try {
       setLoading(true);
-      const response = await fetch(`http://localhost:3000/api/cases/${id}`);
-      if (response.ok) {
-        const data = await response.json();
-        setCaseData(data.data);
-      } else {
-        const errText = await response.text();
-        console.error("Server error response:", errText);
-        toast.error("Failed to load case details");
-      }
+      const response = await api.getCaseById(id);
+      setCaseData(response.data);
+      toast.success("Case details loaded successfully");
     } catch (error) {
       console.error("Error fetching case details:", error);
-      toast.error("Failed to load case details");
+      toast.error(error.message || "Failed to load case details");
     } finally {
       setLoading(false);
     }
@@ -59,24 +55,16 @@ const CaseDetailPage = () => {
 
     try {
       setSubmittingReport(true);
-      const response = await fetch(`/api/cases/${id}/reports`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(reportForm),
-      });
+      const response = await api.submitReport(id, reportForm);
 
-      if (response.ok) {
-        toast.success("Report submitted successfully");
+      if (response.success) {
+        toast.success(response.message || "Report submitted successfully");
         setReportForm({ reportType: "Support Request", content: "" });
         fetchCaseDetails(); // Refresh case data
-      } else {
-        toast.error("Failed to submit report");
       }
     } catch (error) {
       console.error("Error submitting report:", error);
-      toast.error("Failed to submit report");
+      toast.error(error.message || "Failed to submit report");
     } finally {
       setSubmittingReport(false);
     }
@@ -131,30 +119,36 @@ const CaseDetailPage = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-green-500"></div>
+      <div className="min-h-screen">
+        <Navigation />
+        <div className="flex items-center justify-center min-h-[calc(100vh-4rem)]">
+          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-500"></div>
+        </div>
       </div>
     );
   }
 
   if (!caseData) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <AlertTriangle className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-          <h3 className="text-lg font-medium text-gray-900 mb-2">
-            Case not found
-          </h3>
-          <p className="text-gray-500">
-            The requested emergency case could not be found.
-          </p>
-          <Link
-            to="/emergency-cases"
-            className="mt-4 inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700"
-          >
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Back to Cases
-          </Link>
+      <div className="min-h-screen">
+        <Navigation />
+        <div className="flex items-center justify-center min-h-[calc(100vh-4rem)]">
+          <div className="text-center">
+            <AlertTriangle className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+            <h3 className="text-lg font-medium text-gray-900 mb-2">
+              Case not found
+            </h3>
+            <p className="text-gray-500">
+              The requested emergency case could not be found.
+            </p>
+            <Link
+              to="/emergency-cases"
+              className="mt-4 inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-lg text-white bg-blue-600 hover:bg-blue-700 shadow-lg"
+            >
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Back to Cases
+            </Link>
+          </div>
         </div>
       </div>
     );
@@ -162,6 +156,7 @@ const CaseDetailPage = () => {
 
   return (
     <div className="min-h-screen bg-gray-50">
+      <Navigation />
       {/* Header */}
       <div className="bg-white shadow-sm border-b">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">

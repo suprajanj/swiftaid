@@ -6,7 +6,7 @@ import {
   Activity,
   Users,
   Clock,
-  MapPin,
+  User,
   AlertTriangle,
   TrendingUp,
   Shield as LucideShield,
@@ -195,6 +195,25 @@ export function AdminDashboard() {
           </div>
         </div>
 
+        <div className="mt-8 mb-10 grid grid-cols-2 md:grid-cols-4 gap-4">
+          <button
+            className="p-4 bg-white rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-all duration-300 text-left group hover:border-red-200"
+            onClick={() => navigate("/requests")}
+          >
+            <Activity size={20} className="text-red-600 mb-2" />
+            <p className="font-medium text-gray-900">SOS</p>
+            <p className="text-sm text-gray-600 mt-1">View SOS requests</p>
+          </button>
+          <button
+            className="p-4 bg-white rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-all duration-300 text-left group hover:border-blue-200"
+            onClick={() => navigate("/roles")}
+          >
+            <Users size={20} className="text-blue-600 mb-2" />
+            <p className="font-medium text-gray-900">Role Management</p>
+            <p className="text-sm text-gray-600 mt-1">View users</p>
+          </button>
+        </div>
+
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           <StatCard
             title="Active Emergencies"
@@ -223,7 +242,7 @@ export function AdminDashboard() {
             title="Coverage Area"
             value={stats.coverageArea}
             change="+3%"
-            icon={MapPin}
+            icon={User}
             color="purple"
             chartData={[65, 68, 72, 75, 76, 77, 78]}
           />
@@ -276,29 +295,6 @@ export function AdminDashboard() {
               )}
             </div>
           </div>
-        </div>
-
-        <div className="mt-8 grid grid-cols-2 md:grid-cols-4 gap-4">
-          <button className="p-4 bg-white rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-all duration-300 text-left group hover:border-red-200">
-            <Activity size={20} className="text-red-600 mb-2" />
-            <p className="font-medium text-gray-900">New Emergency</p>
-            <p className="text-sm text-gray-600 mt-1">Report incident</p>
-          </button>
-          <button className="p-4 bg-white rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-all duration-300 text-left group hover:border-blue-200">
-            <Users size={20} className="text-blue-600 mb-2" />
-            <p className="font-medium text-gray-900">Manage Team</p>
-            <p className="text-sm text-gray-600 mt-1">View responders</p>
-          </button>
-          <button className="p-4 bg-white rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-all duration-300 text-left group hover:border-green-200">
-            <MapPin size={20} className="text-green-600 mb-2" />
-            <p className="font-medium text-gray-900">Map View</p>
-            <p className="text-sm text-gray-600 mt-1">Live locations</p>
-          </button>
-          <button className="p-4 bg-white rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-all duration-300 text-left group hover:border-purple-200">
-            <Clock size={20} className="text-purple-600 mb-2" />
-            <p className="font-medium text-gray-900">Analytics</p>
-            <p className="text-sm text-gray-600 mt-1">Detailed reports</p>
-          </button>
         </div>
       </div>
     </div>

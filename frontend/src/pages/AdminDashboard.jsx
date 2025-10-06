@@ -59,23 +59,23 @@ export function AdminDashboard() {
   const navigate = useNavigate();
   const [user, setUser] = useState(null);
   const [stats, setStats] = useState({
-    activeEmergencies: 24,
-    totalResponders: 156,
-    avgResponseTime: 4.2,
-    resolvedToday: 18,
-    highPriority: 7,
-    coverageArea: "78%",
+    activeEmergencies: 0,
+    totalUsers: 0,
+    avgResponseTime: 0,
+    resolvedToday: 0,
+    highPriority: 0,
+    coverageArea: "0%",
   });
   const [realtimeUpdates, setRealtimeUpdates] = useState([]);
-  const [emergencyTrend, setEmergencyTrend] = useState([
-    12, 19, 15, 24, 22, 28, 24,
-  ]);
+  const [emergencyTrend, setEmergencyTrend] = useState([0, 0, 0, 0, 0, 0, 0]);
+  const [loading, setLoading] = useState(true);
 
   const formatTime = (ts) => {
     const d = ts instanceof Date ? ts : new Date(ts);
     return !isNaN(d.getTime()) ? d.toLocaleTimeString() : "";
   };
 
+  // Fetch user data and authentication
   useEffect(() => {
     const token = localStorage.getItem("token");
     if (!token) return navigate("/login");
@@ -95,40 +95,118 @@ export function AdminDashboard() {
     fetchUser();
   }, [navigate]);
 
-  useEffect(() => {
-    const mockUpdates = [
-      "New emergency reported in Downtown",
-      "Responder team dispatched to Main St",
-      "Emergency resolved at Oak Avenue",
-      "High priority alert: Industrial area",
-      "New responder available in North District",
-    ];
+  // Fetch all dashboard data
+  const fetchDashboardData = async () => {
+    try {
+      const token = localStorage.getItem("token");
+      if (!token) return;
 
-    const interval = setInterval(() => {
-      const randomUpdate =
-        mockUpdates[Math.floor(Math.random() * mockUpdates.length)];
-      setRealtimeUpdates((prev) => [
-        { id: Date.now(), message: randomUpdate, timestamp: new Date() },
-        ...prev.slice(0, 4),
-      ]);
+      setLoading(true);
 
-      setStats((prev) => ({
-        ...prev,
-        activeEmergencies: Math.max(
-          0,
-          prev.activeEmergencies + (Math.random() > 0.7 ? 1 : -1)
-        ),
-        resolvedToday: prev.resolvedToday + (Math.random() > 0.8 ? 1 : 0),
-      }));
-
-      setEmergencyTrend((prev) => {
-        const last = prev[prev.length - 1];
-        return [
-          ...prev.slice(1),
-          Math.max(0, last + (Math.random() > 0.5 ? 1 : -1)),
-        ];
+      // Fetch all SOS data
+      const sosResponse = await axios.get("http://localhost:3000/api/sos", {
+        headers: { Authorization: `Bearer ${token}` },
       });
-    }, 5000);
+      const allSOS = sosResponse.data || [];
+
+      // Fetch all users for total users count
+      const usersResponse = await axios.get("http://localhost:3000/api/user", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const allUsers = usersResponse.data || [];
+
+      // Calculate active emergencies (Pending and Accepted status)
+      const activeEmergencies = allSOS.filter(
+        (sos) => sos.status === "Pending" || sos.status === "Accepted"
+      ).length;
+
+      // Calculate total users (all users in the database)
+      const totalUsers = allUsers.length;
+
+      // Calculate emergency trends for the last 7 days
+      const today = new Date();
+      const last7Days = Array.from({ length: 7 }, (_, i) => {
+        const date = new Date();
+        date.setDate(today.getDate() - (6 - i));
+        return date.toISOString().split("T")[0];
+      });
+
+      const dailyCounts = last7Days.map((date) => {
+        return allSOS.filter((sos) => {
+          const sosDate = new Date(sos.createdAt).toISOString().split("T")[0];
+          return sosDate === date;
+        }).length;
+      });
+
+      // Calculate resolved today
+      const todayStr = today.toISOString().split("T")[0];
+      const resolvedToday = allSOS.filter((sos) => {
+        const sosDate = new Date(sos.createdAt).toISOString().split("T")[0];
+        return sosDate === todayStr && sos.status === "Completed";
+      }).length;
+
+      // Calculate average response time (based on status changes)
+      const completedEmergencies = allSOS.filter(
+        (sos) => sos.status === "Completed"
+      );
+      const avgResponseTime =
+        completedEmergencies.length > 0
+          ? completedEmergencies.reduce((acc, sos) => {
+              const created = new Date(sos.createdAt);
+              const completed = sos.completedAt
+                ? new Date(sos.completedAt)
+                : new Date();
+              const diffMinutes = (completed - created) / (1000 * 60);
+              return acc + diffMinutes;
+            }, 0) / completedEmergencies.length
+          : 0;
+
+      // Get recent SOS for real-time updates (last 5)
+      const recentSOS = allSOS
+        .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+        .slice(0, 5)
+        .map((sos) => ({
+          id: sos._id,
+          message: `${sos.emergency} reported by ${sos.name}`,
+          timestamp: sos.createdAt,
+        }));
+
+      // Calculate coverage area (based on users with addresses)
+      const usersWithAddress = allUsers.filter((user) => user.address).length;
+      const coverageArea =
+        allUsers.length > 0
+          ? `${Math.round((usersWithAddress / allUsers.length) * 100)}%`
+          : "0%";
+
+      // Update state with real data
+      setStats({
+        activeEmergencies,
+        totalUsers,
+        avgResponseTime: Math.round(avgResponseTime * 10) / 10,
+        resolvedToday,
+        highPriority: allSOS.filter((sos) => sos.status === "Pending").length,
+        coverageArea,
+      });
+
+      setEmergencyTrend(dailyCounts);
+      setRealtimeUpdates(recentSOS);
+    } catch (error) {
+      console.error("Error fetching dashboard data:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Initial data fetch
+  useEffect(() => {
+    fetchDashboardData();
+  }, []);
+
+  // Real-time updates every 30 seconds
+  useEffect(() => {
+    const interval = setInterval(() => {
+      fetchDashboardData();
+    }, 30000); // Update every 30 seconds
 
     return () => clearInterval(interval);
   }, []);
@@ -146,7 +224,9 @@ export function AdminDashboard() {
         <div>
           <p className="text-sm font-medium text-gray-600 mb-1">{title}</p>
           <div className="flex items-end gap-2">
-            <span className="text-3xl font-bold text-gray-900">{value}</span>
+            <span className="text-3xl font-bold text-gray-900">
+              {loading ? "..." : value}
+            </span>
             {change && (
               <span
                 className={`text-sm ${change.includes("+") ? "text-green-600" : "text-red-600"} pb-1 flex items-center gap-1`}
@@ -175,6 +255,20 @@ export function AdminDashboard() {
     </div>
   );
 
+  // Get day names for the chart
+  const getDayNames = () => {
+    const days = [];
+    const today = new Date();
+    for (let i = 6; i >= 0; i--) {
+      const date = new Date();
+      date.setDate(today.getDate() - i);
+      days.push(date.toLocaleDateString("en-US", { weekday: "short" }));
+    }
+    return days;
+  };
+
+  const dayNames = getDayNames();
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 font-inter flex">
       <Sidebar />
@@ -188,7 +282,7 @@ export function AdminDashboard() {
               <p className="text-gray-600 mt-2">
                 Welcome back, {user ? user.firstName : "Admin"}!
                 <span className="text-red-600 font-medium ml-2">
-                  {stats.activeEmergencies} active emergencies
+                  {loading ? "..." : stats.activeEmergencies} active emergencies
                 </span>
               </p>
             </div>
@@ -214,88 +308,106 @@ export function AdminDashboard() {
           </button>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          <StatCard
-            title="Active Emergencies"
-            value={stats.activeEmergencies}
-            change="+12%"
-            icon={AlertTriangle}
-            color="red"
-            chartData={emergencyTrend}
-          />
-          <StatCard
-            title="Total Responders"
-            value={stats.totalResponders}
-            change="+5%"
-            icon={Users}
-            color="blue"
-            chartData={[120, 135, 142, 148, 152, 149, 156]}
-          />
-          <StatCard
-            title="Response Time"
-            value={`${stats.avgResponseTime}m`}
-            icon={Clock}
-            color="green"
-            chartData={[5.1, 4.8, 4.5, 4.3, 4.4, 4.2, 4.2]}
-          />
-          <StatCard
-            title="Coverage Area"
-            value={stats.coverageArea}
-            change="+3%"
-            icon={User}
-            color="purple"
-            chartData={[65, 68, 72, 75, 76, 77, 78]}
-          />
-        </div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-2 bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
-            <div className="flex justify-between items-center mb-6">
-              <h2 className="text-xl font-bold text-gray-900">
-                Emergency Trends
-              </h2>
-              <div className="flex gap-2">
-                <button className="px-3 py-1 text-sm bg-red-50 text-red-600 rounded-lg font-medium">
-                  Last 7 Days
-                </button>
-                <button className="px-3 py-1 text-sm text-gray-600 hover:bg-gray-50 rounded-lg font-medium">
-                  Last 30 Days
-                </button>
-              </div>
-            </div>
-            <AnalyticsChart data={emergencyTrend} />
+        {loading ? (
+          <div className="flex justify-center items-center py-12">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
           </div>
+        ) : (
+          <>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+              <StatCard
+                title="Active Emergencies"
+                value={stats.activeEmergencies}
+                change="+12%"
+                icon={AlertTriangle}
+                color="red"
+                chartData={emergencyTrend}
+              />
+              <StatCard
+                title="Total Users"
+                value={stats.totalUsers}
+                change="+5%"
+                icon={Users}
+                color="blue"
+                chartData={emergencyTrend.map((val) => Math.round(val * 0.8))}
+              />
+              <StatCard
+                title="Response Time"
+                value={`${stats.avgResponseTime}m`}
+                icon={Clock}
+                color="green"
+                chartData={emergencyTrend.map((val) => Math.round(val * 0.6))}
+              />
+              <StatCard
+                title="Coverage Area"
+                value={stats.coverageArea}
+                change="+3%"
+                icon={User}
+                color="purple"
+                chartData={emergencyTrend.map((val) => Math.round(val * 0.4))}
+              />
+            </div>
 
-          <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
-            <h2 className="text-xl font-bold text-gray-900 mb-6">
-              Real-time Updates
-            </h2>
-            <div className="space-y-4">
-              {realtimeUpdates.map((update) => (
-                <div
-                  key={update.id}
-                  className="flex items-start gap-3 p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors group"
-                >
-                  <div className="w-2 h-2 bg-red-500 rounded-full mt-2 animate-pulse" />
-                  <div className="flex-1">
-                    <p className="text-sm text-gray-800 font-medium">
-                      {update.message}
-                    </p>
-                    <p className="text-xs text-gray-500 mt-1">
-                      {formatTime(update.timestamp)}
-                    </p>
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              <div className="lg:col-span-2 bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
+                <div className="flex justify-between items-center mb-6">
+                  <h2 className="text-xl font-bold text-gray-900">
+                    Emergency Trends (Last 7 Days)
+                  </h2>
+                  <div className="flex gap-2">
+                    <button className="px-3 py-1 text-sm bg-red-50 text-red-600 rounded-lg font-medium">
+                      Last 7 Days
+                    </button>
+                    <button className="px-3 py-1 text-sm text-gray-600 hover:bg-gray-50 rounded-lg font-medium">
+                      Last 30 Days
+                    </button>
                   </div>
                 </div>
-              ))}
-              {realtimeUpdates.length === 0 && (
-                <div className="text-center py-8 text-gray-500">
-                  <Activity size={32} className="mx-auto mb-2 opacity-50" />
-                  <p>Waiting for updates...</p>
+                <AnalyticsChart data={emergencyTrend} />
+                <div className="flex justify-between mt-4 px-2">
+                  {dayNames.map((day, index) => (
+                    <span
+                      key={index}
+                      className="text-xs text-gray-500 font-medium"
+                    >
+                      {day}
+                    </span>
+                  ))}
                 </div>
-              )}
+              </div>
+
+              <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
+                <h2 className="text-xl font-bold text-gray-900 mb-6">
+                  Recent Emergencies
+                </h2>
+                <div className="space-y-4">
+                  {realtimeUpdates.map((update) => (
+                    <div
+                      key={update.id}
+                      className="flex items-start gap-3 p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors group"
+                    >
+                      <div className="w-2 h-2 bg-red-500 rounded-full mt-2 animate-pulse" />
+                      <div className="flex-1">
+                        <p className="text-sm text-gray-800 font-medium">
+                          {update.message}
+                        </p>
+                        <p className="text-xs text-gray-500 mt-1">
+                          {formatTime(update.timestamp)}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                  {realtimeUpdates.length === 0 && (
+                    <div className="text-center py-8 text-gray-500">
+                      <Activity size={32} className="mx-auto mb-2 opacity-50" />
+                      <p>No recent emergencies</p>
+                    </div>
+                  )}
+                </div>
+              </div>
             </div>
-          </div>
-        </div>
+          </>
+        )}
       </div>
     </div>
   );

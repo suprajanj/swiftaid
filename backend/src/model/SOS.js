@@ -17,6 +17,11 @@ const sosSchema = new mongoose.Schema(
       mapLink: { type: String },
     },
 
+    assignedResponder: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Responder",
+    },
+
     // ✅ New fields
     status: {
       type: String,

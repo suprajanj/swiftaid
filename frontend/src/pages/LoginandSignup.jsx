@@ -116,7 +116,9 @@ export default function LoginandSignup() {
       //Store JWT in localStorage
       localStorage.setItem("token", res.data.token);
 
-      toast.success(res.data.message + " — Logged in successfully!");
+      toast.success(res.data.message + " — Logged in successfully!", {
+        duration: 3000,
+      });
 
       //Role-based navigation
       const role = res.data.role || "user";

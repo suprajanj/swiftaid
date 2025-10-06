@@ -1,9 +1,11 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { ChevronDownIcon, Trash2Icon, X, Edit3, Save } from "lucide-react";
 import axios from "axios";
 import { Sidebar } from "../components/Sidebar";
+import { useNavigate } from "react-router-dom";
 
 export function RoleManagement() {
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState("roles");
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -12,6 +14,7 @@ export function RoleManagement() {
   const [viewUser, setViewUser] = useState(null);
   const [editing, setEditing] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [user, setUser] = useState(null);
 
   const [newUser, setNewUser] = useState({
     firstName: "",
@@ -25,7 +28,7 @@ export function RoleManagement() {
     gender: "",
     dob: "",
     termsAccepted: false,
-    role: "User", // ✅ default role
+    role: "User",
   });
 
   const roles = [
@@ -39,41 +42,161 @@ export function RoleManagement() {
     "Admin",
   ];
 
+  // -------------------- Enhanced Logout Function --------------------
+  const handleLogout = useCallback(() => {
+    localStorage.removeItem("token");
+    localStorage.removeItem("user");
+    localStorage.removeItem("sessionExpiry");
+    sessionStorage.clear();
+    navigate("/login");
+  }, [navigate]);
+
+  // -------------------- Session Management --------------------
+  useEffect(() => {
+    const token = localStorage.getItem("token");
+    if (!token) {
+      navigate("/login");
+      return;
+    }
+
+    const fetchUser = async () => {
+      try {
+        const res = await axios.get("http://localhost:3000/api/user/me", {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        setUser(res.data);
+      } catch (err) {
+        console.error("Session error:", err);
+        localStorage.removeItem("token");
+        navigate("/login");
+      }
+    };
+
+    fetchUser();
+  }, [navigate, handleLogout]);
+
+  // -------------------- Auto-logout when token expires --------------------
+  useEffect(() => {
+    const checkTokenExpiry = () => {
+      const token = localStorage.getItem("token");
+      const expiry = localStorage.getItem("sessionExpiry");
+
+      if (token && expiry) {
+        const now = new Date().getTime();
+        if (now > parseInt(expiry)) {
+          handleLogout();
+        }
+      } else if (token && !expiry) {
+        // Set expiry if not exists (24 hours from now)
+        const expiryTime = new Date().getTime() + 24 * 60 * 60 * 1000;
+        localStorage.setItem("sessionExpiry", expiryTime.toString());
+      }
+    };
+
+    // Check every minute
+    const interval = setInterval(checkTokenExpiry, 60000);
+    checkTokenExpiry(); // Initial check
+
+    return () => clearInterval(interval);
+  }, [handleLogout]);
+
+  // -------------------- Fetch Users --------------------
   useEffect(() => {
     const fetchUsers = async () => {
       try {
-        const res = await axios.get("http://localhost:3000/api/user");
+        const token = localStorage.getItem("token");
+        if (!token) {
+          navigate("/login");
+          return;
+        }
+
+        const res = await axios.get("http://localhost:3000/api/user", {
+          headers: { Authorization: `Bearer ${token}` },
+        });
         setUsers(res.data);
       } catch (err) {
         console.error("Error fetching users:", err);
+        if (err.response?.status === 401) {
+          handleLogout();
+        }
       } finally {
         setLoading(false);
       }
     };
+
     fetchUsers();
-  }, []);
+  }, [handleLogout, navigate]);
+
+  // -------------------- API Request Interceptor --------------------
+  useEffect(() => {
+    // Add authorization header to all requests
+    const requestInterceptor = axios.interceptors.request.use(
+      (config) => {
+        const token = localStorage.getItem("token");
+        if (token) {
+          config.headers.Authorization = `Bearer ${token}`;
+        }
+        return config;
+      },
+      (error) => {
+        return Promise.reject(error);
+      }
+    );
+
+    // Handle unauthorized responses
+    const responseInterceptor = axios.interceptors.response.use(
+      (response) => response,
+      (error) => {
+        if (error.response?.status === 401) {
+          handleLogout();
+        }
+        return Promise.reject(error);
+      }
+    );
+
+    return () => {
+      axios.interceptors.request.eject(requestInterceptor);
+      axios.interceptors.response.eject(responseInterceptor);
+    };
+  }, [handleLogout, navigate]);
 
   // ✅ Role change
   const handleRoleChange = async (userId, newRole) => {
     try {
-      await axios.put(`http://localhost:3000/api/user/${userId}`, {
-        role: newRole,
-      });
+      const token = localStorage.getItem("token");
+      await axios.put(
+        `http://localhost:3000/api/user/${userId}`,
+        {
+          role: newRole,
+        },
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
       setUsers(
         users.map((u) => (u._id === userId ? { ...u, role: newRole } : u))
       );
     } catch (err) {
       console.error("Error updating role:", err);
+      if (err.response?.status === 401) {
+        handleLogout();
+      }
     }
   };
 
   // ✅ Delete user
   const handleDeleteUser = async (userId) => {
     try {
-      await axios.delete(`http://localhost:3000/api/user/${userId}`);
+      const token = localStorage.getItem("token");
+      await axios.delete(`http://localhost:3000/api/user/${userId}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
       setUsers(users.filter((u) => u._id !== userId));
     } catch (err) {
       console.error("Error deleting user:", err);
+      if (err.response?.status === 401) {
+        handleLogout();
+      }
     }
   };
 
@@ -111,12 +234,17 @@ export function RoleManagement() {
     }
 
     try {
+      const token = localStorage.getItem("token");
       const payload = {
         ...newUser,
         dob: new Date(newUser.dob),
         termsAccepted: Boolean(newUser.termsAccepted),
       };
-      const res = await axios.post("http://localhost:3000/api/user", payload);
+
+      const res = await axios.post("http://localhost:3000/api/user", payload, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
       setUsers([...users, res.data]);
       setShowModal(false);
       setNewUser({
@@ -131,32 +259,44 @@ export function RoleManagement() {
         gender: "",
         dob: "",
         termsAccepted: false,
-        role: "User", // ✅ reset role to default
+        role: "User",
       });
     } catch (err) {
       console.error("Failed to add user:", err.response?.data || err.message);
-      alert(
-        "Failed to add user: " + (err.response?.data?.message || err.message)
-      );
+      if (err.response?.status === 401) {
+        handleLogout();
+      } else {
+        alert(
+          "Failed to add user: " + (err.response?.data?.message || err.message)
+        );
+      }
     }
   };
 
   // ✅ Save edited user
   const handleSaveEdit = async () => {
     try {
+      const token = localStorage.getItem("token");
       const payload = { ...viewUser };
       await axios.put(
         `http://localhost:3000/api/user/${viewUser._id}`,
-        payload
+        payload,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
       );
       setUsers(users.map((u) => (u._id === viewUser._id ? viewUser : u)));
       setEditing(false);
       setViewUser(null);
     } catch (err) {
       console.error("Failed to save user:", err);
-      alert(
-        "Failed to save user: " + (err.response?.data?.message || err.message)
-      );
+      if (err.response?.status === 401) {
+        handleLogout();
+      } else {
+        alert(
+          "Failed to save user: " + (err.response?.data?.message || err.message)
+        );
+      }
     }
   };
 
@@ -167,14 +307,38 @@ export function RoleManagement() {
       .includes(searchQuery.toLowerCase())
   );
 
+  // Show loading while checking authentication
+  if (!user) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gray-50 font-inter flex">
       <Sidebar activeTab={activeTab} setActiveTab={setActiveTab} />
 
       <div className="flex-1 p-6">
-        <div className="mb-6">
-          <h1 className="text-2xl font-bold text-gray-800">Role Management</h1>
-          <p className="text-gray-600">Manage user roles and permissions</p>
+        {/* Header with User Info */}
+        <div className="mb-6 flex justify-between items-center">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-800">
+              Role Management
+            </h1>
+            <p className="text-gray-600">
+              Welcome, {user.firstName}! Manage user roles and permissions
+            </p>
+          </div>
+          <div className="flex items-center gap-4">
+            <div className="text-sm text-gray-600">
+              Logged in as: <span className="font-semibold">{user.role}</span>
+            </div>
+          </div>
         </div>
 
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">

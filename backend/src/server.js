@@ -1,79 +1,91 @@
-import dotenv from "dotenv";
 import express from "express";
 import mongoose from "mongoose";
+import dotenv from "dotenv";
 import cors from "cors";
-import router from "./routes/route.js";
+import router from "./routes/route.js"; // Make sure this exists
 
-// Import schemas only
-import ResponderSchema from "./model/responderModel.js";
-import EmergencyReportSchema from "./model/alertModel.js";
-import CanceledAlertSchema from "./model/canceledAlerts.js";
-import CompletedAlertSchema from "./model/completedAlertModel.js";
+// Import schemas
+import AlertSchema from "./model/alertModel.js";
 import AcceptedAlertSchema from "./model/acceptedAlertModel.js";
+import CompletedAlertSchema from "./model/completedAlertModel.js";
+import CanceledAlertSchema from "./model/canceledAlerts.js";
+import ResponderSchema from "./model/responderModel.js";
 
 dotenv.config();
 const app = express();
 
-const PORT = process.env.PORT || 3000;
-const HOST = process.env.HOST || "127.0.0.1";
-
-const { 
-  MONGO_URI_ALL, 
-  MONGO_URI_ACCEPTED, 
-  MONGO_URI_COMPLETED, 
-  MONGO_URI_RESPONDERS, 
-  MONGO_URI_CANCELLED 
-} = process.env;
-
-if (!MONGO_URI_ALL || !MONGO_URI_ACCEPTED || !MONGO_URI_COMPLETED || !MONGO_URI_RESPONDERS || !MONGO_URI_CANCELLED) {
-  console.error("❌ Missing Mongo URIs in .env");
-  process.exit(1);
-}
-
-app.use(cors({ origin: "http://localhost:5001" }));
+// ---------------- MIDDLEWARE ----------------
+app.use(cors());
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
-const connectDatabases = async () => {
+// ---------------- MONGO CONNECTION ----------------
+const connectDBs = async () => {
   try {
-    // Main Alerts DB
-    const allAlertsDB = await mongoose.createConnection(MONGO_URI_ALL, { family: 4 });
-    allAlertsDB.model("AlertModel", EmergencyReportSchema);
+    // Connect to multiple MongoDB databases
+    app.locals.respondersDB = await mongoose.createConnection(process.env.MONGO_URI_RESPONDERS, {
+      useNewUrlParser: true,
+      useUnifiedTopology: true,
+    });
+    console.log("✅ respondersDB connected");
 
-    // Accepted Alerts DB
-    const acceptedAlertsDB = await mongoose.createConnection(MONGO_URI_ACCEPTED, { family: 4 });
-    acceptedAlertsDB.model("AcceptedAlertModel", AcceptedAlertSchema);
+    app.locals.allAlertsDB = await mongoose.createConnection(process.env.MONGO_URI_ALL, {
+      useNewUrlParser: true,
+      useUnifiedTopology: true,
+    });
+    console.log("✅ allAlertsDB connected");
 
-    // Completed Alerts DB
-    const completedAlertsDB = await mongoose.createConnection(MONGO_URI_COMPLETED, { family: 4 });
-    completedAlertsDB.model("CompletedAlertModel", CompletedAlertSchema);
+    app.locals.acceptedAlertsDB = await mongoose.createConnection(process.env.MONGO_URI_ACCEPTED, {
+      useNewUrlParser: true,
+      useUnifiedTopology: true,
+    });
+    console.log("✅ acceptedAlertsDB connected");
 
-    // Canceled Alerts DB
-    const canceledAlertsDB = await mongoose.createConnection(MONGO_URI_CANCELLED, { family: 4 });
-    canceledAlertsDB.model("CanceledAlertModel", CanceledAlertSchema);
+    app.locals.completedAlertsDB = await mongoose.createConnection(process.env.MONGO_URI_COMPLETED, {
+      useNewUrlParser: true,
+      useUnifiedTopology: true,
+    });
+    console.log("✅ completedAlertsDB connected");
 
-    // Responders DB
-    const respondersDB = await mongoose.createConnection(MONGO_URI_RESPONDERS, { family: 4 });
-    respondersDB.model("ResponderModel", ResponderSchema);
+    app.locals.canceledAlertsDB = await mongoose.createConnection(process.env.MONGO_URI_CANCELLED, {
+      useNewUrlParser: true,
+      useUnifiedTopology: true,
+    });
+    console.log("✅ canceledAlertsDB connected");
 
-    // Save connections globally
-    global.allAlertsDB = allAlertsDB;
-    global.acceptedAlertsDB = acceptedAlertsDB;
-    global.completedAlertsDB = completedAlertsDB;
-    global.canceledAlertsDB = canceledAlertsDB;
-    global.respondersDB = respondersDB;
+    // Register models in app.locals.db for controllers
+    app.locals.db = {
+      ResponderModel: app.locals.respondersDB.model("Responder", ResponderSchema),
+      AlertModel: app.locals.allAlertsDB.model("Alert", AlertSchema),
+      AcceptedAlertModel: app.locals.acceptedAlertsDB.model("AcceptedAlert", AcceptedAlertSchema),
+      CompletedAlertModel: app.locals.completedAlertsDB.model("CompletedAlert", CompletedAlertSchema),
+      CanceledAlertModel: app.locals.canceledAlertsDB.model("CanceledAlert", CanceledAlertSchema),
+    };
 
-    console.log("✅ All models registered on respective DBs");
   } catch (err) {
     console.error("❌ MongoDB connection error:", err);
     process.exit(1);
   }
 };
 
-await connectDatabases();
+// Connect databases
+connectDBs();
 
-app.get("/", (req, res) => res.json({ message: "Hello from SwiftAid Backend 👋" }));
+// ---------------- ROUTES ----------------
 app.use("/api", router);
 
-app.listen(PORT, HOST, () => console.log(`🚀 Node server running at http://${HOST}:${PORT}`));
+// Health check
+app.get("/", (req, res) => res.send("🚀 Backend is running"));
 
-export default app;
+// ---------------- GLOBAL ERROR HANDLER ----------------
+app.use((err, req, res, next) => {
+  console.error("Unhandled Error:", err);
+  res.status(err.status || 500).json({
+    success: false,
+    message: err.message || "Internal Server Error",
+  });
+});
+
+// ---------------- START SERVER ----------------
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));

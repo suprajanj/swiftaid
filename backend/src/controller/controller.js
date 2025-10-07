@@ -1,83 +1,95 @@
 import mongoose from "mongoose";
 
+// ✅ Helper to validate ObjectId
 const isValidId = (id) => mongoose.Types.ObjectId.isValid(id);
 
-// helper to get models from global (throws if not present)
-const getModels = () => {
-  const {
-    allAlertsDB,
-    acceptedAlertsDB,
-    completedAlertsDB,
-    canceledAlertsDB,
-    respondersDB,
-  } = global;
-
-  if (!allAlertsDB || !acceptedAlertsDB || !completedAlertsDB || !canceledAlertsDB || !respondersDB) {
-    throw new Error("Models are not registered on DB connections (server.js must register schemas)");
-  }
-
-  const AlertModel = allAlertsDB.model("AlertModel");
-  const AcceptedAlertModel = acceptedAlertsDB.model("AcceptedAlertModel");
-  const CompletedAlertModel = completedAlertsDB.model("CompletedAlertModel");
-  const CanceledAlertModel = canceledAlertsDB.model("CanceledAlertModel");
-  const ResponderModel = respondersDB.model("ResponderModel");
-
-  return { AlertModel, AcceptedAlertModel, CompletedAlertModel, CanceledAlertModel, ResponderModel };
+// ✅ Helper to get models from app.locals
+const getModels = (req) => {
+  const db = req.app.locals.db;
+  if (!db) throw new Error("Models not initialized in DB connections");
+  return db;
 };
 
-// GET all pending alerts
+/* ============================================================
+   ALERT MANAGEMENT
+============================================================ */
+
+// GET all alerts (pending + accepted + completed)
 const getAllAlerts = async (req, res) => {
   try {
-    const { AlertModel } = getModels();
-    const alerts = await AlertModel.find();
+    const { AlertModel } = getModels(req);
+    const alerts = await AlertModel.find().sort({ createdAt: -1 });
     res.json(alerts);
-  } catch (error) {
-    console.error("❌ getAllAlerts error:", error);
-    res.status(500).json({ error: error.message });
+  } catch (err) {
+    console.error("getAllAlerts error:", err);
+    res.status(500).json({ error: err.message });
   }
 };
 
-const getAllAcceptedAlerts = async (req, res) => {
-  try {
-    const { AcceptedAlertModel } = getModels();
-    const alerts = await AcceptedAlertModel.find();
-    res.json(alerts);
-  } catch (error) {
-    console.error("❌ getAllAcceptedAlerts error:", error);
-    res.status(500).json({ error: error.message });
-  }
-};
-
+// GET alerts by status
 const getAlertsByStatus = async (req, res) => {
   try {
     const { status } = req.params;
-    const { AlertModel } = getModels();
-    const alerts = await AlertModel.find({ status });
+    const { AlertModel } = getModels(req);
+    const alerts = await AlertModel.find({ status }).sort({ createdAt: -1 });
     res.json(alerts);
-  } catch (error) {
-    console.error("❌ getAlertsByStatus error:", error);
-    res.status(500).json({ error: error.message });
+  } catch (err) {
+    console.error("getAlertsByStatus error:", err);
+    res.status(500).json({ error: err.message });
   }
 };
 
+// GET all accepted alerts
+const getAllAcceptedAlerts = async (req, res) => {
+  try {
+    const { AcceptedAlertModel } = getModels(req);
+    const alerts = await AcceptedAlertModel.find().sort({ acceptedAt: -1 });
+    res.json(alerts);
+  } catch (err) {
+    console.error("getAllAcceptedAlerts error:", err);
+    res.status(500).json({ error: err.message });
+  }
+};
+
+// GET all completed alerts
+const getAllCompletedAlerts = async (req, res) => {
+  try {
+    const { CompletedAlertModel } = getModels(req);
+    const alerts = await CompletedAlertModel.find().sort({ completedAt: -1 });
+    res.json(alerts);
+  } catch (err) {
+    console.error("getAllCompletedAlerts error:", err);
+    res.status(500).json({ error: err.message });
+  }
+};
+
+// ADD new alert
 const addAlert = async (req, res) => {
   try {
-    const { AlertModel } = getModels();
-    const alert = new AlertModel(req.body);
-    await alert.save();
-    res.status(201).json(alert);
-  } catch (error) {
-    console.error("❌ addAlert error:", error);
-    res.status(500).json({ error: error.message });
+    const { AlertModel } = getModels(req);
+    const { NIC, contactNumber, emergencyType, liveLocation, address } = req.body;
+
+    if (!NIC || !contactNumber || !emergencyType || !liveLocation || !address) {
+      return res.status(400).json({ message: "All required fields are mandatory!" });
+    }
+
+    const newAlert = new AlertModel({ ...req.body, status: "pending" });
+    await newAlert.save();
+
+    res.status(201).json({ message: "Alert added successfully", alert: newAlert });
+  } catch (err) {
+    console.error("addAlert error:", err);
+    res.status(500).json({ message: err.message });
   }
 };
 
+// DISPLAY single alert details
 const displayAlertDetails = async (req, res) => {
   try {
     const { id } = req.params;
     if (!isValidId(id)) return res.status(400).json({ message: "Invalid ID" });
 
-    const { AlertModel, AcceptedAlertModel, CompletedAlertModel } = getModels();
+    const { AlertModel, AcceptedAlertModel, CompletedAlertModel } = getModels(req);
 
     const alert =
       (await AlertModel.findById(id)) ||
@@ -86,18 +98,23 @@ const displayAlertDetails = async (req, res) => {
 
     if (!alert) return res.status(404).json({ message: "Alert not found" });
     res.json(alert);
-  } catch (error) {
-    console.error("❌ displayAlertDetails error:", error);
-    res.status(500).json({ error: error.message });
+  } catch (err) {
+    console.error("displayAlertDetails error:", err);
+    res.status(500).json({ error: err.message });
   }
 };
 
+/* ============================================================
+   ALERT STATE MANAGEMENT
+============================================================ */
+
+// ACCEPT alert
 const acceptAlert = async (req, res) => {
   try {
     const { id } = req.params;
     if (!isValidId(id)) return res.status(400).json({ message: "Invalid ID" });
 
-    const { AlertModel, AcceptedAlertModel } = getModels();
+    const { AlertModel, AcceptedAlertModel } = getModels(req);
 
     const alert = await AlertModel.findById(id);
     if (!alert) return res.status(404).json({ message: "Alert not found" });
@@ -105,28 +122,29 @@ const acceptAlert = async (req, res) => {
     alert.status = "accepted";
     await alert.save();
 
-    const accepted = new AcceptedAlertModel({
+    const acceptedAlert = new AcceptedAlertModel({
       ...alert.toObject(),
       status: "accepted",
       acceptedAt: new Date(),
+      reportId: alert.reportId || alert._id, // ensure reportId exists
     });
+    delete acceptedAlert._id;
+    await acceptedAlert.save();
 
-    delete accepted._id;
-    await accepted.save();
-
-    res.json({ message: `Alert ${alert.reportId} accepted successfully`, alert, accepted });
-  } catch (error) {
-    console.error("❌ acceptAlert error:", error);
-    res.status(500).json({ error: error.message });
+    res.json({ message: "Alert accepted successfully", alert, acceptedAlert });
+  } catch (err) {
+    console.error("acceptAlert error:", err);
+    res.status(500).json({ error: err.message });
   }
 };
 
+// CANCEL alert
 const cancelAlert = async (req, res) => {
   try {
     const { id } = req.params;
     const { reasons = [] } = req.body;
 
-    const { AcceptedAlertModel, CanceledAlertModel, AlertModel } = getModels();
+    const { AcceptedAlertModel, CanceledAlertModel, AlertModel } = getModels(req);
 
     const alert = await AcceptedAlertModel.findById(id);
     if (!alert) return res.status(404).json({ message: "Alert not found" });
@@ -136,30 +154,31 @@ const cancelAlert = async (req, res) => {
       status: "cancelled",
       reasonToReject: Array.isArray(reasons) ? reasons.join(", ") : String(reasons),
       cancelledAt: new Date(),
+      reportId: alert.reportId || alert._id, // ensure reportId exists
     });
-
     delete canceled._id;
     await canceled.save();
 
     await AcceptedAlertModel.findByIdAndDelete(id);
     await AlertModel.findOneAndUpdate(
-      { reportId: alert.reportId },
+      { reportId: alert.reportId || alert._id },
       { status: "cancelled", reasonToReject: canceled.reasonToReject }
     );
 
     res.json({ message: "Alert cancelled successfully", canceled });
-  } catch (error) {
-    console.error("❌ cancelAlert error:", error);
-    res.status(500).json({ error: error.message });
+  } catch (err) {
+    console.error("cancelAlert error:", err);
+    res.status(500).json({ error: err.message });
   }
 };
 
+// MARK alert as reached
 const markAsReached = async (req, res) => {
   try {
     const { id } = req.params;
     if (!isValidId(id)) return res.status(400).json({ message: "Invalid ID" });
 
-    const { AcceptedAlertModel, AlertModel } = getModels();
+    const { AlertModel, AcceptedAlertModel } = getModels(req);
     const update = { status: "reached" };
 
     const alert =
@@ -167,54 +186,70 @@ const markAsReached = async (req, res) => {
       (await AlertModel.findByIdAndUpdate(id, update, { new: true }));
 
     if (!alert) return res.status(404).json({ message: "Alert not found" });
-
     res.json({ message: "Responder reached", alert });
-  } catch (error) {
-    console.error("❌ markAsReached error:", error);
-    res.status(500).json({ error: error.message });
+  } catch (err) {
+    console.error("markAsReached error:", err);
+    res.status(500).json({ error: err.message });
   }
 };
 
-const completeAlert = async (req, res) => {
+// COMPLETE alert
+const completeAlertWithDetails = async (req, res) => {
   try {
     const { id } = req.params;
-    const {
-      comment,
-      commentBy,
-      commentByNIC,
-      commentByContactNumber,
-      accuracyRating,
-      casualties,
-      fatalities,
-      criticalInjuries,
-      uninjured,
-      reason,
-    } = req.body;
+    if (!mongoose.Types.ObjectId.isValid(id))
+      return res.status(400).json({ message: "Invalid ID" });
 
-    const files = req.files || [];
-
-    if (!isValidId(id)) return res.status(400).json({ message: "Invalid ID" });
-
-    const { AcceptedAlertModel, AlertModel, CompletedAlertModel } = getModels();
+    const { CompletedAlertModel, AcceptedAlertModel, AlertModel } = getModels(req);
 
     const alert = (await AcceptedAlertModel.findById(id)) || (await AlertModel.findById(id));
     if (!alert) return res.status(404).json({ message: "Alert not found" });
 
+    const {
+      completedBy,
+      position,
+      NIC,
+      contactNumber,
+      emergencyType,
+      location,
+      senderNIC,
+      senderName,
+      senderContactNumber,
+      senderAddress,
+      otherParticipants,
+      otherResponders,
+      casualties,
+      criticalInjuries,
+      fatalities,
+      totalVictims,
+      comment,
+    } = req.body;
+
+    const files = req.files ? req.files.map((f) => f.path) : [];
+
     const completed = new CompletedAlertModel({
       ...alert.toObject(),
+      reportId: alert.reportId || alert._id, // fixed: ensure reportId exists
+      completedBy,
+      position,
+      NIC,
+      contactNumber,
+      emergencyType,
+      location,
+      senderNIC,
+      senderName,
+      senderContactNumber,
+      senderAddress,
+      otherParticipants,
+      otherResponders: otherResponders ? JSON.parse(otherResponders) : [],
+      casualties: Number(casualties) || 0,
+      criticalInjuries: Number(criticalInjuries) || 0,
+      fatalities: Number(fatalities) || 0,
+      totalVictims: Number(totalVictims) || 0,
       comment,
-      commentBy,
-      commentByNIC,
-      commentByContactNumber,
-      accuracyRating,
-      casualties: casualties || 0,
-      fatalities,
-      criticalInjuries,
-      uninjured,
-      reason,
-      media: files.map((f) => f.filename || f.path),
-      completedAt: new Date(),
+      files,
       status: "completed",
+      completedAt: new Date(),
     });
 
     delete completed._id;
@@ -223,42 +258,21 @@ const completeAlert = async (req, res) => {
     if (await AcceptedAlertModel.exists({ _id: id })) await AcceptedAlertModel.findByIdAndDelete(id);
     if (await AlertModel.exists({ _id: id })) await AlertModel.findByIdAndDelete(id);
 
-    const report = {
-      reportId: completed.reportId,
-      userId: completed.userId,
-      emergencyType: completed.emergencyType,
-      address: completed.address,
-      status: completed.status,
-      completedAt: completed.completedAt,
-      comment: completed.comment,
-      commentBy: completed.commentBy,
-      commentByNIC: completed.commentByNIC,
-      commentByContactNumber: completed.commentByContactNumber,
-      accuracyRating: completed.accuracyRating,
-      casualties: {
-        total: completed.casualties || 0,
-        fatalities: completed.fatalities || 0,
-        criticalInjuries: completed.criticalInjuries || 0,
-        uninjured: completed.uninjured || 0,
-      },
-      reason: completed.reason,
-      media: completed.media,
-    };
-
-    res.json({ message: "✅ Alert completed successfully", report });
-  } catch (error) {
-    console.error("❌ completeAlert error:", error);
-    res.status(500).json({ error: error.message });
+    res.json({ message: "Task completed with all details!", completed });
+  } catch (err) {
+    console.error("completeAlertWithDetails error:", err);
+    res.status(500).json({ error: err.message });
   }
 };
 
+// UPDATE responder location
 const updateResponderLocation = async (req, res) => {
   try {
     const { id } = req.params;
     const { lat, lng } = req.body;
     if (!isValidId(id)) return res.status(400).json({ message: "Invalid ID" });
 
-    const { AcceptedAlertModel, AlertModel } = getModels();
+    const { AlertModel, AcceptedAlertModel } = getModels(req);
     const update = { responderLocation: { lat, lng } };
 
     const alert =
@@ -266,103 +280,113 @@ const updateResponderLocation = async (req, res) => {
       (await AlertModel.findByIdAndUpdate(id, update, { new: true }));
 
     if (!alert) return res.status(404).json({ message: "Alert not found" });
-
     res.json({ message: "Responder location updated", alert });
-  } catch (error) {
-    console.error("❌ updateResponderLocation error:", error);
-    res.status(500).json({ error: error.message });
+  } catch (err) {
+    console.error("updateResponderLocation error:", err);
+    res.status(500).json({ error: err.message });
   }
 };
 
-const getRespondersForAlert = async (req, res) => {
+// GET assigned alerts by responder NIC
+const getAssignedAlerts = async (req, res) => {
+  try {
+    const { NIC } = req.params;
+    if (!NIC) return res.status(400).json({ message: "NIC required" });
+
+    const { AlertModel } = getModels(req);
+    const alerts = await AlertModel.find({ "assignedResponders.NIC": NIC });
+    res.json(alerts);
+  } catch (err) {
+    console.error("getAssignedAlerts error:", err);
+    res.status(500).json({ message: err.message });
+  }
+};
+
+/* ============================================================
+   RESPONDER MANAGEMENT
+============================================================ */
+
+// SEARCH responders
+const searchResponders = async (req, res) => {
+  try {
+    const { ResponderModel } = getModels(req);
+    const searchValue = req.query.type || req.query.query || "";
+    const regex = new RegExp(searchValue, "i");
+
+    const responders = await ResponderModel.find({
+      $or: [{ name: regex }, { NIC: regex }, { email: regex }, { responderType: regex }],
+    }).limit(25);
+
+    res.json(responders);
+  } catch (err) {
+    console.error("searchResponders error:", err);
+    res.status(500).json({ error: "Failed to fetch responders" });
+  }
+};
+
+// ASSIGN extra responder
+const assignNewResponder = async (req, res) => {
   try {
     const { id } = req.params;
-    if (!isValidId(id)) return res.status(400).json({ message: "Invalid ID" });
+    const { responderId } = req.body;
+    if (!isValidId(id) || !isValidId(responderId))
+      return res.status(400).json({ error: "Invalid ID" });
 
-    const { AcceptedAlertModel, AlertModel, CompletedAlertModel } = getModels();
+    const { AlertModel, AcceptedAlertModel, ResponderModel } = getModels(req);
 
-    const alert =
-      (await AcceptedAlertModel.findById(id)) ||
-      (await AlertModel.findById(id)) ||
-      (await CompletedAlertModel.findById(id));
+    const alert = (await AlertModel.findById(id)) || (await AcceptedAlertModel.findById(id));
+    if (!alert) return res.status(404).json({ error: "Alert not found" });
 
-    if (!alert) return res.status(404).json({ message: "Alert not found" });
-    res.json(alert.responders || []);
-  } catch (error) {
-    console.error("❌ getRespondersForAlert error:", error);
-    res.status(500).json({ error: error.message });
+    const responder = await ResponderModel.findById(responderId);
+    if (!responder) return res.status(404).json({ error: "Responder not found" });
+
+    const alreadyAssigned = (alert.assignedResponders || []).some(
+      (r) => r._id.toString() === responder._id.toString()
+    );
+    if (alreadyAssigned)
+      return res.status(400).json({ error: "Responder already assigned" });
+
+    alert.assignedResponders = [...(alert.assignedResponders || []), responder];
+    if (alert.status === "pending") alert.status = "accepted";
+    await alert.save();
+
+    res.json({ message: "Responder assigned successfully", alert });
+  } catch (err) {
+    console.error("assignNewResponder error:", err);
+    res.status(500).json({ error: err.message });
   }
 };
 
+// DELETE all alerts
 const deleteAllAlerts = async (req, res) => {
   try {
-    const { AlertModel, AcceptedAlertModel, CompletedAlertModel } = getModels();
+    const { AlertModel, AcceptedAlertModel, CompletedAlertModel, CanceledAlertModel } =
+      getModels(req);
     await AlertModel.deleteMany({});
     await AcceptedAlertModel.deleteMany({});
     await CompletedAlertModel.deleteMany({});
-    res.json({ message: "All alerts deleted from all databases" });
-  } catch (error) {
-    console.error("❌ deleteAllAlerts error:", error);
-    res.status(500).json({ error: error.message });
-  }
-};
-
-const getAllCompletedAlerts = async (req, res) => {
-  try {
-    const { CompletedAlertModel } = getModels();
-    const alerts = await CompletedAlertModel.find();
-    res.json(alerts);
-  } catch (error) {
-    console.error("❌ getAllCompletedAlerts error:", error);
-    res.status(500).json({ error: error.message });
-  }
-};
-
-// Responder creation controller
-const createNewResponder = async (req, res) => {
-  try {
-    const { NIC, name, contactNumber, email, address, password, position, emergencyType } = req.body;
-    const { ResponderModel } = getModels();
-
-    if (!NIC || !name || !contactNumber || !email || !address || !password || !position || !emergencyType) {
-      return res.status(400).json({ error: "Missing required fields" });
-    }
-
-    const existing = await ResponderModel.findOne({ NIC });
-    if (existing) return res.status(400).json({ error: "Responder with this NIC already exists" });
-
-    const newResponder = new ResponderModel({
-      NIC,
-      name,
-      contactNumber,
-      email,
-      address,
-      password,
-      position,
-      emergencyType,
-    });
-
-    await newResponder.save();
-    res.status(201).json(newResponder);
-  } catch (error) {
-    console.error("❌ createNewResponder error:", error);
-    res.status(500).json({ error: error.message });
+    await CanceledAlertModel.deleteMany({});
+    res.json({ message: "All alerts deleted successfully" });
+  } catch (err) {
+    console.error("deleteAllAlerts error:", err);
+    res.status(500).json({ error: err.message });
   }
 };
 
 export {
   getAllAlerts,
   getAllAcceptedAlerts,
+  getAllCompletedAlerts,
   getAlertsByStatus,
   addAlert,
   displayAlertDetails,
   acceptAlert,
   cancelAlert,
   markAsReached,
-  completeAlert,
+  completeAlertWithDetails,
   updateResponderLocation,
-  getRespondersForAlert,
+  getAssignedAlerts,
+  searchResponders,
+  assignNewResponder,
   deleteAllAlerts,
-  getAllCompletedAlerts,
-  createNewResponder,
 };

@@ -1,16 +1,32 @@
+// models/CompletedAlert.js
 import mongoose from "mongoose";
 
 const CompletedAlertSchema = new mongoose.Schema({
   reportId: { type: String, required: true, unique: true },
-  completedBy: { type: String, default: "" },
-  userId: { type: String, required: true },
+  completedBy: { type: String, required: true },
+  position: { type: String, default: "" },
   NIC: { type: String, required: true },
   contactNumber: { type: String, required: true },
+
   emergencyType: { type: String, required: true },
-  address: { type: String, required: true },
-  status: { type: String, default: "completed" },
-  completedAt: { type: Date, default: Date.now },
+  location: { type: String, required: true },
+
+  senderNIC: { type: String },
+  senderName: { type: String },
+  senderContactNumber: { type: String },
+  senderAddress: { type: String },
+
+  otherParticipants: { type: String },
+  casualties: { type: Number },
+  criticalInjuries: { type: Number },
+  fatalities: { type: Number },
+  totalVictims: { type: Number },
+  otherResponders: { type: [String] },
+
+  files: [{ type: String }], // store file paths
   comment: { type: String },
+
+  completedAt: { type: Date, default: Date.now },
 });
 
 export default CompletedAlertSchema;

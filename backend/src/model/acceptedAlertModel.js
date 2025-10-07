@@ -1,7 +1,6 @@
 import mongoose from "mongoose";
 
 const AcceptedAlertSchema = new mongoose.Schema({
-  reportId: { type: String, required: true, unique: true },
   acceptedBy: { type: String, default: "" },
   userId: { type: String, required: true },
   NIC: { type: String, required: true },

@@ -16,28 +16,34 @@ const CreatePoliceResponder = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
+    // ✅ NIC validation
     const nicRegex = /^([0-9]{9}[vVxX]|[0-9]{12})$/;
     if (!nicRegex.test(NIC)) {
       toast.error("Invalid NIC format. Must be 9 digits + V/v/X/x or 12 digits.");
       return;
     }
 
+    // Build payload exactly as backend expects
+    const payload = {
+      NIC: NIC.trim(),
+      name: name.trim(),
+      email: email.trim(),
+      contactNumber: contactNumber.trim(),
+      password: password.trim(),
+      address: address.trim(),
+      position: position.trim(),
+      responderType: "police", // must match backend enum
+    };
+
+    console.log("Payload sent to backend:", payload);
+
     try {
-      const res = await axios.post("http://127.0.0.1:3000/api/create-responder", {
-        NIC,
-        name,
-        email,
-        contactNumber,
-        password,
-        address,
-        position,
-        responderType: "police", // ✅ matches backend
-      });
+      const res = await axios.post("http://localhost:3000/api/responders", payload);
 
       toast.success(res.data.message || "✅ Police responder created successfully!");
       setTimeout(() => navigate("/login"), 1200);
     } catch (err) {
-      console.error("Error creating police responder:", err);
+      console.error("Error creating police responder:", err.response?.data || err);
       toast.error(err.response?.data?.error || "❌ Server error. Please try again.");
     }
   };
@@ -48,30 +54,25 @@ const CreatePoliceResponder = () => {
         <h2 className="text-center text-3xl font-extrabold text-blue-700 mb-6">
           🚓 Create Police Responder
         </h2>
-
         <form onSubmit={handleSubmit} className="space-y-4">
-          <input type="text" placeholder="Full Name" value={name} onChange={(e) => setName(e.target.value)} className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" required />
-          <input type="text" placeholder="NIC (Old or New)" value={NIC} onChange={(e) => setNIC(e.target.value)} className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" required />
-          <input type="email" placeholder="Email Address" value={email} onChange={(e) => setEmail(e.target.value)} className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" required />
-          <input type="text" placeholder="Contact Number" value={contactNumber} onChange={(e) => setContactNumber(e.target.value)} className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" required />
-          <input type="password" placeholder="Password" value={password} onChange={(e) => setPassword(e.target.value)} className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" required />
-          <input type="text" placeholder="Station / Address" value={address} onChange={(e) => setAddress(e.target.value)} className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" required />
-
-          <select value={position} onChange={(e) => setPosition(e.target.value)} className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
-            <option value="Patrol Officer">Patrol Officer</option>
-            <option value="Detective">Detective</option>
-            <option value="Inspector">Inspector</option>
-            <option value="SWAT">SWAT</option>
+          <input type="text" placeholder="Full Name" value={name} onChange={e => setName(e.target.value)} className="w-full border rounded px-3 py-2" required />
+          <input type="text" placeholder="NIC" value={NIC} onChange={e => setNIC(e.target.value)} className="w-full border rounded px-3 py-2" required />
+          <input type="email" placeholder="Email" value={email} onChange={e => setEmail(e.target.value)} className="w-full border rounded px-3 py-2" required />
+          <input type="text" placeholder="Contact Number" value={contactNumber} onChange={e => setContactNumber(e.target.value)} className="w-full border rounded px-3 py-2" required />
+          <input type="password" placeholder="Password" value={password} onChange={e => setPassword(e.target.value)} className="w-full border rounded px-3 py-2" required />
+          <input type="text" placeholder="Station / Address" value={address} onChange={e => setAddress(e.target.value)} className="w-full border rounded px-3 py-2" required />
+          <select value={position} onChange={e => setPosition(e.target.value)} className="w-full border rounded px-3 py-2">
+            <option>Patrol Officer</option>
+            <option>Detective</option>
+            <option>Inspector</option>
+            <option>SWAT</option>
           </select>
-
-          <button type="submit" className="w-full py-2 mt-4 bg-blue-600 text-white font-semibold rounded hover:bg-blue-700 transition">
+          <button type="submit" className="w-full py-2 mt-4 bg-blue-600 text-white rounded hover:bg-blue-700">
             Create Police Account
           </button>
         </form>
-        <div>
-          <button className="mt-4 text-center bg-blue-600 py-2 rounded hover:bg-blue-950">
-            <a href="/login" className="text-white hover:underline">Already have an account? Login</a>
-          </button>
+        <div className="mt-4 text-center">
+          <a href="/login" className="text-blue-600 hover:underline">Already have an account? Login</a>
         </div>
       </div>
     </div>

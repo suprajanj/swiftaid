@@ -7,6 +7,7 @@ const sosSchema = new mongoose.Schema(
       ref: "User",
       required: true,
     },
+
     name: { type: String, required: true },
     age: { type: String, required: true },
     number: { type: String, required: true },

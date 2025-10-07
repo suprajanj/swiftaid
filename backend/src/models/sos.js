@@ -1,25 +1,48 @@
-// models/SOS.js
 import mongoose from "mongoose";
 
 const sosSchema = new mongoose.Schema(
   {
+    user: {
+      type: mongoose.Schema.Types.ObjectId, // reference User
+      ref: "User",
+      default: '68e347e852d486ae565c0088',
+      required: false,
+    },
     name: { type: String, required: true },
     age: { type: String, required: true },
     number: { type: String, required: true },
-    emergencyType: { type: String, required: true },
-    assignedResponder: { type: mongoose.Schema.Types.ObjectId, ref: "Responder" },
-    status: {
-      type: String,
-      enum: ["Pending", "Assigned", "In Progress", "Completed", "Cancelled"],
-      default: "Pending", 
-    },
+    emergency: { type: String, required: true },
     location: {
       latitude: { type: Number, required: true },
       longitude: { type: Number, required: true },
       mapLink: { type: String },
     },
+
+    assignedResponder: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Responder",
+    },
+
+    // ✅ New fields
+    status: {
+      type: String,
+      enum: [
+        "Pending",
+        "Assigned",
+        "Accepted",
+        "Completed",
+        "Cancel",
+        "Reached",
+      ],
+      default: "Pending",
+    },
+    acceptedAt: { type: Date }, // Will be set when accepted
+    completedAt: { type: Date }, // Will be set when completed
+    comment: { type: String }, // Optional
   },
   { timestamps: true }
 );
 
-export default mongoose.model("SOS", sosSchema);
+const SOS = mongoose.model("SOS", sosSchema);
+
+export default SOS;

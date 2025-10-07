@@ -1,11 +1,27 @@
 // controllers/sosController.js
 import SOS from "../models/sos.js";
 import Responder from "../models/Responder.js";
+import SystemSetting from "../models/SystemSetting.js";
+import { sendEmail } from "../services/notificationService.js";
+
+function getDistance(lat1, lon1, lat2, lon2) {
+  const R = 6371;
+  const dLat = ((lat2 - lat1) * Math.PI) / 180;
+  const dLon = ((lon2 - lon1) * Math.PI) / 180;
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos((lat1 * Math.PI) / 180) *
+      Math.cos((lat2 * Math.PI) / 180) *
+      Math.sin(dLon / 2) ** 2;
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c;
+}
 
 // Get all SOS records
 export const getAllSOS = async (req, res) => {
   try {
-    const sosList = await SOS.find().populate("assignedResponder", "name number");
+    const sosList = await SOS.find()
+      .populate("assignedResponder", "name contactNumber responderType status");
     res.status(200).json(sosList);
   } catch (err) {
     console.error("Error fetching SOS records:", err);
@@ -16,7 +32,8 @@ export const getAllSOS = async (req, res) => {
 // Get SOS by ID
 export const getSOSByID = async (req, res) => {
   try {
-    const sos = await SOS.findById(req.params.id).populate("assignedResponder", "name number");
+    const sos = await SOS.findById(req.params.id)
+      .populate("assignedResponder", "name contactNumber responderType status");
     if (!sos) return res.status(404).json({ message: "SOS not found" });
     res.status(200).json(sos);
   } catch (err) {
@@ -28,56 +45,94 @@ export const getSOSByID = async (req, res) => {
 // Create a new SOS
 export const createSOS = async (req, res) => {
   try {
-    const { name, age, number, emergencyType, location } = req.body;
+    const { name, age, number, emergency, location } = req.body;
 
-    if (!name || !age || !number || !emergencyType)
-      return res.status(400).json({ message: "Missing required fields" });
+    // 🔄 Check global auto-assign setting
+    const setting = await SystemSetting.findOne({ key: "autoAssign" });
+    const autoAssign = setting?.value === true;
 
-    if (!location?.latitude || !location?.longitude)
-      return res.status(400).json({ message: "Location is required" });
+    let assignedResponder = null;
 
-    const mapLink = `https://www.google.com/maps?q=${location.latitude},${location.longitude}`;
+    if (autoAssign) {
+      const responders = await Responder.find({
+        responderType: emergency,
+        status: "available",
+      });
+
+      // find nearest responder (using your getDistance helper)
+      let minDist = Infinity;
+      for (const r of responders) {
+        if (r.lastLocation?.latitude && r.lastLocation?.longitude) {
+          const d = getDistance(
+            location.latitude,
+            location.longitude,
+            r.lastLocation.latitude,
+            r.lastLocation.longitude
+          );
+          if (d < minDist) {
+            minDist = d;
+            assignedResponder = r;
+          }
+        }
+      }
+
+      if (assignedResponder) {
+        assignedResponder.status = "busy";
+        await assignedResponder.save();
+      }
+    }
 
     const sos = new SOS({
       name,
       age,
       number,
-      emergencyType,
-      location: { ...location, mapLink },
-      status: "Pending", // New SOS starts as Pending
+      emergency,
+      location,
+      assignedResponder: assignedResponder?._id || null,
+      status: assignedResponder ? "Assigned" : "Pending",
     });
 
-    const savedSOS = await sos.save();
-    res.status(201).json(savedSOS);
+    await sos.save();
+    const message = `🚨 New SOS Assigned: ${sos.emergency} for ${sos.name}. Please respond immediately.`;
+
+    if (assignedResponder.email) await sendEmail(assignedResponder.email, sos);
+
+    res.status(201).json({
+      message: autoAssign
+        ? assignedResponder
+          ? `Auto-assigned to ${assignedResponder.name}`
+          : "No available responder"
+        : "Manual mode — SOS created",
+      sos,
+    });
   } catch (err) {
-    console.error("Error creating SOS:", err);
-    res.status(500).json({ message: "Internal Server Error" });
+    console.error(err);
+    res.status(500).json({ message: "Error creating SOS" });
   }
 };
-
-// Update SOS (with automatic unassign if emergencyType changes)
+// Update SOS
 export const updateSOS = async (req, res) => {
   try {
-    const { name, age, number, emergencyType, location, status } = req.body;
+    const { name, age, number, emergency, location, status, comment } = req.body;
 
     const sos = await SOS.findById(req.params.id);
     if (!sos) return res.status(404).json({ message: "SOS not found" });
 
-    // If emergencyType changes, unassign responder
-    if (emergencyType && sos.emergencyType !== emergencyType && sos.assignedResponder) {
+    // If emergency changes, unassign responder
+    if (emergency && sos.emergency !== emergency && sos.assignedResponder) {
       const prevResponder = await Responder.findById(sos.assignedResponder);
       if (prevResponder) {
-        prevResponder.availability = true;
+        prevResponder.status = "available";
         await prevResponder.save();
       }
-      sos.assignedResponder = null; // Unassign
-      sos.status = "Pending"; // Reset status
+      sos.assignedResponder = null;
+      sos.status = "Pending";
     }
 
     sos.name = name || sos.name;
     sos.age = age || sos.age;
     sos.number = number || sos.number;
-    sos.emergencyType = emergencyType || sos.emergencyType;
+    sos.emergency = emergency || sos.emergency;
 
     if (location?.latitude && location?.longitude) {
       sos.location = {
@@ -87,12 +142,14 @@ export const updateSOS = async (req, res) => {
       };
     }
 
-    if (status) {
-      sos.status = status; // Allow manual status update
-    }
+    if (status) sos.status = status;
+    if (comment) sos.comment = comment;
 
     const updatedSOS = await sos.save();
-    const populatedSOS = await updatedSOS.populate("assignedResponder", "name number");
+    const populatedSOS = await updatedSOS.populate(
+      "assignedResponder",
+      "name contactNumber responderType status"
+    );
     res.status(200).json(populatedSOS);
   } catch (err) {
     console.error("Error updating SOS:", err);
@@ -106,11 +163,10 @@ export const deleteSOS = async (req, res) => {
     const sos = await SOS.findById(req.params.id);
     if (!sos) return res.status(404).json({ message: "SOS not found" });
 
-    // If SOS has a responder assigned, make them available
     if (sos.assignedResponder) {
       const responder = await Responder.findById(sos.assignedResponder);
       if (responder) {
-        responder.availability = true;
+        responder.status = "available";
         await responder.save();
       }
     }
@@ -123,7 +179,7 @@ export const deleteSOS = async (req, res) => {
   }
 };
 
-// Assign a responder to SOS and update status
+// Assign a responder to SOS
 export const assignResponder = async (req, res) => {
   try {
     const { sosId, responderId } = req.body;
@@ -134,32 +190,41 @@ export const assignResponder = async (req, res) => {
     const responder = await Responder.findById(responderId);
     if (!responder) return res.status(404).json({ message: "Responder not found" });
 
-    // Assign responder and mark SOS as Assigned
     sos.assignedResponder = responder._id;
     sos.status = "Assigned";
     await sos.save();
 
-    // Mark responder as busy
-    responder.availability = false;
+    const message = `🚨 New SOS Assigned: ${sos.emergency} for ${sos.name}. Please respond immediately.`;
+
+    if (responder.email) await sendEmail(responder.email, sos);
+
+    responder.status = "busy";
     await responder.save();
 
-    res.status(200).json({ sos, responder });
+    const populatedSOS = await sos.populate(
+      "assignedResponder",
+      "name contactNumber responderType status"
+    );
+    res.status(200).json({ sos: populatedSOS, responder });
   } catch (err) {
     console.error("Error assigning responder:", err);
     res.status(500).json({ message: "Internal Server Error" });
   }
 };
 
+// Mark SOS as completed
 export const completeSOS = async (req, res) => {
   try {
     const sos = await SOS.findByIdAndUpdate(
       req.params.id,
       { status: "Completed", completedAt: new Date() },
       { new: true }
-    );
-    if (!sos) return res.status(404).json({ error: "SOS not found" });
-    res.json(sos);
+    ).populate("assignedResponder", "name contactNumber responderType status");
+
+    if (!sos) return res.status(404).json({ message: "SOS not found" });
+    res.status(200).json(sos);
   } catch (err) {
-    res.status(500).json({ error: "Failed to complete SOS" });
+    console.error("Error completing SOS:", err);
+    res.status(500).json({ message: "Internal Server Error" });
   }
-}
+};

@@ -1,23 +1,24 @@
+// routes/responderRoutes.js
 import express from "express";
 import {
   createResponder,
   getResponders,
   updateResponder,
   deleteResponder,
-  patchResponder,
+  patchResponderStatus,
   getRespondersByType,
 } from "../controllers/responderController.js";
 
 const router = express.Router();
 
-// ✅ CRUD endpoints
-router.post("/", createResponder);         // Create a responder
-router.get("/", getResponders);            // Get all responders
-router.put("/:id", updateResponder);       // Update responder (full update)
-router.delete("/:id", deleteResponder);    // Delete responder
-router.patch("/:id", patchResponder);      // Update responder availability
+// ✅ CRUD operations
+router.post("/", createResponder);
+router.get("/", getResponders);
+router.put("/:id", updateResponder);
+router.delete("/:id", deleteResponder);
+router.patch("/:id/status", patchResponderStatus);
 
-
+// ✅ Get responders by type (for assigning in Admin Panel)
 router.get("/by-type", getRespondersByType);
 
 export default router;

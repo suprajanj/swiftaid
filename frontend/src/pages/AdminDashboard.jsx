@@ -23,14 +23,14 @@ function AdminDashboard() {
   const [filterStatus, setFilterStatus] = useState("All");
 
   const [formData, setFormData] = useState({
-    name: "", age: "", number: "", emergencyType: "",
+    name: "", age: "", number: "", emergency: "",
     latitude: "", longitude: "", mapLink: "",
   });
 
   const [emergencies, setEmergencies] = useState([]);
   const [editingSOS, setEditingSOS] = useState(null);
   const [editFormData, setEditFormData] = useState({
-    name: "", age: "", number: "", emergencyType: "",
+    name: "", age: "", number: "", emergency: "",
     latitude: "", longitude: "", mapLink: "",
   });
 
@@ -66,15 +66,21 @@ function AdminDashboard() {
     });
 
     socket.on("newSOS", (sos) => {
-      setEmergencies((prev) => [sos, ...prev]);
-      toast.error(`🚨 New SOS: ${sos.emergencyType} for ${sos.name}`, {
+      // some backends may still emit emergencyType — be tolerant
+      const normalized = {
+        ...sos,
+        emergency: sos.emergency || sos.emergencyType || sos.emergency,
+      };
+      setEmergencies((prev) => [normalized, ...prev]);
+      toast.error(`🚨 New SOS: ${normalized.emergency} for ${normalized.name}`, {
         duration: 8000, position: "top-right", onClick: () => stopAlertSound(),
       });
       playAlertSound();
     });
 
     socket.on("sosUpdated", (sos) => {
-      setEmergencies((prev) => prev.map((e) => e._id === sos._id ? sos : e));
+      const normalized = { ...sos, emergency: sos.emergency || sos.emergencyType || sos.emergency };
+      setEmergencies((prev) => prev.map((e) => e._id === normalized._id ? normalized : e));
       toast("✏️ SOS updated", { icon: "✏️" });
     });
 
@@ -96,7 +102,7 @@ function AdminDashboard() {
   emergencies.forEach(e => { const s = e.status || "Pending"; statusCounts[s] = (statusCounts[s] || 0) + 1; });
 
   const filteredEmergencies = emergencies.filter(e =>
-    (filterType === "All" || e.emergencyType === filterType) &&
+    (filterType === "All" || e.emergency === filterType) &&
     (filterStatus === "All" || (e.status || "Pending") === filterStatus)
   );
 
@@ -113,7 +119,8 @@ function AdminDashboard() {
     e.preventDefault();
     const payload = {
       name: formData.name, age: formData.age, number: formData.number,
-      emergencyType: formData.emergencyType,
+      // now uses `emergency` to match your new SOS model
+      emergency: formData.emergency,
       location: {
         latitude: parseFloat(formData.latitude),
         longitude: parseFloat(formData.longitude),
@@ -124,7 +131,7 @@ function AdminDashboard() {
       await axios.post("http://localhost:4000/api/sos", payload);
       toast.success("🚨 New SOS created!");
       stopAlertSound();
-      setFormData({ name: "", age: "", number: "", emergencyType: "", latitude: "", longitude: "", mapLink: "" });
+      setFormData({ name: "", age: "", number: "", emergency: "", latitude: "", longitude: "", mapLink: "" });
       fetchEmergencies();
     } catch (err) { console.error(err); toast.error("❌ Failed to add SOS"); }
   };
@@ -134,10 +141,10 @@ function AdminDashboard() {
     setEditingSOS(sos);
     setEditFormData({
       name: sos.name, age: sos.age, number: sos.number,
-      emergencyType: sos.emergencyType,
-      latitude: sos.location.latitude,
-      longitude: sos.location.longitude,
-      mapLink: sos.location.mapLink,
+      emergency: sos.emergency || sos.emergencyType || "",
+      latitude: sos.location?.latitude,
+      longitude: sos.location?.longitude,
+      mapLink: sos.location?.mapLink,
     });
   };
 
@@ -155,7 +162,7 @@ function AdminDashboard() {
     try {
       await axios.put(`http://localhost:4000/api/sos/${editingSOS._id}`, {
         name: editFormData.name, age: editFormData.age, number: editFormData.number,
-        emergencyType: editFormData.emergencyType,
+        emergency: editFormData.emergency,
         location: {
           latitude: parseFloat(editFormData.latitude),
           longitude: parseFloat(editFormData.longitude),
@@ -180,17 +187,17 @@ function AdminDashboard() {
   };
 
   const handleCompleteSOS = async (sosId) => {
-  if (!confirm("Mark this SOS as completed?")) return;
-  try {
-    await axios.patch(`http://localhost:4000/api/sos/${sosId}/complete`);
-    toast.success("✅ SOS marked as completed");
-    fetchEmergencies();
-    socket.emit("sosUpdated", sosId); // notify others
-  } catch (err) {
-    console.error(err);
-    toast.error("❌ Failed to mark as completed");
-  }
-};
+    if (!confirm("Mark this SOS as completed?")) return;
+    try {
+      await axios.patch(`http://localhost:4000/api/sos/${sosId}/complete`);
+      toast.success("✅ SOS marked as completed");
+      fetchEmergencies();
+      socket.emit("sosUpdated", sosId); // notify others
+    } catch (err) {
+      console.error(err);
+      toast.error("❌ Failed to mark as completed");
+    }
+  };
 
   useEffect(() => {
     if (mapRef.current && emergencies.length > 0) {
@@ -203,17 +210,73 @@ function AdminDashboard() {
   // Chart Data
   const COLORS = ["#ef4444", "#3b82f6", "#22c55e", "#f59e0b"];
   const emergencyTypeCounts = emergencies.reduce((acc, e) => {
-    acc[e.emergencyType] = (acc[e.emergencyType] || 0) + 1;
+    const key = e.emergency || e.emergencyType || "Unknown";
+    acc[key] = (acc[key] || 0) + 1;
     return acc;
   }, {});
   const emergencyTypeData = Object.keys(emergencyTypeCounts).map((k) => ({ name: k, value: emergencyTypeCounts[k] }));
 
-  const responderAvailability = [
-    { name: "Available", value: 10 },
-    { name: "Busy", value: emergencies.filter((e) => e.assignedResponder).length },
-    { name: "Offline", value: 4 },
-  ];
+ const [responders, setResponders] = useState([]);
 
+useEffect(() => {
+  const fetchResponders = async () => {
+    try {
+      const res = await axios.get("http://localhost:4000/api/responders");
+      setResponders(res.data);
+    } catch (err) {
+      console.error("Error fetching responders:", err);
+    }
+  };
+  fetchResponders();
+}, []);
+
+const availableCount = responders.filter((r) => r.status === "available").length;
+const busyCount = responders.filter((r) => r.status === "busy").length;
+
+// if your system tracks online/offline separately, replace below accordingly
+const responderAvailability = [
+  { name: "Available", value: availableCount },
+  { name: "Busy", value: busyCount },
+];
+
+const [autoAssign, setAutoAssign] = useState(false);
+
+// Fetch initial toggle state from backend
+useEffect(() => {
+  axios.get("http://localhost:4000/api/settings/auto-assign")
+    .then((res) => setAutoAssign(res.data.enabled))
+    .catch(console.error);
+}, []);
+
+const toggleAutoAssign = async () => {
+  try {
+    const newState = !autoAssign;
+    setAutoAssign(newState);
+    await axios.post("http://localhost:4000/api/settings/auto-assign", {
+      enabled: newState,
+    });
+    toast.success(`Auto Assignment ${newState ? "Enabled" : "Disabled"}`);
+  } catch (err) {
+    console.error(err);
+    toast.error("Failed to update Auto Assign setting");
+  }
+};
+
+function ReportSection() {
+  const [csvLink, setCsvLink] = useState("");
+  const [pdfLink, setPdfLink] = useState("");
+
+  const generateReport = async () => {
+    try {
+      const res = await axios.post("http://localhost:4000/api/admin/generate-reports");
+      // Assuming API returns { csvPath, pdfPath }
+      setCsvLink(`http://localhost:4000/${res.data.csvPath}`);
+      setPdfLink(`http://localhost:4000/${res.data.pdfPath}`);
+    } catch (err) {
+      console.error("Failed to generate reports", err);
+    }
+  };}
+  
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-200 text-black p-6">
       <Toaster />
@@ -222,6 +285,18 @@ function AdminDashboard() {
       <header className="mb-6 text-center">
         <h1 className="text-4xl font-extrabold text-red-600 drop-shadow-sm">🚨 SwiftAid — Dispatcher</h1>
         <p className="text-gray-600 mt-2">Manage SOS alerts & responders in real-time</p>
+        <div className="flex items-center justify-center mb-4 gap-3">
+            <label className="font-semibold text-gray-700">⚙️ Auto Assign Responders</label>
+            <input
+              type="checkbox"
+              checked={autoAssign}
+              onChange={toggleAutoAssign}
+              className="w-5 h-5 accent-red-600"
+            />
+            <span className={`font-semibold ${autoAssign ? "text-green-600" : "text-gray-500"}`}>
+              {autoAssign ? "Enabled" : "Disabled"}
+            </span>
+          </div>
       </header>
 
       {/* Tabs */}
@@ -302,173 +377,172 @@ function AdminDashboard() {
       )}
 
       {/* SOS Management Tab */}
-{activeTab === "sos" && (
-  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-    {/* SOS Requests */}
-    <div className="bg-white p-5 rounded-2xl shadow-xl">
-      <div className="flex justify-between items-center mb-4">
-        <h2 className="text-xl font-semibold">📋 SOS Requests</h2>
-        <div className="flex gap-2">
-          <select
-            className="border rounded-lg p-1"
-            value={filterType}
-            onChange={(e) => setFilterType(e.target.value)}
-          >
-            <option value="All">All Types</option>
-            <option value="Medical">Medical</option>
-            <option value="Fire">Fire</option>
-            <option value="Police">Police</option>
-          </select>
-          <select
-            className="border rounded-lg p-1"
-            value={filterStatus}
-            onChange={(e) => setFilterStatus(e.target.value)}
-          >
-            <option value="All">All Status</option>
-            <option value="Pending">Pending</option>
-            <option value="Assigned">Assigned</option>
-            <option value="Completed">Completed</option>
-          </select>
-        </div>
-      </div>
-
-      <ul className="space-y-3 max-h-[500px] overflow-y-auto">
-        {filteredEmergencies.map((e) => (
-          <li
-            key={e._id}
-            className={`p-4 rounded-lg border-l-4 ${
-              e.status === "Pending"
-                ? "bg-yellow-50 border-yellow-500"
-                : e.status === "Assigned"
-                ? "bg-blue-50 border-blue-500"
-                : "bg-green-50 border-green-500"
-            }`}
-          >
-            <p className="font-medium">
-              {e.emergencyType} — {e.name} ({e.age})
-            </p>
-            <p className="text-sm">Status: {e.status || "Pending"}</p>
-            <p className="text-sm">
-              {e.assignedResponder
-                ? `Responder: ${e.assignedResponder.name}`
-                : "No responder assigned"}
-            </p>
-            <div className="mt-3 flex flex-wrap gap-2">
-              <button
-                className="px-3 py-1 rounded-lg bg-yellow-400 text-white hover:bg-yellow-500"
-                onClick={() => openEditModal(e)}
-              >
-                Edit
-              </button>
-              <button
-                className="px-3 py-1 rounded-lg bg-red-600 text-white hover:bg-red-700"
-                onClick={() => handleDeleteSOS(e._id)}
-              >
-                Delete
-              </button>
-              {!e.assignedResponder && (
-                <button
-                  className="px-3 py-1 rounded-lg bg-blue-600 text-white hover:bg-blue-700"
-                  onClick={() => openAssignModal(e)}
+      {activeTab === "sos" && (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {/* SOS Requests */}
+          <div className="bg-white p-5 rounded-2xl shadow-xl">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-semibold">📋 SOS Requests</h2>
+              <div className="flex gap-2">
+                <select
+                  className="border rounded-lg p-1"
+                  value={filterType}
+                  onChange={(e) => setFilterType(e.target.value)}
                 >
-                  Assign via Map
-                </button>
-                
-              )}
-              {e.status === "Assigned" && (
-                <button
-                  className="px-3 py-1 rounded-lg bg-green-600 text-white hover:bg-green-700"
-                  onClick={() => handleCompleteSOS(e._id)}
+                  <option value="All">All Types</option>
+                  <option value="Medical">Medical</option>
+                  <option value="Fire">Fire</option>
+                  <option value="Police">Police</option>
+                </select>
+                <select
+                  className="border rounded-lg p-1"
+                  value={filterStatus}
+                  onChange={(e) => setFilterStatus(e.target.value)}
                 >
-                  Mark Completed
-                </button>
-              )}
+                  <option value="All">All Status</option>
+                  <option value="Pending">Pending</option>
+                  <option value="Assigned">Assigned</option>
+                  <option value="Completed">Completed</option>
+                </select>
+              </div>
             </div>
-          </li>
-        ))}
-      </ul>
-    </div>
 
-    {/* Add SOS Form */}
-    <div className="bg-white p-5 rounded-2xl shadow-xl">
-      <h2 className="text-xl font-semibold mb-4">➕ Add Emergency Case</h2>
-      <form className="space-y-4" onSubmit={handleSubmit}>
-        <input
-          type="text"
-          name="name"
-          placeholder="Name"
-          value={formData.name}
-          onChange={handleChange}
-          required
-          className="w-full p-2 border rounded-lg"
-        />
-        <input
-          type="number"
-          name="age"
-          placeholder="Age"
-          value={formData.age}
-          onChange={handleChange}
-          required
-          className="w-full p-2 border rounded-lg"
-        />
-        <input
-          type="tel"
-          name="number"
-          placeholder="Contact Number"
-          value={formData.number}
-          onChange={handleChange}
-          required
-          className="w-full p-2 border rounded-lg"
-        />
-        <select
-          name="emergencyType"
-          value={formData.emergencyType}
-          onChange={handleChange}
-          required
-          className="w-full p-2 border rounded-lg"
-        >
-          <option value="">Select Emergency Type</option>
-          <option value="Medical">Medical</option>
-          <option value="Fire">Fire</option>
-          <option value="Police">Police</option>
-        </select>
-        <div className="grid grid-cols-2 gap-2">
-          <input
-            type="text"
-            name="latitude"
-            placeholder="Latitude"
-            value={formData.latitude}
-            onChange={handleChange}
-            required
-            className="p-2 border rounded-lg w-full"
-          />
-          <input
-            type="text"
-            name="longitude"
-            placeholder="Longitude"
-            value={formData.longitude}
-            onChange={handleChange}
-            required
-            className="p-2 border rounded-lg w-full"
-          />
+            <ul className="space-y-3 max-h-[500px] overflow-y-auto">
+              {filteredEmergencies.map((e) => (
+                <li
+                  key={e._id}
+                  className={`p-4 rounded-lg border-l-4 ${
+                    e.status === "Pending"
+                      ? "bg-yellow-50 border-yellow-500"
+                      : e.status === "Assigned"
+                      ? "bg-blue-50 border-blue-500"
+                      : "bg-green-50 border-green-500"
+                  }`}
+                >
+                  <p className="font-medium">
+                    {e.emergency} — {e.name} ({e.age})
+                  </p>
+                  <p className="text-sm">Status: {e.status || "Pending"}</p>
+                  <p className="text-sm">
+                    {e.assignedResponder
+                      ? `Responder: ${e.assignedResponder.name}`
+                      : "No responder assigned"}
+                  </p>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    <button
+                      className="px-3 py-1 rounded-lg bg-yellow-400 text-white hover:bg-yellow-500"
+                      onClick={() => openEditModal(e)}
+                    >
+                      Edit
+                    </button>
+                    <button
+                      className="px-3 py-1 rounded-lg bg-red-600 text-white hover:bg-red-700"
+                      onClick={() => handleDeleteSOS(e._id)}
+                    >
+                      Delete
+                    </button>
+                    {!e.assignedResponder && (
+                      <button
+                        className="px-3 py-1 rounded-lg bg-blue-600 text-white hover:bg-blue-700"
+                        onClick={() => openAssignModal(e)}
+                      >
+                        Assign via Map
+                      </button>
+                    )}
+                    {e.status === "Assigned" && (
+                      <button
+                        className="px-3 py-1 rounded-lg bg-green-600 text-white hover:bg-green-700"
+                        onClick={() => handleCompleteSOS(e._id)}
+                      >
+                        Mark Completed
+                      </button>
+                    )}
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          {/* Add SOS Form */}
+          <div className="bg-white p-5 rounded-2xl shadow-xl">
+            <h2 className="text-xl font-semibold mb-4">➕ Add Emergency Case</h2>
+            <form className="space-y-4" onSubmit={handleSubmit}>
+              <input
+                type="text"
+                name="name"
+                placeholder="Name"
+                value={formData.name}
+                onChange={handleChange}
+                required
+                className="w-full p-2 border rounded-lg"
+              />
+              <input
+                type="number"
+                name="age"
+                placeholder="Age"
+                value={formData.age}
+                onChange={handleChange}
+                required
+                className="w-full p-2 border rounded-lg"
+              />
+              <input
+                type="tel"
+                name="number"
+                placeholder="Contact Number"
+                value={formData.number}
+                onChange={handleChange}
+                required
+                className="w-full p-2 border rounded-lg"
+              />
+              <select
+                name="emergency"
+                value={formData.emergency}
+                onChange={handleChange}
+                required
+                className="w-full p-2 border rounded-lg"
+              >
+                <option value="">Select Emergency Type</option>
+                <option value="Medical">Medical</option>
+                <option value="Fire">Fire</option>
+                <option value="Police">Police</option>
+              </select>
+              <div className="grid grid-cols-2 gap-2">
+                <input
+                  type="text"
+                  name="latitude"
+                  placeholder="Latitude"
+                  value={formData.latitude}
+                  onChange={handleChange}
+                  required
+                  className="p-2 border rounded-lg w-full"
+                />
+                <input
+                  type="text"
+                  name="longitude"
+                  placeholder="Longitude"
+                  value={formData.longitude}
+                  onChange={handleChange}
+                  required
+                  className="p-2 border rounded-lg w-full"
+                />
+              </div>
+              <input
+                type="url"
+                name="mapLink"
+                value={formData.mapLink}
+                readOnly
+                className="p-2 border rounded-lg w-full bg-gray-100"
+              />
+              <button
+                type="submit"
+                className="w-full bg-red-600 text-white p-3 rounded-lg hover:bg-red-700"
+              >
+                🚑 Add Emergency Case
+              </button>
+            </form>
+          </div>
         </div>
-        <input
-          type="url"
-          name="mapLink"
-          value={formData.mapLink}
-          readOnly
-          className="p-2 border rounded-lg w-full bg-gray-100"
-        />
-        <button
-          type="submit"
-          className="w-full bg-red-600 text-white p-3 rounded-lg hover:bg-red-700"
-        >
-          🚑 Add Emergency Case
-        </button>
-      </form>
-    </div>
-  </div>
-)}
+      )}
 
       {/* Live Map Tab */}
       {activeTab === "map" && (
@@ -484,7 +558,7 @@ function AdminDashboard() {
                 <Marker
                   key={e._id}
                   position={{ lat: parseFloat(e.location.latitude), lng: parseFloat(e.location.longitude) }}
-                  title={`${e.name} — ${e.emergencyType}`}
+                  title={`${e.emergency} — ${e.name}`}
                   onClick={() => openAssignModal(e)}
                   icon={{
                     url: e.assignedResponder
@@ -497,6 +571,7 @@ function AdminDashboard() {
           )}
         </div>
       )}
+      
 
       {/* Assign Modal */}
       {mapModalOpen && selectedSOS && (
@@ -511,7 +586,7 @@ function AdminDashboard() {
             <input type="text" name="name" value={editFormData.name} onChange={handleEditChange} placeholder="Name" className="w-full border border-gray-300 rounded-lg p-2 mb-2" />
             <input type="number" name="age" value={editFormData.age} onChange={handleEditChange} placeholder="Age" className="w-full border border-gray-300 rounded-lg p-2 mb-2" />
             <input type="tel" name="number" value={editFormData.number} onChange={handleEditChange} placeholder="Contact Number" className="w-full border border-gray-300 rounded-lg p-2 mb-2" />
-            <select name="emergencyType" value={editFormData.emergencyType} onChange={handleEditChange} className="w-full border border-gray-300 rounded-lg p-2 mb-2">
+            <select name="emergency" value={editFormData.emergency} onChange={handleEditChange} className="w-full border border-gray-300 rounded-lg p-2 mb-2">
               <option value="">Select Emergency Type</option>
               <option value="Medical">Medical</option>
               <option value="Fire">Fire</option>

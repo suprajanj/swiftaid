@@ -14,8 +14,8 @@ export default function AssignViaMapModal({ isOpen, onClose, sos, onAssigned, is
   const mapRef = useRef(null);
 
   useEffect(() => {
-    if (isOpen && sos?.emergencyType) {
-      fetchRespondersByType(sos.emergencyType);
+    if (isOpen && sos?.emergency) {
+      fetchRespondersByType(sos.emergency);
     }
   }, [isOpen, sos]);
 
@@ -54,7 +54,7 @@ export default function AssignViaMapModal({ isOpen, onClose, sos, onAssigned, is
     <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
       <div className="bg-white rounded-lg shadow-lg w-3/4 max-w-3xl p-4 relative">
         <h2 className="text-xl font-semibold mb-4">
-          Assign Responder for {sos.emergencyType} Emergency
+          Assign Responder for {sos.emergency} Emergency
         </h2>
 
         {isLoaded ? (
@@ -74,7 +74,7 @@ export default function AssignViaMapModal({ isOpen, onClose, sos, onAssigned, is
                   lng: toNumber(sos.location.longitude),
                 });
 
-                // Include all responder locations (available & busy)
+                // Include all responder locations
                 responders.forEach((r) => {
                   bounds.extend({
                     lat: toNumber(r.lastLocation.latitude),
@@ -102,7 +102,7 @@ export default function AssignViaMapModal({ isOpen, onClose, sos, onAssigned, is
                 url: "http://maps.google.com/mapfiles/ms/icons/red-dot.png",
                 scaledSize: new window.google.maps.Size(50, 50),
               }}
-              title={`${sos.name} — ${sos.emergencyType}`}
+              title={`${sos.name} — ${sos.emergency}`}
             />
 
             {/* Responder Markers */}
@@ -114,13 +114,14 @@ export default function AssignViaMapModal({ isOpen, onClose, sos, onAssigned, is
                   lng: toNumber(responder.lastLocation.longitude),
                 }}
                 icon={{
-                  url: responder.availability
-                    ? "http://maps.google.com/mapfiles/ms/icons/blue-dot.png"   // Available
-                    : "http://maps.google.com/mapfiles/ms/icons/yellow-dot.png", // Busy
+                  url:
+                    responder.status === "available"
+                      ? "http://maps.google.com/mapfiles/ms/icons/blue-dot.png"
+                      : "http://maps.google.com/mapfiles/ms/icons/yellow-dot.png",
                   scaledSize: new window.google.maps.Size(40, 40),
                 }}
                 onClick={() => setSelectedResponder(responder)}
-                title={`${responder.name} — ${responder.availability ? "Available" : "Busy"}`}
+                title={`${responder.name} — ${responder.status}`}
               />
             ))}
 
@@ -135,9 +136,9 @@ export default function AssignViaMapModal({ isOpen, onClose, sos, onAssigned, is
               >
                 <div>
                   <h3 className="font-semibold">{selectedResponder.name}</h3>
-                  <p>Type: {selectedResponder.emergencyType}</p>
-                  <p>Status: {selectedResponder.availability ? "Available" : "Busy"}</p>
-                  {selectedResponder.availability && (
+                  <p>Type: {selectedResponder.responderType}</p>
+                  <p>Status: {selectedResponder.status}</p>
+                  {selectedResponder.status === "available" && (
                     <button
                       onClick={() => handleAssign(selectedResponder._id)}
                       className="mt-2 px-3 py-1 bg-green-600 text-white rounded"

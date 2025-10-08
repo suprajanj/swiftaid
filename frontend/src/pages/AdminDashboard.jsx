@@ -9,6 +9,7 @@ import {
   PieChart, Pie, Cell, Tooltip, Legend,
   BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer
 } from "recharts";
+import { jsPDF } from "jspdf";
 
 const GOOGLE_MAP_LIBRARIES = ["places"];
 const socket = io("http://localhost:4000");
@@ -439,14 +440,163 @@ function AdminDashboard() {
 
   const [reportLinks, setReportLinks] = useState({ csv: "", pdf: "" });
 
+  // PDF Report Generation Function
+  const generatePDFReport = () => {
+    // Create a new jsPDF instance
+    const pdf = new jsPDF();
+    
+    // Set initial coordinates
+    let yPosition = 20;
+    const lineHeight = 10;
+    const pageHeight = pdf.internal.pageSize.height;
+    const margin = 20;
+    
+    // Add title
+    pdf.setFontSize(20);
+    pdf.setTextColor(220, 53, 69); // Red color
+    pdf.text('SwiftAid Emergency Report', margin, yPosition);
+    
+    yPosition += 15;
+    
+    // Add date
+    pdf.setFontSize(12);
+    pdf.setTextColor(100, 100, 100);
+    pdf.text(`Generated on: ${new Date().toLocaleString()}`, margin, yPosition);
+    
+    yPosition += 20;
+    
+    // Summary section
+    pdf.setFontSize(16);
+    pdf.setTextColor(0, 0, 0);
+    pdf.text('Summary Overview', margin, yPosition);
+    
+    yPosition += 10;
+    pdf.setFontSize(10);
+    
+    // Summary statistics
+    const summaryData = [
+      `Total SOS Cases: ${emergencies.length}`,
+      `Pending: ${statusCounts.Pending}`,
+      `Assigned: ${statusCounts.Assigned}`,
+      `Completed: ${statusCounts.Completed}`,
+      `Unassigned: ${unassignedEmergencies.length}`,
+      `Available Responders: ${availableCount}`,
+      `Busy Responders: ${busyCount}`
+    ];
+    
+    summaryData.forEach(line => {
+      if (yPosition > pageHeight - margin) {
+        pdf.addPage();
+        yPosition = margin;
+      }
+      pdf.text(line, margin, yPosition);
+      yPosition += lineHeight;
+    });
+    
+    yPosition += 10;
+    
+    // Emergency types breakdown
+    if (yPosition > pageHeight - 50) {
+      pdf.addPage();
+      yPosition = margin;
+    }
+    
+    pdf.setFontSize(16);
+    pdf.text('Emergency Types Breakdown', margin, yPosition);
+    yPosition += 10;
+    
+    pdf.setFontSize(10);
+    emergencyTypeData.forEach(type => {
+      if (yPosition > pageHeight - margin) {
+        pdf.addPage();
+        yPosition = margin;
+      }
+      pdf.text(`${type.name}: ${type.value} cases (${((type.value / emergencies.length) * 100).toFixed(1)}%)`, margin + 5, yPosition);
+      yPosition += lineHeight;
+    });
+    
+    yPosition += 10;
+    
+    // Detailed SOS cases
+    if (yPosition > pageHeight - 50) {
+      pdf.addPage();
+      yPosition = margin;
+    }
+    
+    pdf.setFontSize(16);
+    pdf.text('Detailed SOS Cases', margin, yPosition);
+    yPosition += 15;
+    
+    pdf.setFontSize(8);
+    
+    emergencies.forEach((emergency, index) => {
+      // Check if we need a new page
+      if (yPosition > pageHeight - 60) {
+        pdf.addPage();
+        yPosition = margin;
+      }
+      
+      // Case header
+      pdf.setFont(undefined, 'bold');
+      pdf.text(`Case ${index + 1}: ${emergency.name} (${emergency.age})`, margin, yPosition);
+      yPosition += lineHeight;
+      
+      // Case details
+      pdf.setFont(undefined, 'normal');
+      const details = [
+        `Emergency: ${emergency.emergency || emergency.emergencyType || 'Unknown'}`,
+        `Phone: ${emergency.number}`,
+        `Status: ${emergency.status || 'Pending'}`,
+        `Location: ${emergency.location?.latitude}, ${emergency.location?.longitude}`,
+        `Responder: ${emergency.assignedResponder ? emergency.assignedResponder.name : 'Not assigned'}`,
+        `Created: ${new Date(emergency.createdAt || emergency.timestamp).toLocaleString()}`
+      ];
+      
+      details.forEach(detail => {
+        pdf.text(detail, margin + 5, yPosition);
+        yPosition += lineHeight - 2;
+      });
+      
+      yPosition += 5;
+      
+      // Add separator line
+      pdf.setDrawColor(200, 200, 200);
+      pdf.line(margin, yPosition, pdf.internal.pageSize.width - margin, yPosition);
+      yPosition += 10;
+    });
+    
+    // Add footer
+    const totalPages = pdf.internal.getNumberOfPages();
+    for (let i = 1; i <= totalPages; i++) {
+      pdf.setPage(i);
+      pdf.setFontSize(8);
+      pdf.setTextColor(150, 150, 150);
+      pdf.text(`Page ${i} of ${totalPages} - SwiftAid Emergency Management System`, 
+               pdf.internal.pageSize.width / 2, 
+               pdf.internal.pageSize.height - 10, 
+               { align: 'center' });
+    }
+    
+    // Save the PDF
+    pdf.save(`swiftaid-report-${new Date().toISOString().split('T')[0]}.pdf`);
+    
+    toast.success('📄 PDF report generated successfully!');
+  };
+
   const generateReports = async () => {
     try {
-      const res = await axios.get("http://localhost:4000/api/admin/generate-reports");
-      setReportLinks(res.data);
+      // Generate CSV report (existing functionality)
+      const csvRes = await axios.get("http://localhost:4000/api/admin/generate-reports");
+      setReportLinks(csvRes.data);
+      
+      // Generate PDF report (new functionality)
+      generatePDFReport();
+      
       toast.success("📊 Reports generated successfully!");
     } catch (err) {
       console.error("Error generating reports:", err);
-      toast.error("❌ Failed to generate reports");
+      // Even if backend fails, still generate PDF
+      generatePDFReport();
     }
   };
 
@@ -944,10 +1094,11 @@ function AdminDashboard() {
                   <span>📊</span>
                   Download CSV Report
                 </a>
-                <a href={reportLinks.pdf} download className="text-red-600 hover:text-red-800 underline font-medium flex items-center gap-2">
-                  <span>📄</span>
-                  Download PDF Report
-                </a>
+                <span className="text-slate-400">|</span>
+                <span className="text-green-600 font-medium flex items-center gap-2">
+                  <span>✅</span>
+                  PDF Report Generated
+                </span>
               </div>
             )}
           </div>

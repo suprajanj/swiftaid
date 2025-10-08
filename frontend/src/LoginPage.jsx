@@ -80,7 +80,7 @@ const LoginPage = () => {
         <h2 className="text-center text-3xl font-extrabold text-indigo-700 mb-6">🔑 Responder Login</h2>
         <form onSubmit={handleLogin} className="space-y-4">
           <div>
-            <label className="block mb-1 font-semibold">NIC or Admin Email</label>
+            <label className="block mb-1 font-semibold">Email</label>
             <input
               type="text"
               placeholder="Enter your NIC or admin email"

@@ -8,6 +8,7 @@ import LandingPage from "./pages/LandingPage";
 import { RoleManagement } from "./pages/RoleManagement";
 import Emergency from "./pages/Emergency";
 import { AdminDashboard } from "./pages/AdminDashboard";
+import ResAdminDashboard from "./pages/ResAdminDashboard"
 
 function App() {
   return (
@@ -21,6 +22,8 @@ function App() {
         <Route path="/dashboard" element={<AdminDashboard />} />
         <Route path="/roles" element={<RoleManagement />} />
         <Route path="/requests" element={<Emergency />} />
+        <Route path="/res/dashboard" element={<ResAdminDashboard />} />
+
       </Routes>
     </div>
   );

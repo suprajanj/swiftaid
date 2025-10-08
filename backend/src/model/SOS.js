@@ -5,7 +5,7 @@ const sosSchema = new mongoose.Schema(
     user: {
       type: mongoose.Schema.Types.ObjectId, // reference User
       ref: "User",
-      required: true,
+      required: false,
     },
 
     name: { type: String, required: true },

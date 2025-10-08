@@ -9,6 +9,10 @@ import { Server } from "socket.io";
 import sosRoutes from "./routes/sosRoutes.js";
 import responderRoutes from "./routes/responderRoutes.js";
 import settingsRoutes from "./routes/settings.js";
+import adminReportRoutes from "./routes/adminReports.js"
+import path from "path";
+import { fileURLToPath } from "url";
+
 
 dotenv.config();
 
@@ -23,11 +27,15 @@ app.use(morgan("dev"));
 app.use("/api/sos", sosRoutes);
 app.use("/api/responders", responderRoutes);
 app.use("/api/settings", settingsRoutes);
+app.use("/api/admin", adminReportRoutes);
 
-// Catch-all 404
-app.use((req, res) => {
-  res.status(404).json({ message: "Route not found" });
-});
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// ✅ Serve static files in the /reports folder
+app.use("/reports", express.static(path.join(__dirname, "reports")));
+
+
 
 // Create HTTP server and Socket.io
 const server = http.createServer(app);

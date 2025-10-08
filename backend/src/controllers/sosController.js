@@ -95,7 +95,11 @@ export const createSOS = async (req, res) => {
     await sos.save();
     const message = `🚨 New SOS Assigned: ${sos.emergency} for ${sos.name}. Please respond immediately.`;
 
-    if (assignedResponder.email) await sendEmail(assignedResponder.email, sos);
+    if (assignedResponder && assignedResponder.email) {
+      await sendEmail(assignedResponder.email, sos);
+    } else {
+      console.warn("⚠️ No responder assigned — skipping email notification.");
+    }
 
     res.status(201).json({
       message: autoAssign
@@ -220,6 +224,11 @@ export const completeSOS = async (req, res) => {
       { status: "Completed", completedAt: new Date() },
       { new: true }
     ).populate("assignedResponder", "name contactNumber responderType status");
+
+    const responder = await Responder.findById(sos.assignedResponder);
+    responder.status = "available";
+    responder.lastLocation = sos.location;
+    await responder.save();
 
     if (!sos) return res.status(404).json({ message: "SOS not found" });
     res.status(200).json(sos);

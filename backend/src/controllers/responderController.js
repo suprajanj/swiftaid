@@ -1,12 +1,14 @@
 // controllers/responderController.js
-import Responder from "../models/Responder.js";
+import Responder from "../model/Responder.js";
 
 // ✅ Create a new responder
 export const createResponder = async (req, res) => {
   try {
     const { latitude, longitude } = req.body.lastLocation || {};
     if (!latitude || !longitude) {
-      return res.status(400).json({ message: "Responder location is required" });
+      return res
+        .status(400)
+        .json({ message: "Responder location is required" });
     }
 
     const responder = new Responder({
@@ -49,8 +51,11 @@ export const updateResponder = async (req, res) => {
       };
     }
 
-    const updated = await Responder.findByIdAndUpdate(req.params.id, req.body, { new: true });
-    if (!updated) return res.status(404).json({ message: "Responder not found" });
+    const updated = await Responder.findByIdAndUpdate(req.params.id, req.body, {
+      new: true,
+    });
+    if (!updated)
+      return res.status(404).json({ message: "Responder not found" });
 
     res.status(200).json(updated);
   } catch (error) {
@@ -63,7 +68,8 @@ export const updateResponder = async (req, res) => {
 export const deleteResponder = async (req, res) => {
   try {
     const deleted = await Responder.findByIdAndDelete(req.params.id);
-    if (!deleted) return res.status(404).json({ message: "Responder not found" });
+    if (!deleted)
+      return res.status(404).json({ message: "Responder not found" });
     res.status(200).json({ message: "Responder deleted successfully" });
   } catch (error) {
     console.error("Error deleting responder:", error);
@@ -81,7 +87,8 @@ export const patchResponderStatus = async (req, res) => {
       { new: true }
     );
 
-    if (!responder) return res.status(404).json({ message: "Responder not found" });
+    if (!responder)
+      return res.status(404).json({ message: "Responder not found" });
 
     res.json(responder);
   } catch (err) {

@@ -11,6 +11,7 @@ import {
 } from "recharts";
 import { jsPDF } from "jspdf";
 
+
 const GOOGLE_MAP_LIBRARIES = ["places"];
 const socket = io("http://localhost:3000", {
   path: "/socket.io/",
@@ -130,7 +131,7 @@ const emergencyOptions = [
   { value: "Medical", label: "Medical" },
   { value: "Fire", label: "Fire" },
   { value: "Police", label: "Police" },
-  { value: "road", label: "Road Accident" }
+  { value: "Police", label: "Road Accident" }
 ];
 
 function ResAdminDashboard() {

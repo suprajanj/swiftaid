@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import axios from "axios";
 
-const API = import.meta.env.VITE_API_URL || "http://localhost:4000/api";
+const API = "http://localhost:3000/api";
 
 export default function AssignResponderModal({ sos, onClose }) {
   const [responders, setResponders] = useState([]);
@@ -9,7 +9,10 @@ export default function AssignResponderModal({ sos, onClose }) {
 
   useEffect(() => {
     axios.get(`${API}/responders`)
-      .then(res => setResponders(res.data))
+      .then(res => {
+      console.log("Fetched responders:", res.data);
+      setResponders(res.data);
+    })
       .catch(err => console.error(err));
   }, []);
 
@@ -34,8 +37,8 @@ export default function AssignResponderModal({ sos, onClose }) {
         <select value={selected} onChange={(e) => setSelected(e.target.value)} style={{ width: "100%" }}>
           <option value="">-- choose responder --</option>
           {responders.map(r => (
-            <option key={r._id} value={r._id} disabled={!r.availability}>
-              {r.name} {r.availability ? "" : "(busy)"}
+            <option key={r._id} value={r._id} disabled={!r.status}>
+              {r.name} {r.status === "busy" ? "(busy)" : ""}
             </option>
           ))}
         </select>

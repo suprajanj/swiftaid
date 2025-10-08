@@ -118,31 +118,31 @@ function Homepage() {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-5">
             {[
               {
-                type: "fire",
+                type: "Fire",
                 label: "Fire Accident",
                 icon: "alert-circle",
                 color: "red",
               },
               {
-                type: "road",
+                type: "Police",
                 label: "Road Accident",
                 icon: "alert-octagon",
                 color: "orange",
               },
               {
-                type: "assault",
+                type: "Police",
                 label: "Assault",
                 icon: "user-x",
                 color: "blue",
               },
               {
-                type: "medical",
+                type: "Medical",
                 label: "Medical Emergency",
                 icon: "activity",
                 color: "green",
               },
               {
-                type: "natural",
+                type: "Medical",
                 label: "Natural Disaster",
                 icon: "wind",
                 color: "purple",

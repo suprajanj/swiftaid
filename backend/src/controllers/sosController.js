@@ -1,6 +1,7 @@
 import SOS from "../model/SOS.js";
 import Responder from "../model/Responder.js";
 import SystemSetting from "../model/SystemSetting.js";
+import { sendEmail } from "../services/notificationService.js";
 
 
 // Get all SOS records
@@ -88,6 +89,15 @@ export const createSOS = async (req, res) => {
     });
 
     await sos.save();
+
+    const message = `🚨 New SOS Assigned: ${sos.emergency} for ${sos.name}. Please respond immediately.`;
+
+    if (assignedResponder && assignedResponder.email) {
+      await sendEmail(assignedResponder.email, sos);
+    } else {
+      console.warn("⚠️ No responder assigned — skipping email notification.");
+    }
+
 
     // Emit socket event for real-time update
     if (req.app.get('io')) {

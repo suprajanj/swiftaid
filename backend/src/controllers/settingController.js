@@ -1,4 +1,4 @@
-import SystemSetting from "../models/SystemSetting.js";
+import SystemSetting from "../model/SystemSetting.js";
 
 export const getAutoAssign = async (req, res) => {
   try {

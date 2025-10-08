@@ -7,6 +7,8 @@ import connectDB from "./config/db.js";
 import sosRoute from "./routes/sosRoute.js";
 import userRoute from "./routes/userRoute.js";
 import responderRoutes from "./routes/responderRoutes.js";
+import settings from "./routes/setttings.js";
+
 
 dotenv.config();
 
@@ -48,6 +50,7 @@ app.use(express.json());
 app.use("/api/sos", sosRoute);
 app.use("/api/user", userRoute);
 app.use("/api/responders", responderRoutes);
+app.use("/api/settings", settings);
 
 // Socket.IO connection handler
 io.on("connection", (socket) => {

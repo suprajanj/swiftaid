@@ -75,7 +75,7 @@ export default function AssignViaMapModal({
     try {
       setIsLoading(true);
       const res = await axios.get(
-        `http://localhost:4000/api/responders/by-type?type=${type}`
+        `http://localhost:3000/api/responders/by-type?type=${type}`
       );
       const validResponders = res.data.filter(
         (r) => r.lastLocation?.latitude && r.lastLocation?.longitude
@@ -109,7 +109,7 @@ export default function AssignViaMapModal({
   const handleAssign = async (responderId) => {
     try {
       setIsLoading(true);
-      await axios.patch("http://localhost:4000/api/sos/assign", {
+      await axios.patch("http://localhost:4000/api/sos/res/assign", {
         sosId: sos._id,
         responderId,
       });

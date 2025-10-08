@@ -10,8 +10,9 @@ const ResponderSchema = new mongoose.Schema({
   responderType: { type: String, required: true }, // police, hospital, firefighter
   status: { type: String, default: "available" },
   lastLocation: {
-    link: { type: String },
-    coordinates: { type: [Number] },
+    latitude: { type: Number, required: true },
+    longitude: { type: Number, required: true },
+    mapLink: { type: String },
   },
   position: { type: String, required: true },
 });

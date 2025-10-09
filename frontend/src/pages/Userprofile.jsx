@@ -24,6 +24,7 @@ import {
   UserCheck,
   Truck,
   Target,
+  HeartHandshake
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
@@ -1054,6 +1055,13 @@ function Userprofile() {
             >
               <Lock size={20} />
               <span className="font-medium">Change Password</span>
+            </button>
+            <button
+              onClick={() => navigate("/donations")}
+              className="flex items-center gap-3 text-gray-600 hover:text-gray-800 hover:bg-gray-50 rounded-xl p-3 transition-all duration-300 w-full"
+            >
+              <HeartHandshake  size={20} />
+              <span className="font-medium">Donations</span>
             </button>
           </div>
         </div>

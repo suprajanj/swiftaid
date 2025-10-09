@@ -12,9 +12,9 @@ import { useNavigate } from "react-router-dom";
 import "react-toastify/dist/ReactToastify.css";
 import mapStyles from "./mapStyles.jsx";
 import jsPDF from "jspdf";
-import { Rnd } from "react-rnd";
 import { FaUser, FaArrowLeft } from "react-icons/fa";
 
+const API = "http://127.0.0.1:3000/api";
 const libraries = ["places"];
 
 export default function AcceptedTasks() {
@@ -30,17 +30,14 @@ export default function AcceptedTasks() {
   const [position, setPosition] = useState("");
   const [NIC, setNIC] = useState("");
   const [contactNumber, setContactNumber] = useState("");
-
+  const [emergencyType, setEmergencyType] = useState("");
+  const [location, setLocation] = useState("");
   const [senderNIC, setSenderNIC] = useState("");
   const [senderName, setSenderName] = useState("");
   const [senderContactNumber, setSenderContactNumber] = useState("");
   const [senderAddress, setSenderAddress] = useState("");
-
-  const [emergencyType, setEmergencyType] = useState("");
-  const [location, setLocation] = useState("");
-
   const [otherParticipants, setOtherParticipants] = useState("");
-  const [otherResponders, setOtherResponders] = useState([]);
+  const [otherResponders, setOtherResponders] = useState([{ name: "", NIC: "" }]);
   const [casualties, setCasualties] = useState("");
   const [fatalities, setFatalities] = useState("");
   const [criticalInjuries, setCriticalInjuries] = useState("");
@@ -62,19 +59,19 @@ export default function AcceptedTasks() {
     fetchAcceptedTasks();
 
     if (navigator.geolocation) {
-      navigator.geolocation.watchPosition(
+      const id = navigator.geolocation.watchPosition(
         (pos) => {
-          setResponderLocation({
-            lat: pos.coords.latitude,
-            lng: pos.coords.longitude,
-          });
+          setResponderLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude });
         },
         (err) => console.error("Geolocation error:", err),
         { enableHighAccuracy: true }
       );
+      return () => navigator.geolocation.clearWatch(id);
     }
+  }, []);
 
-    const interval = setInterval(fetchAcceptedTasks, 1000);
+  useEffect(() => {
+    const interval = setInterval(fetchAcceptedTasks, 2000);
     return () => clearInterval(interval);
   }, []);
 
@@ -82,185 +79,174 @@ export default function AcceptedTasks() {
     if (!currentTask || !responderLocation || !window.google) return;
 
     const updateRoute = () => {
-      const destination = currentTask.liveLocation?.coordinates;
-      if (!destination) return;
+      const destinationCoords =
+        currentTask.location?.coordinates ||
+        (currentTask.location && [currentTask.location.longitude, currentTask.location.latitude]);
+      if (!destinationCoords) return;
 
-      if (!directionsServiceRef.current)
+      if (!directionsServiceRef.current) {
         directionsServiceRef.current = new window.google.maps.DirectionsService();
+      }
 
       directionsServiceRef.current.route(
         {
           origin: responderLocation,
-          destination: {
-            lat: destination[1],
-            lng: destination[0],
-          },
+          destination: { lat: destinationCoords[1], lng: destinationCoords[0] },
           travelMode: window.google.maps.TravelMode.DRIVING,
         },
         (result, status) => {
-          if (status === "OK") {
-            setDirections(result);
-          }
+          if (status === "OK") setDirections(result);
         }
       );
     };
 
     updateRoute();
-    const interval = setInterval(updateRoute, 2000);
-    return () => clearInterval(interval);
+    const iv = setInterval(updateRoute, 3000);
+    return () => clearInterval(iv);
   }, [currentTask, responderLocation]);
 
-  const fetchAcceptedTasks = async () => {
+  // Fetch tasks
+  async function fetchAcceptedTasks() {
     try {
-      const res = await axios.get("http://localhost:3000/api/alerts/accepted");
-      const fetchedTasks = Array.isArray(res.data)
-        ? res.data
-        : res.data.data || [];
+      const responder = JSON.parse(localStorage.getItem("responder"));
+      if (!responder?._id) return;
 
-      const mappedTasks = fetchedTasks.map((task) => ({
-        ...task,
-        otherResponders: task.assignedResponders?.map((r) => r.name) || [],
-      }));
+      const res = await axios.get(`${API}/accepted-alerts/${responder._id}`);
+      const fetched = Array.isArray(res.data) ? res.data : res.data.data || [];
 
-      setTasks(mappedTasks);
-    } catch (err) {
-      console.error("Fetch Tasks Error:", err);
-      toast.error("Failed to fetch tasks.");
-    }
-  };
-
-  const reachedTask = async (task) => {
-    try {
-      await axios.put(`http://localhost:3000/api/alerts/${task._id}/reached`);
-      toast.success(`Task ${task.reportId} marked as reached.`);
-      fetchAcceptedTasks();
-      setShowCompleteForm(true);
-      setCurrentTask(task);
-      setShowCancelForm(false);
-
-      setCompletedBy(task.assignedResponders?.[0]?.name || "");
-      setPosition(task.assignedResponders?.[0]?.position || "");
-      setNIC(task.assignedResponders?.[0]?.NIC || "");
-      setContactNumber(task.assignedResponders?.[0]?.contactNumber || "");
-      setEmergencyType(task.emergencyType);
-      setLocation(task.address);
-      setSenderNIC(task.NIC || "");
-      setSenderName(task.userId || "");
-      setSenderContactNumber(task.contactNumber || "");
-      setSenderAddress(task.address || "");
-      setOtherResponders(task.assignedResponders?.map((r) => r.name) || []);
-    } catch (err) {
-      console.error("Reached Task Error:", err);
-      toast.error("Failed to update task status.");
-    }
-  };
-
-  const generateCompletionPDF = (task) => {
-    const doc = new jsPDF();
-    doc.setFontSize(16);
-    doc.text("SwiftAid Task Completion Report", 20, 20);
-    doc.setFontSize(12);
-    doc.text(`Report ID: ${task.reportId}`, 20, 35);
-    doc.text(`Responder: ${completedBy}`, 20, 45);
-    doc.text(`Position: ${position}`, 20, 55);
-    doc.text(`NIC: ${NIC}`, 20, 65);
-    doc.text(`Contact: ${contactNumber}`, 20, 75);
-    doc.text(`Emergency Type: ${emergencyType}`, 20, 85);
-    doc.text(`Location: ${location}`, 20, 95);
-    doc.text(`Sender: ${senderName}`, 20, 105);
-    doc.text(`Sender NIC: ${senderNIC}`, 20, 115);
-    doc.text(`Sender Contact: ${senderContactNumber}`, 20, 125);
-    doc.text(`Sender Address: ${senderAddress}`, 20, 135);
-    doc.text(`Other Participants: ${otherParticipants}`, 20, 145);
-    doc.text(`Other Responders: ${otherResponders.join(", ")}`, 20, 155);
-    doc.text(`Casualties: ${casualties}`, 20, 165);
-    doc.text(`Critical Injuries: ${criticalInjuries}`, 20, 175);
-    doc.text(`Fatalities: ${fatalities}`, 20, 185);
-    doc.text(`Total Victims: ${totalVictims}`, 20, 195);
-    doc.text(`Comment: ${comment}`, 20, 205);
-    doc.save(`Task_${task.reportId}.pdf`);
-  };
-
-  const completeTask = async (taskId) => {
-    try {
-      const formData = new FormData();
-      Array.from(files).forEach((file) => formData.append("files", file));
-
-      formData.append("completedBy", completedBy);
-      formData.append("position", position);
-      formData.append("NIC", NIC);
-      formData.append("contactNumber", contactNumber);
-      formData.append("emergencyType", emergencyType);
-      formData.append("location", location);
-      formData.append("senderNIC", senderNIC);
-      formData.append("senderName", senderName);
-      formData.append("senderContactNumber", senderContactNumber);
-      formData.append("senderAddress", senderAddress);
-      formData.append("otherParticipants", otherParticipants);
-      formData.append("otherResponders", JSON.stringify(otherResponders));
-      formData.append("casualties", casualties);
-      formData.append("fatalities", fatalities);
-      formData.append("criticalInjuries", criticalInjuries);
-      formData.append("totalVictims", totalVictims);
-      formData.append("comment", comment);
-
-      const task = tasks.find((t) => t._id === taskId);
-
-      await axios.post(
-        `http://localhost:3000/api/alerts/${taskId}/completeWithDetails`,
-        formData,
-        { headers: { "Content-Type": "multipart/form-data" } }
+      const relevant = fetched.filter(
+        (task) =>
+          ["accepted", "reached"].includes(String(task.status).toLowerCase()) &&
+          Array.isArray(task.acceptedBy) &&
+          task.acceptedBy.some((r) => String(r._id) === String(responder._id))
       );
 
-      generateCompletionPDF(task);
-      toast.success("Task completed successfully!");
-      setShowCompleteForm(false);
-      resetForm();
-      setCurrentTask(null);
-      fetchAcceptedTasks();
-    } catch (err) {
-      console.error("Complete Task Error:", err.response || err);
-      toast.error("Failed to complete task.");
-    }
-  };
+      const mapped = relevant.map((task) => ({
+        ...task,
+        otherResponders: (task.acceptedBy || [])
+          .filter((r) => String(r._id) !== String(responder._id))
+          .map((r) => ({ name: r.name || "", NIC: r.NIC || "", _id: r._id })),
+      }));
 
-  const cancelTask = async (taskId) => {
+      setTasks(mapped);
+    } catch (err) {
+      console.error("Fetch accepted tasks:", err);
+      toast.error("Failed to fetch accepted tasks");
+    }
+  }
+
+  // Mark as reached
+  async function markAsReached(task) {
     try {
-      await axios.put(`http://localhost:3000/api/alerts/${taskId}/cancel`, {
-        reasons: cancelReasons,
-      });
-      toast.success("Task cancelled successfully.");
+      await axios.put(`${API}/alerts/${task._id}/reached`);
+      toast.success("Marked as reached");
+      fetchAcceptedTasks();
+      setCurrentTask(task);
+      setShowCompleteForm(true);
+      setShowCancelForm(false);
+      prefillCompleteForm(task);
+    } catch (err) {
+      console.error("markAsReached error:", err);
+      toast.error("Failed to mark as reached");
+    }
+  }
+
+  // Cancel
+  async function cancelTask(taskId) {
+    try {
+      await axios.put(`${API}/alerts/${taskId}/cancel`, { reasons: cancelReasons });
+      toast.success("Task cancelled");
       setShowCancelForm(false);
       setCancelReasons([]);
       setCurrentTask(null);
       fetchAcceptedTasks();
     } catch (err) {
-      console.error("Cancel Task Error:", err.response || err);
-      toast.error("Failed to cancel task.");
+      console.error("cancelTask error:", err);
+      toast.error("Failed to cancel task");
     }
-  };
+  }
 
-  const passDataToRequestDonations = async (task) => {
+  // Complete task with PDF generation
+  async function completeTask(taskId) {
     try {
-      await axios.post("http://localhost:3000/api/alerts/requestDonations", {
-        reportId: task.reportId,
-        emergencyType: task.emergencyType,
+      const form = new FormData();
+      form.append("reportId", currentTask.reportId || currentTask._id);
+      form.append("completedBy", completedBy);
+      form.append("position", position);
+      form.append("NIC", NIC);
+      form.append("contactNumber", contactNumber);
+      form.append("emergencyType", emergencyType);
+      form.append("location", location);
+      form.append("senderName", senderName);
+      form.append("senderNIC", senderNIC);
+      form.append("senderContactNumber", senderContactNumber);
+      form.append("senderAddress", senderAddress);
+      form.append("otherParticipants", otherParticipants);
+      form.append("otherResponders", JSON.stringify(otherResponders));
+      form.append("casualties", casualties);
+      form.append("fatalities", fatalities);
+      form.append("criticalInjuries", criticalInjuries);
+      form.append("totalVictims", totalVictims);
+      form.append("comment", comment);
+
+      if (files && files.length) {
+        Array.from(files).forEach((f) => form.append("files", f));
+      }
+
+      await axios.post(`${API}/alerts/${taskId}/complete`, form, {
+        headers: { "Content-Type": "multipart/form-data" },
       });
-      navigate("/request-donations", { state: { task } });
+
+      toast.success("Task completed");
+      generateCompletionPDF(currentTask);
+      setShowCompleteForm(false);
+      setCurrentTask(null);
+      resetForm();
+      fetchAcceptedTasks();
     } catch (err) {
-      console.error("Request Donations Error:", err.response || err);
-      toast.error("Failed to request donations.");
+      console.error("completeTask error:", err);
+      toast.error("Failed to complete task");
     }
-  };
+  }
 
-  const openRouteMap = (task) => setCurrentTask(task);
-
-  const handleReasonChange = (reason) =>
+  function handleReasonChange(reason) {
     setCancelReasons((prev) =>
       prev.includes(reason) ? prev.filter((r) => r !== reason) : [...prev, reason]
     );
+  }
 
-  const resetForm = () => {
+  // Other responders helpers
+  function addOtherResponder() {
+    setOtherResponders((prev) => [...prev, { name: "", NIC: "" }]);
+  }
+  function updateOtherResponder(idx, key, value) {
+    setOtherResponders((prev) => {
+      const copy = [...prev];
+      copy[idx] = { ...copy[idx], [key]: value };
+      return copy;
+    });
+  }
+  function removeOtherResponder(idx) {
+    setOtherResponders((prev) => prev.filter((_, i) => i !== idx));
+  }
+
+  // Prefill complete form
+  function prefillCompleteForm(task) {
+    const localResponder = JSON.parse(localStorage.getItem("responder"));
+    setCompletedBy(localResponder?.name || task.assignedResponders?.[0]?.name || "");
+    setPosition(task.assignedResponders?.[0]?.position || "");
+    setNIC(task.assignedResponders?.[0]?.NIC || "");
+    setContactNumber(task.assignedResponders?.[0]?.contactNumber || "");
+    setEmergencyType(task.emergencyType || task.emergency || "");
+    setLocation(task.address || (task.location && task.location.mapLink) || "");
+    setSenderName(task.userId || "");
+    setSenderNIC(task.NIC || "");
+    setSenderContactNumber(task.contactNumber || "");
+    setSenderAddress(task.address || "");
+    setOtherResponders(task.otherResponders.length ? task.otherResponders : [{ name: "", NIC: "" }]);
+  }
+
+  function resetForm() {
     setFiles([]);
     setComment("");
     setCompletedBy("");
@@ -274,21 +260,70 @@ export default function AcceptedTasks() {
     setSenderContactNumber("");
     setSenderAddress("");
     setOtherParticipants("");
-    setOtherResponders([]);
+    setOtherResponders([{ name: "", NIC: "" }]);
     setCasualties("");
     setFatalities("");
     setCriticalInjuries("");
     setTotalVictims("");
-  };
+  }
+
+  // PDF generation
+  function generateCompletionPDF(task) {
+    try {
+      const doc = new jsPDF();
+      doc.setFontSize(16);
+      doc.text("SwiftAid Task Completion Report", 20, 20);
+      doc.setFontSize(12);
+      doc.text(`Report ID: ${task.reportId || task._id}`, 20, 35);
+      doc.text(`Responder: ${completedBy}`, 20, 45);
+      doc.text(`Position: ${position}`, 20, 55);
+      doc.text(`NIC: ${NIC}`, 20, 65);
+      doc.text(`Contact: ${contactNumber}`, 20, 75);
+      doc.text(`Emergency Type: ${emergencyType}`, 20, 85);
+      doc.text(`Location: ${location}`, 20, 95);
+      doc.text(`Sender: ${senderName}`, 20, 105);
+      doc.text(`Sender NIC: ${senderNIC}`, 20, 115);
+      doc.text(`Sender Contact: ${senderContactNumber}`, 20, 125);
+      doc.text(`Sender Address: ${senderAddress}`, 20, 135);
+      doc.text(`Other Participants: ${otherParticipants}`, 20, 145);
+      doc.text(
+        `Other Responders: ${otherResponders.map((r) => `${r.name} (${r.NIC})`).join(", ")}`,
+        20,
+        155
+      );
+      doc.text(`Casualties: ${casualties}`, 20, 165);
+      doc.text(`Critical Injuries: ${criticalInjuries}`, 20, 175);
+      doc.text(`Fatalities: ${fatalities}`, 20, 185);
+      doc.text(`Total Victims: ${totalVictims}`, 20, 195);
+      doc.text(`Comment: ${comment}`, 20, 205);
+      doc.save(`Task_${task.reportId || task._id}.pdf`);
+    } catch (err) {
+      console.error("PDF error:", err);
+    }
+  }
+
+  // Request donations (optional)
+  async function passDataToRequestDonations(task) {
+    try {
+      await axios.post(`${API}/alerts/requestDonations`, {
+        reportId: task.reportId,
+        emergencyType: task.emergencyType,
+      });
+      navigate("/request-donations", { state: { task } });
+    } catch (err) {
+      console.error("Request donations error:", err);
+      toast.error("Failed to request donations.");
+    }
+  }
 
   if (loadError) return <p>Error loading map</p>;
   if (!isLoaded) return <p>Loading map...</p>;
 
   return (
-    <div className="p-6 bg-gray-50 min-h-screen">
+    <div className="p-6 bg-gray-50 min-h-screen flex flex-col">
       <ToastContainer position="top-right" autoClose={3000} />
 
-      {/* HEADER */}
+      {/* Header */}
       <div className="flex justify-between items-center mb-4">
         <button
           className="flex items-center gap-2 bg-gray-300 px-3 py-1 rounded hover:bg-gray-400 transition"
@@ -300,67 +335,141 @@ export default function AcceptedTasks() {
         <FaUser className="text-2xl text-gray-700" />
       </div>
 
-      {/* COMPLETE TASK FORM */}
+      {/* Tasks Table */}
+      <div className="overflow-x-auto bg-white shadow-xl rounded-xl border mb-4">
+        <table className="min-w-full divide-y divide-gray-200">
+          <thead className="bg-gray-100">
+            <tr>
+              <th className="px-4 py-2 text-left text-sm font-medium text-gray-700">Report ID</th>
+              <th className="px-4 py-2 text-left text-sm font-medium text-gray-700">Emergency</th>
+              <th className="px-4 py-2 text-left text-sm font-medium text-gray-700">Location</th>
+              <th className="px-4 py-2 text-left text-sm font-medium text-gray-700">Status</th>
+              <th className="px-4 py-2 text-left text-sm font-medium text-gray-700">Actions</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-gray-200">
+            {tasks.map((task) => (
+              <tr key={task._id} className="hover:bg-gray-50 transition">
+                <td className="px-4 py-2 text-sm">{task.reportId || task._id}</td>
+                <td className="px-4 py-2 text-sm">{task.emergencyType || task.emergency || "N/A"}</td>
+                <td className="px-4 py-2 text-sm">
+                  {task.address || (task.location && `${task.location.latitude}, ${task.location.longitude}`) || "N/A"}
+                </td>
+                <td className="px-4 py-2 text-sm font-semibold">{(task.status || "").toLowerCase()}</td>
+                <td className="px-4 py-2">
+                  <div className="flex flex-wrap gap-2">
+                    {String(task.status).toLowerCase() === "accepted" && (
+                      <button
+                        className="bg-yellow-500 hover:bg-yellow-600 text-white px-3 py-1 rounded-lg"
+                        onClick={() => markAsReached(task)}
+                      >
+                        Mark as Reached
+                      </button>
+                    )}
+
+                    {String(task.status).toLowerCase() === "reached" && (
+                      <>
+                        <button
+                          className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded-lg"
+                          onClick={() => {
+                            setCurrentTask(task);
+                            setShowCompleteForm(false);
+                            setShowCancelForm(false);
+                          }}
+                        >
+                          View Route
+                        </button>
+
+                        <button
+                          className="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded-lg"
+                          onClick={() => {
+                            setCurrentTask(task);
+                            setShowCompleteForm(true);
+                            setShowCancelForm(false);
+                            prefillCompleteForm(task);
+                          }}
+                        >
+                          Complete
+                        </button>
+
+                        <button
+                          className="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded-lg"
+                          onClick={() => {
+                            setCurrentTask(task);
+                            setShowCancelForm(true);
+                            setShowCompleteForm(false);
+                          }}
+                        >
+                          Cancel
+                        </button>
+                      </>
+                    )}
+
+                    {["completed", "cancelled"].includes(String(task.status).toLowerCase()) && (
+                      <span
+                        className={`text-sm font-semibold ${
+                          String(task.status).toLowerCase() === "completed" ? "text-green-600" : "text-red-600"
+                        }`}
+                      >
+                        {String(task.status).toLowerCase() === "completed" ? "✅ Completed" : "❌ Cancelled"}
+                      </span>
+                    )}
+
+                    <button
+                      className="bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-1 rounded-lg"
+                      onClick={() => passDataToRequestDonations(task)}
+                    >
+                      Request Donations
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {/* COMPLETE FORM */}
       {showCompleteForm && currentTask && (
-        <div className="bg-white shadow-xl rounded-xl p-4 mb-4 border animate-fadeIn">
-          <h2 className="text-lg font-bold mb-2">
-            Complete Task: {currentTask.reportId}
-          </h2>
+        <div className="bg-white shadow-xl rounded-xl p-4 mb-4 border">
+          <h2 className="text-lg font-bold mb-2">Complete Task: {currentTask.reportId || currentTask._id}</h2>
 
-          {/* Inputs */}
-          {[
-            { label: "Your Name", value: completedBy, setter: setCompletedBy },
-            { label: "Position", value: position, setter: setPosition },
-            { label: "NIC", value: NIC, setter: setNIC },
-            { label: "Contact Number", value: contactNumber, setter: setContactNumber },
-            { label: "Emergency Type", value: emergencyType, setter: setEmergencyType },
-            { label: "Location", value: location, setter: setLocation },
-            { label: "Sender Name", value: senderName, setter: setSenderName },
-            { label: "Sender NIC", value: senderNIC, setter: setSenderNIC },
-            { label: "Sender Contact", value: senderContactNumber, setter: setSenderContactNumber },
-            { label: "Sender Address", value: senderAddress, setter: setSenderAddress },
-            { label: "Other Participants", value: otherParticipants, setter: setOtherParticipants },
-            { label: "Other Responders", value: otherResponders.join(", "), setter: (val) => setOtherResponders(val.split(",").map(r => r.trim())) },
-            { label: "Casualties", value: casualties, setter: setCasualties, type: "number" },
-            { label: "Critical Injuries", value: criticalInjuries, setter: setCriticalInjuries, type: "number" },
-            { label: "Fatalities", value: fatalities, setter: setFatalities, type: "number" },
-            { label: "Total Victims", value: totalVictims, setter: setTotalVictims, type: "number" },
-          ].map(({ label, value, setter, type }, idx) => (
-            <input
-              key={idx}
-              type={type || "text"}
-              placeholder={label}
-              value={value}
-              onChange={(e) => setter(e.target.value)}
-              className="mb-2 border p-1 w-full"
-            />
-          ))}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <input value={completedBy} onChange={(e) => setCompletedBy(e.target.value)} placeholder="Your name" className="border p-2" />
+            <input value={position} onChange={(e) => setPosition(e.target.value)} placeholder="Position" className="border p-2" />
+            <input value={NIC} onChange={(e) => setNIC(e.target.value)} placeholder="NIC" className="border p-2" />
+            <input value={contactNumber} onChange={(e) => setContactNumber(e.target.value)} placeholder="Contact Number" className="border p-2" />
+            <input value={emergencyType} onChange={(e) => setEmergencyType(e.target.value)} placeholder="Emergency Type" className="border p-2" />
+            <input value={location} onChange={(e) => setLocation(e.target.value)} placeholder="Location" className="border p-2" />
+            <input value={senderName} onChange={(e) => setSenderName(e.target.value)} placeholder="Sender Name" className="border p-2" />
+            <input value={senderNIC} onChange={(e) => setSenderNIC(e.target.value)} placeholder="Sender NIC" className="border p-2" />
+            <input value={senderContactNumber} onChange={(e) => setSenderContactNumber(e.target.value)} placeholder="Sender Contact" className="border p-2" />
+            <input value={senderAddress} onChange={(e) => setSenderAddress(e.target.value)} placeholder="Sender Address" className="border p-2" />
+            <input value={otherParticipants} onChange={(e) => setOtherParticipants(e.target.value)} placeholder="Other Participants" className="border p-2" />
+            <input value={casualties} onChange={(e) => setCasualties(e.target.value)} placeholder="Casualties" className="border p-2" />
+            <input value={criticalInjuries} onChange={(e) => setCriticalInjuries(e.target.value)} placeholder="Critical Injuries" className="border p-2" />
+            <input value={fatalities} onChange={(e) => setFatalities(e.target.value)} placeholder="Fatalities" className="border p-2" />
+            <input value={totalVictims} onChange={(e) => setTotalVictims(e.target.value)} placeholder="Total Victims" className="border p-2" />
+          </div>
 
-          <textarea
-            placeholder="Comment"
-            value={comment}
-            onChange={(e) => setComment(e.target.value)}
-            className="mb-2 border p-1 w-full"
-          />
+          <div className="mt-3">
+            <textarea value={comment} onChange={(e) => setComment(e.target.value)} placeholder="Comments" className="border p-2 w-full"></textarea>
+          </div>
 
-          <p className="text-sm mb-2">Add Files (photos/videos):</p>
-          <input
-            type="file"
-            multiple
-            onChange={(e) => setFiles(e.target.files)}
-            className="mb-2"
-          />
+          <div className="mt-3">
+            <input type="file" multiple onChange={(e) => setFiles(e.target.files)} className="border p-2 w-full" />
+          </div>
 
-          <div className="flex gap-2">
-            <button
-              className="bg-green-600 text-white px-3 py-1 rounded hover:bg-green-700 transition"
-              onClick={() => completeTask(currentTask._id)}
-            >
+          <div className="mt-3 flex gap-3">
+            <button onClick={() => completeTask(currentTask._id)} className="bg-green-600 text-white px-3 py-1 rounded-lg">
               Submit
             </button>
             <button
-              className="bg-gray-400 text-white px-3 py-1 rounded hover:bg-gray-500 transition"
-              onClick={() => setShowCompleteForm(false)}
+              onClick={() => {
+                setShowCompleteForm(false);
+                resetForm();
+              }}
+              className="bg-gray-400 text-white px-3 py-1 rounded-lg"
             >
               Cancel
             </button>
@@ -370,155 +479,54 @@ export default function AcceptedTasks() {
 
       {/* CANCEL FORM */}
       {showCancelForm && currentTask && (
-        <div className="bg-white shadow-xl rounded-xl p-4 mb-4 border animate-fadeIn">
-          <h2 className="text-lg font-bold mb-2">
-            Cancel Task: {currentTask.reportId}
-          </h2>
-          <p className="text-sm mb-2">Select reasons:</p>
-          <div className="flex flex-col gap-2 mb-2">
-            {[
-              "False alarm",
-              "Responder unavailable",
-              "Duplicate alert",
-              "Other emergency prioritized",
-              "Other",
-            ].map((reason) => (
+        <div className="bg-white shadow-xl rounded-xl p-4 mb-4 border">
+          <h2 className="text-lg font-bold mb-2">Cancel Task: {currentTask.reportId || currentTask._id}</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            {["Unable to reach location", "No resources", "Emergency resolved", "Other"].map((reason) => (
               <label key={reason} className="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  checked={cancelReasons.includes(reason)}
-                  onChange={() => handleReasonChange(reason)}
-                />
+                <input type="checkbox" checked={cancelReasons.includes(reason)} onChange={() => handleReasonChange(reason)} />
                 {reason}
               </label>
             ))}
           </div>
-          <div className="flex gap-2">
-            <button
-              className="bg-red-600 text-white px-3 py-1 rounded hover:bg-red-700 transition"
-              onClick={() => cancelTask(currentTask._id)}
-            >
-              Confirm Cancel
+          <div className="mt-3 flex gap-3">
+            <button onClick={() => cancelTask(currentTask._id)} className="bg-red-600 text-white px-3 py-1 rounded-lg">
+              Submit
             </button>
             <button
-              className="bg-gray-400 text-white px-3 py-1 rounded hover:bg-gray-500 transition"
-              onClick={() => setShowCancelForm(false)}
+              onClick={() => {
+                setShowCancelForm(false);
+                setCancelReasons([]);
+              }}
+              className="bg-gray-400 text-white px-3 py-1 rounded-lg"
             >
-              Back
+              Cancel
             </button>
           </div>
         </div>
       )}
 
-      {/* TASKS TABLE */}
-      <div className="overflow-x-auto bg-white shadow-xl rounded-xl border animate-fadeIn">
-        <table className="min-w-full divide-y divide-gray-200">
-          <thead className="bg-gray-100">
-            <tr>
-              <th className="px-4 py-2 text-left text-sm font-medium text-gray-700">
-                Report ID
-              </th>
-              <th className="px-4 py-2 text-left text-sm font-medium text-gray-700">
-                Emergency
-              </th>
-              <th className="px-4 py-2 text-left text-sm font-medium text-gray-700">
-                Address
-              </th>
-              <th className="px-4 py-2 text-left text-sm font-medium text-gray-700">
-                Status
-              </th>
-              <th className="px-4 py-2 text-left text-sm font-medium text-gray-700">
-                Actions
-              </th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-200">
-            {tasks.map((task) => (
-              <tr key={task._id} className="hover:bg-gray-50 transition">
-                <td className="px-4 py-2 text-sm">{task._id}</td>
-                <td className="px-4 py-2 text-sm">{task.emergencyType}</td>
-                <td className="px-4 py-2 text-sm">{task.address}</td>
-                <td className="px-4 py-2 text-sm font-semibold">{task.status}</td>
-                <td className="px-4 py-2 text-sm space-x-2">
-                  {task.status === "accepted" && (
-                    <button
-                      className="bg-yellow-500 hover:bg-yellow-600 text-white px-2 py-1 rounded transition"
-                      onClick={() => reachedTask(task)}
-                    >
-                      Mark as Reached
-                    </button>
-                  )}
-
-                  {task.status === "reached" && (
-                    <>
-                      <button
-                        className="bg-green-600 hover:bg-green-700 text-white px-2 py-1 rounded transition"
-                        onClick={() => openRouteMap(task)}
-                      >
-                        View Route
-                      </button>
-                      <button
-                        className="bg-red-600 hover:bg-red-700 text-white px-2 py-1 rounded transition"
-                        onClick={() => setShowCancelForm(true) || setCurrentTask(task)}
-                      >
-                        Cancel
-                      </button>
-                    </>
-                  )}
-
-                  <button
-                    className="bg-blue-600 hover:bg-blue-700 text-white px-2 py-1 rounded transition"
-                    onClick={() => passDataToRequestDonations(task)}
-                  >
-                    Request Donations
-                  </button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-
-      {/* ROUTE MAP MODAL */}
-      {currentTask && (
-        <Rnd
-          default={{
-            x: 50,
-            y: 50,
-            width: 600,
-            height: 400,
-          }}
-          bounds="window"
-          className="z-50 border rounded shadow-lg bg-white"
+      {/* Google Map */}
+      <div className="w-full h-[400px] rounded-xl overflow-hidden border">
+        <GoogleMap
+          mapContainerStyle={{ width: "100%", height: "100%" }}
+          center={responderLocation || { lat: 7.8731, lng: 80.7718 }}
+          zoom={8}
+          options={{ styles: mapStyles }}
         >
-          <div className="flex justify-between items-center p-2 border-b">
-            <h3 className="font-bold">Route to {currentTask.reportId}</h3>
-            <button
-              className="bg-red-500 text-white px-2 py-1 rounded hover:bg-red-600"
-              onClick={() => setCurrentTask(null)}
-            >
-              Close
-            </button>
-          </div>
-          <GoogleMap
-            mapContainerStyle={{ width: "100%", height: "100%" }}
-            center={responderLocation || { lat: 0, lng: 0 }}
-            zoom={13}
-            options={{ styles: mapStyles }}
-          >
-            {responderLocation && <MarkerF position={responderLocation} />}
-            {currentTask.liveLocation && (
-              <MarkerF
-                position={{
-                  lat: currentTask.liveLocation.coordinates[1],
-                  lng: currentTask.liveLocation.coordinates[0],
-                }}
-              />
-            )}
-            {directions && <DirectionsRenderer directions={directions} />}
-          </GoogleMap>
-        </Rnd>
-      )}
+          {responderLocation && <MarkerF position={responderLocation} label="You" />}
+          {currentTask?.location?.coordinates && (
+            <MarkerF
+              position={{
+                lat: currentTask.location.coordinates[1],
+                lng: currentTask.location.coordinates[0],
+              }}
+              label="Task"
+            />
+          )}
+          {directions && <DirectionsRenderer directions={directions} />}
+        </GoogleMap>
+      </div>
     </div>
   );
 }

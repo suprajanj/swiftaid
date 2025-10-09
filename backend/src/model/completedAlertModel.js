@@ -29,4 +29,7 @@ const CompletedAlertSchema = new mongoose.Schema({
   completedAt: { type: Date, default: Date.now },
 });
 
-export default CompletedAlertSchema;
+// ✅ Create the model
+const CompletedAlertModel = mongoose.model("CompletedAlert", CompletedAlertSchema);
+
+export default CompletedAlertModel;

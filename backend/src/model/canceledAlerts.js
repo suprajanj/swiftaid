@@ -1,8 +1,8 @@
 import mongoose from "mongoose";
 
 const CanceledAlertSchema = new mongoose.Schema({
-  reportId: { type: String, required: true },
-  acceptedBy: { type: String, default: "" },
+  reportId: { type: mongoose.Schema.Types.ObjectId, ref: "Alert", required: true },
+  acceptedBy: [{ type: mongoose.Schema.Types.ObjectId, ref: "Responder" }], // array of ObjectIds
   userId: { type: String },
   NIC: { type: String },
   contactNumber: { type: String },
@@ -13,4 +13,7 @@ const CanceledAlertSchema = new mongoose.Schema({
   reasonToReject: { type: String },
 });
 
-export default CanceledAlertSchema;
+// ✅ Create the model
+const CanceledAlertModel = mongoose.model("CanceledAlert", CanceledAlertSchema);
+
+export default CanceledAlertModel;

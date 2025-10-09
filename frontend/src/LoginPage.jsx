@@ -11,10 +11,23 @@ const LoginPage = () => {
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
+  // ✅ Admin credential list
   const adminCredentials = [
-    { email: "mainresponderhandler@firefighter.com", password: "firefighter#123", route: "/create-firefighter-responder" },
-    { email: "mainresponderhandler@medical.com", password: "medical#123", route: "/create-hospital-responder" },
-    { email: "mainresponderhandler@police.com", password: "police#123", route: "/create-police-responder" },
+    {
+      email: "mainresponderhandler@firefighter.com",
+      password: "firefighter#123",
+      route: "/create-firefighter-responder",
+    },
+    {
+      email: "mainresponderhandler@medical.com",
+      password: "medical#123",
+      route: "/create-hospital-responder",
+    },
+    {
+      email: "mainresponderhandler@police.com",
+      password: "police#123",
+      route: "/create-police-responder",
+    },
   ];
 
   useEffect(() => {
@@ -22,8 +35,11 @@ const LoginPage = () => {
     if (stored) {
       try {
         const parsed = JSON.parse(stored);
-        if (parsed.email && parsed.NIC && parsed._id) navigate("/notifications");
-        else localStorage.removeItem("responder");
+        if (parsed._id && parsed.NIC) {
+          navigate("/notifications");
+        } else {
+          localStorage.removeItem("responder");
+        }
       } catch {
         localStorage.removeItem("responder");
       }
@@ -33,41 +49,86 @@ const LoginPage = () => {
   const handleLogin = async (e) => {
     e.preventDefault();
     const input = NICOrEmail.trim();
-    if (!input || !password.trim()) {
-      toast.error("Please enter your NIC/email and password");
+    const pass = password.trim();
+
+    if (!input || !pass) {
+      toast.error("Please enter both NIC/email and password");
       return;
     }
 
-    // Admin login check
-    const adminUser = adminCredentials.find((c) => c.email === input && c.password === password);
+    // 🔹 Admin login check
+    const adminUser = adminCredentials.find(
+      (c) => c.email === input && c.password === pass
+    );
     if (adminUser) {
       toast.success("Admin login successful!");
-      navigate(adminUser.route);
+      setTimeout(() => navigate(adminUser.route), 1200);
       return;
     }
 
     try {
       setLoading(true);
+      const BACKEND_URL =
+        import.meta.env.VITE_BACKEND_URL || "http://localhost:3000";
 
-      // Responder login
-      const res = await axios.post("http://localhost:3000/api/responders/login", { email: input, password });
-      const responder = res.data?.responder;
+      // 🔹 Detect NIC or email
+      const payload = input.includes("@")
+        ? { email: input, password: pass }
+        : { NIC: input, password: pass };
 
-      if (responder?.email) {
-        // Update responder status to active
-        await axios.put(`http://localhost:3000/api/responders/${responder._id}/status`, { status: "active" });
+      const res = await axios.post(`${BACKEND_URL}/api/responders/login`, payload);
 
-        const updatedResponder = { ...responder, status: "active" };
-        localStorage.setItem("responder", JSON.stringify(updatedResponder));
-
-        toast.success("Responder login successful!");
-        navigate("/notifications");
-      } else {
-        toast.error(res.data.message || "Invalid credentials");
+      if (!res.data?.responder) {
+        toast.error(res.data?.message || "Invalid credentials");
+        return;
       }
+
+      const responder = res.data.responder;
+
+      // 🔹 Update responder status
+      await axios.patch(`${BACKEND_URL}/api/responders/${responder._id}/status`, {
+        status: "active",
+      });
+
+      // ✅ Update responder location once after login
+      if ("geolocation" in navigator) {
+        navigator.geolocation.getCurrentPosition(
+          async (pos) => {
+            const { latitude, longitude } = pos.coords;
+            const mapLink = `https://www.google.com/maps?q=${latitude},${longitude}`;
+
+            try {
+              await axios.patch(
+                `${BACKEND_URL}/api/responders/${responder._id}/location`,
+                { latitude, longitude, mapLink }
+              );
+              console.log("📍 Location updated after login:", latitude, longitude);
+            } catch (locErr) {
+              console.error("❌ Failed to update location:", locErr);
+            }
+          },
+          (err) => console.warn("⚠️ Location permission denied:", err),
+          { enableHighAccuracy: true, timeout: 5000 }
+        );
+      } else {
+        console.warn("⚠️ Geolocation not supported in this browser.");
+      }
+
+      // 🔹 Save responder info locally
+      const updatedResponder = { ...responder, status: "active" };
+      localStorage.setItem("responder", JSON.stringify(updatedResponder));
+      localStorage.setItem("responderId", responder._id);
+
+      toast.success("Responder login successful!");
+
+      // 🔹 Redirect
+      setTimeout(() => {
+        if (responder.role === "responder") navigate("/accepted-tasks");
+        else navigate("/notifications");
+      }, 1200);
     } catch (err) {
-      console.error("Responder login error:", err);
-      toast.error(err.response?.data?.message || "Server error. Check backend!");
+      console.error("Login Error:", err);
+      toast.error(err.response?.data?.message || "Server error occurred");
     } finally {
       setLoading(false);
     }
@@ -77,10 +138,13 @@ const LoginPage = () => {
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-indigo-900 via-indigo-700 to-indigo-500 p-6">
       <ToastContainer position="top-right" autoClose={3000} />
       <div className="w-full max-w-md bg-white shadow-2xl rounded-2xl p-8">
-        <h2 className="text-center text-3xl font-extrabold text-indigo-700 mb-6">🔑 Responder Login</h2>
+        <h2 className="text-center text-3xl font-extrabold text-indigo-700 mb-6">
+          🔑 Responder Login
+        </h2>
+
         <form onSubmit={handleLogin} className="space-y-4">
           <div>
-            <label className="block mb-1 font-semibold">Email</label>
+            <label className="block mb-1 font-semibold">Email / NIC</label>
             <input
               type="text"
               placeholder="Enter your NIC or admin email"
@@ -90,6 +154,7 @@ const LoginPage = () => {
               required
             />
           </div>
+
           <div>
             <label className="block mb-1 font-semibold">Password</label>
             <div className="relative">
@@ -109,14 +174,22 @@ const LoginPage = () => {
               </span>
             </div>
           </div>
+
           <button
             type="submit"
-            className={`w-full py-2 mt-4 bg-indigo-600 text-white font-bold rounded hover:bg-indigo-700 transition ${
+            className={`w-full py-2 mt-4 bg-indigo-600 text-white font-bold rounded-lg hover:bg-indigo-700 transition-all ${
               loading ? "opacity-60 cursor-not-allowed" : ""
             }`}
             disabled={loading}
           >
-            {loading ? "Logging in..." : "Login"}
+            {loading ? (
+              <div className="flex items-center justify-center gap-2">
+                <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
+                Logging in...
+              </div>
+            ) : (
+              "Login"
+            )}
           </button>
         </form>
       </div>

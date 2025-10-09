@@ -1,20 +1,44 @@
 import bcrypt from "bcryptjs";
+import mongoose from "mongoose";
+import responderSchema from "../model/responderModel.js";
+import sosSchema from "../model/alertModel.js";
+import acceptedSchema from "../model/acceptedAlertModel.js";
+import completedSchema from "../model/completedAlertModel.js";
+import canceledSchema from "../model/canceledAlerts.js";
 
-// ------------------ CREATE NEW RESPONDER ------------------
+// =================== HELPERS ===================
+export const isValidId = (id) => mongoose.Types.ObjectId.isValid(id);
+
+export const getModels = (req) => {
+  const db = req.app.locals.db;
+  if (!db) throw new Error("❌ DB not initialized");
+
+  return {
+    ResponderModel: db.ResponderModel,
+    AlertModel: db.AlertModel,
+    AcceptedAlertModel: db.AcceptedAlertModel,
+    CompletedAlertModel: db.CompletedAlertModel,
+    CanceledAlertModel: db.CanceledAlertModel,
+  };
+};
+
+// =================== RESPONDER CONTROLLERS ===================
+
+// Create new responder
 export const createNewResponder = async (req, res) => {
   try {
     const { NIC, name, contactNumber, password, address, position, responderType, email, lastLocation } = req.body;
-    const Responder = req.app.locals.db.ResponderModel;
+    const { ResponderModel } = getModels(req);
 
     if (!NIC || !name || !contactNumber || !email || !address || !password || !position || !responderType)
       return res.status(400).json({ message: "Missing required fields" });
 
-    const existing = await Responder.findOne({ $or: [{ email }, { NIC }] });
+    const existing = await ResponderModel.findOne({ $or: [{ email }, { NIC }] });
     if (existing) return res.status(400).json({ message: "Responder already exists" });
 
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    const newResponder = new Responder({
+    const newResponder = new ResponderModel({
       NIC,
       name,
       contactNumber,
@@ -39,22 +63,21 @@ export const createNewResponder = async (req, res) => {
   }
 };
 
-// ------------------ LOGIN RESPONDER ------------------
+// Login responder
 export const loginResponder = async (req, res) => {
   try {
     const { email, password } = req.body;
-    const Responder = req.app.locals.db.ResponderModel;
+    const { ResponderModel } = getModels(req);
 
     if (!email || !password)
       return res.status(400).json({ message: "Email and password required" });
 
-    const responder = await Responder.findOne({ email });
+    const responder = await ResponderModel.findOne({ email });
     if (!responder) return res.status(404).json({ message: "Responder not found" });
 
     const isMatch = await bcrypt.compare(password, responder.password);
     if (!isMatch) return res.status(400).json({ message: "Invalid credentials" });
 
-    // Update status to active on login
     responder.status = "active";
     await responder.save();
 
@@ -76,13 +99,13 @@ export const loginResponder = async (req, res) => {
   }
 };
 
-// ------------------ LOGOUT RESPONDER ------------------
+// Logout responder
 export const logoutResponder = async (req, res) => {
   try {
     const { id } = req.body;
-    const Responder = req.app.locals.db.ResponderModel;
+    const { ResponderModel } = getModels(req);
 
-    const responder = await Responder.findById(id);
+    const responder = await ResponderModel.findById(id);
     if (!responder) return res.status(404).json({ message: "Responder not found" });
 
     responder.status = "inactive";
@@ -94,14 +117,26 @@ export const logoutResponder = async (req, res) => {
   }
 };
 
-// ------------------ UPDATE RESPONDER STATUS ------------------
+// Update responder info
+export const updateResponder = async (req, res) => {
+  try {
+    const { ResponderModel } = getModels(req);
+    const updated = await ResponderModel.findByIdAndUpdate(req.params.id, req.body, { new: true });
+    if (!updated) return res.status(404).json({ message: "Responder not found" });
+    res.status(200).json({ message: "Responder updated successfully", responder: updated });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+// Update responder status
 export const updateResponderStatus = async (req, res) => {
   try {
     const { id } = req.params;
     const { status } = req.body;
-    const Responder = req.app.locals.db.ResponderModel;
+    const { ResponderModel } = getModels(req);
 
-    const responder = await Responder.findById(id);
+    const responder = await ResponderModel.findById(id);
     if (!responder) return res.status(404).json({ message: "Responder not found" });
 
     responder.status = status;
@@ -113,14 +148,14 @@ export const updateResponderStatus = async (req, res) => {
   }
 };
 
-// ------------------ UPDATE LAST LOCATION ------------------
+// Update responder last location
 export const updateResponderLocation = async (req, res) => {
   try {
     const { id } = req.params;
     const { latitude, longitude, mapLink } = req.body;
-    const Responder = req.app.locals.db.ResponderModel;
+    const { ResponderModel } = getModels(req);
 
-    const responder = await Responder.findById(id);
+    const responder = await ResponderModel.findById(id);
     if (!responder) return res.status(404).json({ message: "Responder not found" });
 
     responder.lastLocation = { latitude, longitude, mapLink };
@@ -132,22 +167,22 @@ export const updateResponderLocation = async (req, res) => {
   }
 };
 
-// ------------------ GET ALL RESPONDERS ------------------
+// Get all responders
 export const getAllResponders = async (req, res) => {
   try {
-    const Responder = req.app.locals.db.ResponderModel;
-    const responders = await Responder.find();
+    const { ResponderModel } = getModels(req);
+    const responders = await ResponderModel.find();
     res.status(200).json(responders);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 };
 
-// ------------------ GET SINGLE RESPONDER ------------------
+// Get responder by ID
 export const getResponderById = async (req, res) => {
   try {
-    const Responder = req.app.locals.db.ResponderModel;
-    const responder = await Responder.findById(req.params.id);
+    const { ResponderModel } = getModels(req);
+    const responder = await ResponderModel.findById(req.params.id);
     if (!responder) return res.status(404).json({ message: "Responder not found" });
     res.status(200).json(responder);
   } catch (err) {
@@ -155,45 +190,13 @@ export const getResponderById = async (req, res) => {
   }
 };
 
-// ------------------ UPDATE RESPONDER ------------------
-export const updateResponder = async (req, res) => {
-  try {
-    const Responder = req.app.locals.db.ResponderModel;
-    const updated = await Responder.findByIdAndUpdate(req.params.id, req.body, { new: true });
-    if (!updated) return res.status(404).json({ message: "Responder not found" });
-    res.status(200).json({ message: "Responder updated successfully", responder: updated });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-};
-
-// ------------------ DELETE RESPONDER ------------------
+// Delete responder
 export const deleteResponder = async (req, res) => {
   try {
-    const Responder = req.app.locals.db.ResponderModel;
-    const deleted = await Responder.findByIdAndDelete(req.params.id);
+    const { ResponderModel } = getModels(req);
+    const deleted = await ResponderModel.findByIdAndDelete(req.params.id);
     if (!deleted) return res.status(404).json({ message: "Responder not found" });
     res.status(200).json({ message: "Responder deleted successfully" });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-};
-
-// ------------------ SEARCH RESPONDERS ------------------
-export const searchResponders = async (req, res) => {
-  try {
-    const { query } = req.query;
-    const Responder = req.app.locals.db.ResponderModel;
-
-    const responders = await Responder.find({
-      $or: [
-        { name: { $regex: query, $options: "i" } },
-        { NIC: { $regex: query, $options: "i" } },
-        { email: { $regex: query, $options: "i" } },
-      ],
-    });
-
-    res.status(200).json(responders);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

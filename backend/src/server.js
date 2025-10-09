@@ -49,7 +49,7 @@ const corsOptions = {
     "http://127.0.0.1:5173",
   ],
   methods: ["GET", "POST", "PUT", "DELETE", "PATCH"],
-  allowedHeaders: ["Content-Type"],
+  allowedHeaders: ["Content-Type", "my-custom-header", "Authorization"],
   credentials: true,
 };
 

@@ -131,7 +131,7 @@ const emergencyOptions = [
   { value: "Medical", label: "Medical" },
   { value: "Fire", label: "Fire" },
   { value: "Police", label: "Police" },
-  { value: "Police", label: "Road Accident" }
+  { value: "Road Accident", label: "Road Accident" }
 ];
 
 function ResAdminDashboard() {

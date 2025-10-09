@@ -109,7 +109,7 @@ export default function AssignViaMapModal({
   const handleAssign = async (responderId) => {
     try {
       setIsLoading(true);
-      await axios.patch("http://localhost:4000/api/sos/res/assign", {
+      await axios.patch("http://localhost:3000/api/sos/res/assign", {
         sosId: sos._id,
         responderId,
       });

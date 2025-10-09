@@ -9,6 +9,9 @@ import { RoleManagement } from "./pages/RoleManagement";
 import Emergency from "./pages/Emergency";
 import { AdminDashboard } from "./pages/AdminDashboard";
 import ResAdminDashboard from "./pages/ResAdminDashboard"
+import ResourceRequests from "./pages/ResourceRequests.jsx";
+import Donations from "./pages/Donations.jsx";
+import ResourceDashboard from "./pages/ResourceDashboard.jsx";
 
 function App() {
   return (
@@ -23,6 +26,9 @@ function App() {
         <Route path="/roles" element={<RoleManagement />} />
         <Route path="/requests" element={<Emergency />} />
         <Route path="/res/dashboard" element={<ResAdminDashboard />} />
+        <Route path="/resource" element={<ResourceDashboard />} />
+        <Route path="/resources" element={<ResourceRequests />} />
+        <Route path="/donations" element={<Donations />} />
 
       </Routes>
     </div>

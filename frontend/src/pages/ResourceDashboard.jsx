@@ -1,9 +1,41 @@
 import React from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 
 export default function Dashboard() {
+  const navigate = useNavigate();
+
+  const handleLogout = () => {
+    if (confirm("Are you sure you want to logout?")) {
+      // Clear any stored tokens or user data
+      localStorage.removeItem("adminToken");
+      sessionStorage.removeItem("adminToken");
+
+      // Navigate to login page
+      navigate("/login");
+    }
+  };
+
   return (
     <div style={container}>
+      {/* Logout Button */}
+      <button
+        onClick={handleLogout}
+        style={logoutButton}
+        onMouseEnter={(e) => {
+          e.target.style.background = "rgba(255, 255, 255, 0.15)";
+          e.target.style.boxShadow = "0 8px 25px rgba(255, 255, 255, 0.2)";
+          e.target.style.transform = "translateY(-2px)";
+        }}
+        onMouseLeave={(e) => {
+          e.target.style.background = "rgba(255, 255, 255, 0.1)";
+          e.target.style.boxShadow = "0 4px 15px rgba(255, 255, 255, 0.1)";
+          e.target.style.transform = "translateY(0)";
+        }}
+      >
+        <span style={logoutIcon}>🚪</span>
+        Logout
+      </button>
+
       <div style={overlay}>
         <h1 style={{ fontSize: "3rem", marginBottom: "10px" }}>
           🌍 SwiftAid Resource Management
@@ -13,8 +45,8 @@ export default function Dashboard() {
         </p>
 
         <div style={cardContainer}>
-          <Link 
-            to="/donations" 
+          <Link
+            to="/donations"
             style={card("green")}
             onMouseEnter={(e) => {
               e.target.style.transform = "translateY(-8px) scale(1.02)";
@@ -29,8 +61,8 @@ export default function Dashboard() {
           >
             ❤️ Donations
           </Link>
-          <Link 
-            to="/resources" 
+          <Link
+            to="/resources"
             style={card("blue")}
             onMouseEnter={(e) => {
               e.target.style.transform = "translateY(-8px) scale(1.02)";
@@ -52,7 +84,7 @@ export default function Dashboard() {
 }
 
 const container = {
-  height: "100vh",             // 🔹 fills entire viewport
+  height: "100vh",
   width: "100vw",
   display: "flex",
   justifyContent: "center",
@@ -61,6 +93,7 @@ const container = {
   color: "#fff",
   textAlign: "center",
   overflow: "hidden",
+  position: "relative", // Added for absolute positioning of logout button
 };
 
 const overlay = {
@@ -82,7 +115,7 @@ const cardContainer = {
 };
 
 const card = (color) => ({
-  flex: "1 1 250px",          // 🔹 cards expand but shrink on small screens
+  flex: "1 1 250px",
   maxWidth: "320px",
   background: color === "green" ? "#28a745" : "#007bff",
   padding: "50px 40px",
@@ -96,3 +129,29 @@ const card = (color) => ({
   cursor: "pointer",
   textAlign: "center",
 });
+
+const logoutButton = {
+  position: "absolute",
+  top: "30px",
+  right: "30px",
+  background: "rgba(255, 255, 255, 0.1)",
+  color: "white",
+  border: "2px solid rgba(255, 255, 255, 0.3)",
+  padding: "12px 24px",
+  borderRadius: "50px",
+  fontSize: "1rem",
+  fontWeight: "600",
+  cursor: "pointer",
+  backdropFilter: "blur(10px)",
+  boxShadow: "0 4px 15px rgba(255, 255, 255, 0.1)",
+  transition: "all 0.3s ease",
+  display: "flex",
+  alignItems: "center",
+  gap: "8px",
+  zIndex: 1000,
+};
+
+const logoutIcon = {
+  fontSize: "1.2rem",
+  filter: "drop-shadow(0 2px 4px rgba(0,0,0,0.3))",
+};

@@ -24,24 +24,26 @@ const HomePage = () => {
           <div className="absolute top-0 left-0 w-96 h-96 bg-white rounded-full blur-3xl animate-pulse"></div>
           <div className="absolute bottom-0 right-0 w-96 h-96 bg-white rounded-full blur-3xl animate-pulse delay-1000"></div>
         </div>
-        
+
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 md:py-28">
           <div className="text-center">
             <div className="inline-flex items-center px-4 py-2 bg-white/10 backdrop-blur-sm rounded-full mb-6 border border-white/20">
               <Shield className="h-5 w-5 mr-2" />
-              <span className="text-sm font-medium">Trusted Emergency Management Platform</span>
+              <span className="text-sm font-medium">
+                Trusted Emergency Management Platform
+              </span>
             </div>
-            
+
             <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold mb-6 leading-tight">
               Supportive Organizations
               <span className="block text-green-300">Portal</span>
             </h1>
-            
+
             <p className="text-xl md:text-2xl mb-10 max-w-3xl mx-auto text-blue-100 leading-relaxed">
               Secure access to verified emergency case data for NGOs, Media, and
               Insurance companies
             </p>
-            
+
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Link
                 to="/organization/dashboard"

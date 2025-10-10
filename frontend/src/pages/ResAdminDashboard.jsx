@@ -6,19 +6,28 @@ import { io } from "socket.io-client";
 import AssignViaMapModal from "../components/AssignViaMapModal";
 import toast, { Toaster } from "react-hot-toast";
 import {
-  PieChart, Pie, Cell, Tooltip, Legend,
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer
+  PieChart,
+  Pie,
+  Cell,
+  Tooltip,
+  Legend,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  ResponsiveContainer,
 } from "recharts";
 import { jsPDF } from "jspdf";
-
+import { useNavigate } from "react-router-dom"; // Import useNavigate
 
 const GOOGLE_MAP_LIBRARIES = ["places"];
 const socket = io("http://localhost:3000", {
   path: "/socket.io/",
   withCredentials: true,
   extraHeaders: {
-    "my-custom-header": "abcd"
-  }
+    "my-custom-header": "abcd",
+  },
 });
 
 // Form validation functions (moved outside component to prevent re-renders)
@@ -37,17 +46,21 @@ const validateForm = (data, isEdit = false) => {
   // Age validation
   if (!data.age) {
     errors.age = "Age is required";
-  } else if (isNaN(data.age) || parseInt(data.age) < 1 || parseInt(data.age) > 120) {
+  } else if (
+    isNaN(data.age) ||
+    parseInt(data.age) < 1 ||
+    parseInt(data.age) > 120
+  ) {
     errors.age = "Age must be between 1 and 120";
   }
 
   // Phone number validation
-   if (!data.number.trim()) {
+  if (!data.number.trim()) {
     errors.number = "Phone number is required";
   } else {
     // Remove all non-digit characters
-    const cleanNumber = data.number.replace(/\D/g, '');
-    
+    const cleanNumber = data.number.replace(/\D/g, "");
+
     if (cleanNumber.length !== 10) {
       errors.number = "Phone number must be exactly 10 digits";
     } else if (!/^[0-9]{10}$/.test(cleanNumber)) {
@@ -63,14 +76,22 @@ const validateForm = (data, isEdit = false) => {
   // Latitude validation
   if (!data.latitude) {
     errors.latitude = "Latitude is required";
-  } else if (isNaN(data.latitude) || parseFloat(data.latitude) < -90 || parseFloat(data.latitude) > 90) {
+  } else if (
+    isNaN(data.latitude) ||
+    parseFloat(data.latitude) < -90 ||
+    parseFloat(data.latitude) > 90
+  ) {
     errors.latitude = "Latitude must be between -90 and 90";
   }
 
   // Longitude validation
   if (!data.longitude) {
     errors.longitude = "Longitude is required";
-  } else if (isNaN(data.longitude) || parseFloat(data.longitude) < -180 || parseFloat(data.longitude) > 180) {
+  } else if (
+    isNaN(data.longitude) ||
+    parseFloat(data.longitude) < -180 ||
+    parseFloat(data.longitude) > 180
+  ) {
     errors.longitude = "Longitude must be between -180 and 180";
   }
 
@@ -78,66 +99,88 @@ const validateForm = (data, isEdit = false) => {
 };
 
 // Reusable form components (moved outside to prevent re-renders)
-const InputField = React.memo(({ label, name, value, onChange, error, type = "text", placeholder, required = true }) => (
-  <div>
-    <label className="block text-sm font-medium text-slate-700 mb-1">
-      {label} {required && <span className="text-red-500">*</span>}
-    </label>
-    <input
-      type={type}
-      name={name}
-      placeholder={placeholder}
-      value={value}
-      onChange={onChange}
-      required={required}
-      className={`w-full p-3 border rounded-xl focus:outline-none focus:ring-2 transition-all ${
-        error 
-          ? "border-red-500 focus:ring-red-500 focus:border-red-500 bg-red-50" 
-          : "border-slate-300 focus:ring-red-500 focus:border-transparent"
-      }`}
-    />
-    {error && <p className="text-red-500 text-xs mt-1 flex items-center gap-1">⚠️ {error}</p>}
-  </div>
-));
+const InputField = React.memo(
+  ({
+    label,
+    name,
+    value,
+    onChange,
+    error,
+    type = "text",
+    placeholder,
+    required = true,
+  }) => (
+    <div>
+      <label className="block text-sm font-medium text-slate-700 mb-1">
+        {label} {required && <span className="text-red-500">*</span>}
+      </label>
+      <input
+        type={type}
+        name={name}
+        placeholder={placeholder}
+        value={value}
+        onChange={onChange}
+        required={required}
+        className={`w-full p-3 border rounded-xl focus:outline-none focus:ring-2 transition-all ${
+          error
+            ? "border-red-500 focus:ring-red-500 focus:border-red-500 bg-red-50"
+            : "border-slate-300 focus:ring-red-500 focus:border-transparent"
+        }`}
+      />
+      {error && (
+        <p className="text-red-500 text-xs mt-1 flex items-center gap-1">
+          ⚠️ {error}
+        </p>
+      )}
+    </div>
+  )
+);
 
-const SelectField = React.memo(({ label, name, value, onChange, error, options, required = true }) => (
-  <div>
-    <label className="block text-sm font-medium text-slate-700 mb-1">
-      {label} {required && <span className="text-red-500">*</span>}
-    </label>
-    <select
-      name={name}
-      value={value}
-      onChange={onChange}
-      required={required}
-      className={`w-full p-3 border rounded-xl focus:outline-none focus:ring-2 transition-all ${
-        error 
-          ? "border-red-500 focus:ring-red-500 focus:border-red-500 bg-red-50" 
-          : "border-slate-300 focus:ring-red-500 focus:border-transparent"
-      }`}
-    >
-      <option value="">Select {label}</option>
-      {options.map(option => (
-        <option key={option.value} value={option.value}>
-          {option.label}
-        </option>
-      ))}
-    </select>
-    {error && <p className="text-red-500 text-xs mt-1 flex items-center gap-1">⚠️ {error}</p>}
-  </div>
-));
+const SelectField = React.memo(
+  ({ label, name, value, onChange, error, options, required = true }) => (
+    <div>
+      <label className="block text-sm font-medium text-slate-700 mb-1">
+        {label} {required && <span className="text-red-500">*</span>}
+      </label>
+      <select
+        name={name}
+        value={value}
+        onChange={onChange}
+        required={required}
+        className={`w-full p-3 border rounded-xl focus:outline-none focus:ring-2 transition-all ${
+          error
+            ? "border-red-500 focus:ring-red-500 focus:border-red-500 bg-red-50"
+            : "border-slate-300 focus:ring-red-500 focus:border-transparent"
+        }`}
+      >
+        <option value="">Select {label}</option>
+        {options.map((option) => (
+          <option key={option.value} value={option.value}>
+            {option.label}
+          </option>
+        ))}
+      </select>
+      {error && (
+        <p className="text-red-500 text-xs mt-1 flex items-center gap-1">
+          ⚠️ {error}
+        </p>
+      )}
+    </div>
+  )
+);
 
 const emergencyOptions = [
   { value: "Medical", label: "Medical" },
   { value: "Fire", label: "Fire" },
   { value: "Police", label: "Police" },
-  { value: "Road Accident", label: "Road Accident" }
+  { value: "Road Accident", label: "Road Accident" },
 ];
 
 function ResAdminDashboard() {
   const API_URL = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
   const mapRef = useRef();
   const audioRef = useRef("../assets/audio.mp3");
+  const navigate = useNavigate(); // Initialize navigate
 
   const [activeTab, setActiveTab] = useState("overview");
   const [filterType, setFilterType] = useState("All");
@@ -147,15 +190,25 @@ function ResAdminDashboard() {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const [formData, setFormData] = useState({
-    name: "", age: "", number: "", emergency: "",
-    latitude: "", longitude: "", mapLink: "",
+    name: "",
+    age: "",
+    number: "",
+    emergency: "",
+    latitude: "",
+    longitude: "",
+    mapLink: "",
   });
 
   const [emergencies, setEmergencies] = useState([]);
   const [editingSOS, setEditingSOS] = useState(null);
   const [editFormData, setEditFormData] = useState({
-    name: "", age: "", number: "", emergency: "",
-    latitude: "", longitude: "", mapLink: "",
+    name: "",
+    age: "",
+    number: "",
+    emergency: "",
+    latitude: "",
+    longitude: "",
+    mapLink: "",
   });
 
   const [mapModalOpen, setMapModalOpen] = useState(false);
@@ -165,67 +218,100 @@ function ResAdminDashboard() {
     googleMapsApiKey: API_URL,
     libraries: GOOGLE_MAP_LIBRARIES,
   });
-  
+
   // Optimized change handlers with useCallback
-  const handleChange = useCallback((e) => {
-    const { name, value } = e.target;
-    
-    setFormData(prev => {
-      const updated = { ...prev, [name]: value };
-      
-      // Auto-generate map link when both coordinates are provided
-      if ((name === "latitude" || name === "longitude") && updated.latitude && updated.longitude) {
-        updated.mapLink = `https://www.google.com/maps?q=${updated.latitude},${updated.longitude}`;
+  const handleChange = useCallback(
+    (e) => {
+      const { name, value } = e.target;
+
+      setFormData((prev) => {
+        const updated = { ...prev, [name]: value };
+
+        // Auto-generate map link when both coordinates are provided
+        if (
+          (name === "latitude" || name === "longitude") &&
+          updated.latitude &&
+          updated.longitude
+        ) {
+          updated.mapLink = `https://www.google.com/maps?q=${updated.latitude},${updated.longitude}`;
+        }
+
+        return updated;
+      });
+
+      // Clear error when user starts typing (debounced)
+      if (formErrors[name]) {
+        setFormErrors((prev) => ({ ...prev, [name]: "" }));
       }
-      
-      return updated;
-    });
+    },
+    [formErrors]
+  );
 
-    // Clear error when user starts typing (debounced)
-    if (formErrors[name]) {
-      setFormErrors(prev => ({ ...prev, [name]: "" }));
-    }
-  }, [formErrors]);
+  const handleEditChange = useCallback(
+    (e) => {
+      const { name, value } = e.target;
 
-  const handleEditChange = useCallback((e) => {
-    const { name, value } = e.target;
-    
-    setEditFormData(prev => {
-      const updated = { ...prev, [name]: value };
-      
-      if ((name === "latitude" || name === "longitude") && updated.latitude && updated.longitude) {
-        updated.mapLink = `https://www.google.com/maps?q=${updated.latitude},${updated.longitude}`;
+      setEditFormData((prev) => {
+        const updated = { ...prev, [name]: value };
+
+        if (
+          (name === "latitude" || name === "longitude") &&
+          updated.latitude &&
+          updated.longitude
+        ) {
+          updated.mapLink = `https://www.google.com/maps?q=${updated.latitude},${updated.longitude}`;
+        }
+
+        return updated;
+      });
+
+      // Clear error when user starts typing
+      if (editFormErrors[name]) {
+        setEditFormErrors((prev) => ({ ...prev, [name]: "" }));
       }
-      
-      return updated;
-    });
-
-    // Clear error when user starts typing
-    if (editFormErrors[name]) {
-      setEditFormErrors(prev => ({ ...prev, [name]: "" }));
-    }
-  }, [editFormErrors]);
+    },
+    [editFormErrors]
+  );
 
   // Fetch SOS
   const fetchEmergencies = async () => {
     try {
       const res = await axios.get("http://localhost:3000/api/sos/res");
       setEmergencies(res.data);
-    } catch (err) { console.error(err); }
+    } catch (err) {
+      console.error(err);
+    }
   };
 
   // Play/Stop alert sound
-  const playAlertSound = () => { if (audioRef.current) { audioRef.current.loop = true; audioRef.current.play(); } };
-  const stopAlertSound = () => { if (audioRef.current) { audioRef.current.pause(); audioRef.current.currentTime = 0; } };
+  const playAlertSound = () => {
+    if (audioRef.current) {
+      audioRef.current.loop = true;
+      audioRef.current.play();
+    }
+  };
+  const stopAlertSound = () => {
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.currentTime = 0;
+    }
+  };
 
   // Socket listeners
   useEffect(() => {
     fetchEmergencies();
 
     socket.on("responderAssigned", ({ sosId, responderId, responderName }) => {
-      setEmergencies((prev) => prev.map((e) =>
-        e._id === sosId ? { ...e, assignedResponder: { _id: responderId, name: responderName } } : e
-      ));
+      setEmergencies((prev) =>
+        prev.map((e) =>
+          e._id === sosId
+            ? {
+                ...e,
+                assignedResponder: { _id: responderId, name: responderName },
+              }
+            : e
+        )
+      );
       toast.success("✅ Responder assigned to SOS");
     });
 
@@ -235,15 +321,25 @@ function ResAdminDashboard() {
         emergency: sos.emergency || sos.emergencyType || sos.emergency,
       };
       setEmergencies((prev) => [normalized, ...prev]);
-      toast.error(`🚨 New SOS: ${normalized.emergency} for ${normalized.name}`, {
-        duration: 8000, position: "top-right", onClick: () => stopAlertSound(),
-      });
+      toast.error(
+        `🚨 New SOS: ${normalized.emergency} for ${normalized.name}`,
+        {
+          duration: 8000,
+          position: "top-right",
+          onClick: () => stopAlertSound(),
+        }
+      );
       playAlertSound();
     });
 
     socket.on("sosUpdated", (sos) => {
-      const normalized = { ...sos, emergency: sos.emergency || sos.emergencyType || sos.emergency };
-      setEmergencies((prev) => prev.map((e) => e._id === normalized._id ? normalized : e));
+      const normalized = {
+        ...sos,
+        emergency: sos.emergency || sos.emergencyType || sos.emergency,
+      };
+      setEmergencies((prev) =>
+        prev.map((e) => (e._id === normalized._id ? normalized : e))
+      );
       toast("✏️ SOS updated", { icon: "✏️" });
     });
 
@@ -262,20 +358,24 @@ function ResAdminDashboard() {
 
   const unassignedEmergencies = emergencies.filter((e) => !e.assignedResponder);
   const statusCounts = { Pending: 0, Assigned: 0, Completed: 0 };
-  emergencies.forEach(e => { const s = e.status || "Pending"; statusCounts[s] = (statusCounts[s] || 0) + 1; });
+  emergencies.forEach((e) => {
+    const s = e.status || "Pending";
+    statusCounts[s] = (statusCounts[s] || 0) + 1;
+  });
 
-  const filteredEmergencies = emergencies.filter(e =>
-    (filterType === "All" || e.emergency === filterType) &&
-    (filterStatus === "All" || (e.status || "Pending") === filterStatus)
+  const filteredEmergencies = emergencies.filter(
+    (e) =>
+      (filterType === "All" || e.emergency === filterType) &&
+      (filterStatus === "All" || (e.status || "Pending") === filterStatus)
   );
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setIsSubmitting(true);
-    
+
     const errors = validateForm(formData);
     setFormErrors(errors);
-    
+
     if (Object.keys(errors).length > 0) {
       toast.error("❌ Please fix the form errors");
       setIsSubmitting(false);
@@ -298,24 +398,35 @@ function ResAdminDashboard() {
       await axios.post("http://localhost:3000/api/sos/res", payload);
       toast.success("🚨 New SOS created!");
       stopAlertSound();
-      setFormData({ name: "", age: "", number: "", emergency: "", latitude: "", longitude: "", mapLink: "" });
+      setFormData({
+        name: "",
+        age: "",
+        number: "",
+        emergency: "",
+        latitude: "",
+        longitude: "",
+        mapLink: "",
+      });
       setFormErrors({});
       fetchEmergencies();
-    } catch (err) { 
-      console.error(err); 
-      toast.error("❌ Failed to add SOS"); 
+    } catch (err) {
+      console.error(err);
+      toast.error("❌ Failed to add SOS");
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const openAssignModal = (sos) => { setSelectedSOS(sos); setMapModalOpen(true); };
-  
+  const openAssignModal = (sos) => {
+    setSelectedSOS(sos);
+    setMapModalOpen(true);
+  };
+
   const openEditModal = (sos) => {
     setEditingSOS(sos);
     setEditFormData({
-      name: sos.name, 
-      age: sos.age, 
+      name: sos.name,
+      age: sos.age,
       number: sos.number,
       emergency: sos.emergency || sos.emergencyType || "",
       latitude: sos.location?.latitude?.toString() || "",
@@ -327,10 +438,10 @@ function ResAdminDashboard() {
 
   const handleUpdateSOS = async () => {
     if (!editingSOS) return;
-    
+
     const errors = validateForm(editFormData, true);
     setEditFormErrors(errors);
-    
+
     if (Object.keys(errors).length > 0) {
       toast.error("❌ Please fix the form errors");
       return;
@@ -352,9 +463,9 @@ function ResAdminDashboard() {
       setEditingSOS(null);
       fetchEmergencies();
       socket.emit("sosUpdated", editingSOS._id);
-    } catch (err) { 
-      console.error(err); 
-      toast.error("❌ Failed to update SOS"); 
+    } catch (err) {
+      console.error(err);
+      toast.error("❌ Failed to update SOS");
     }
   };
 
@@ -365,9 +476,9 @@ function ResAdminDashboard() {
       toast.success("🗑️ SOS deleted successfully!");
       fetchEmergencies();
       socket.emit("sosDeleted", sosId);
-    } catch (err) { 
-      console.error(err); 
-      toast.error("❌ Failed to delete SOS"); 
+    } catch (err) {
+      console.error(err);
+      toast.error("❌ Failed to delete SOS");
     }
   };
 
@@ -384,22 +495,50 @@ function ResAdminDashboard() {
     }
   };
 
+  // Logout function
+  const handleLogout = () => {
+    if (confirm("Are you sure you want to logout?")) {
+      // Clear any local storage or session data if needed
+      localStorage.removeItem("adminToken");
+      sessionStorage.removeItem("adminToken");
+
+      // Navigate to login page
+      navigate("/login");
+      toast.success("👋 Logged out successfully!");
+    }
+  };
+
   useEffect(() => {
     if (mapRef.current && emergencies.length > 0) {
       const bounds = new window.google.maps.LatLngBounds();
-      emergencies.forEach(e => bounds.extend({ lat: parseFloat(e.location.latitude), lng: parseFloat(e.location.longitude) }));
+      emergencies.forEach((e) =>
+        bounds.extend({
+          lat: parseFloat(e.location.latitude),
+          lng: parseFloat(e.location.longitude),
+        })
+      );
       mapRef.current.fitBounds(bounds);
     }
   }, [emergencies, isLoaded]);
 
   // Chart Data
-  const COLORS = ["#ef4444", "#3b82f6", "#22c55e", "#f59e0b", "#8b5cf6", "#06b6d4"];
+  const COLORS = [
+    "#ef4444",
+    "#3b82f6",
+    "#22c55e",
+    "#f59e0b",
+    "#8b5cf6",
+    "#06b6d4",
+  ];
   const emergencyTypeCounts = emergencies.reduce((acc, e) => {
     const key = e.emergency || e.emergencyType || "Unknown";
     acc[key] = (acc[key] || 0) + 1;
     return acc;
   }, {});
-  const emergencyTypeData = Object.keys(emergencyTypeCounts).map((k) => ({ name: k, value: emergencyTypeCounts[k] }));
+  const emergencyTypeData = Object.keys(emergencyTypeCounts).map((k) => ({
+    name: k,
+    value: emergencyTypeCounts[k],
+  }));
 
   const [responders, setResponders] = useState([]);
 
@@ -415,7 +554,9 @@ function ResAdminDashboard() {
     fetchResponders();
   }, []);
 
-  const availableCount = responders.filter((r) => r.status === "available").length;
+  const availableCount = responders.filter(
+    (r) => r.status === "available"
+  ).length;
   const busyCount = responders.filter((r) => r.status === "busy").length;
 
   const responderAvailability = [
@@ -426,7 +567,8 @@ function ResAdminDashboard() {
   const [autoAssign, setAutoAssign] = useState(false);
 
   useEffect(() => {
-    axios.get("http://localhost:3000/api/settings/auto-assign")
+    axios
+      .get("http://localhost:3000/api/settings/auto-assign")
       .then((res) => setAutoAssign(res.data.enabled))
       .catch(console.error);
   }, []);
@@ -451,35 +593,35 @@ function ResAdminDashboard() {
   const generatePDFReport = () => {
     // Create a new jsPDF instance
     const pdf = new jsPDF();
-    
+
     // Set initial coordinates
     let yPosition = 20;
     const lineHeight = 10;
     const pageHeight = pdf.internal.pageSize.height;
     const margin = 20;
-    
+
     // Add title
     pdf.setFontSize(20);
     pdf.setTextColor(220, 53, 69); // Red color
-    pdf.text('SwiftAid Emergency Report', margin, yPosition);
-    
+    pdf.text("SwiftAid Emergency Report", margin, yPosition);
+
     yPosition += 15;
-    
+
     // Add date
     pdf.setFontSize(12);
     pdf.setTextColor(100, 100, 100);
     pdf.text(`Generated on: ${new Date().toLocaleString()}`, margin, yPosition);
-    
+
     yPosition += 20;
-    
+
     // Summary section
     pdf.setFontSize(16);
     pdf.setTextColor(0, 0, 0);
-    pdf.text('Summary Overview', margin, yPosition);
-    
+    pdf.text("Summary Overview", margin, yPosition);
+
     yPosition += 10;
     pdf.setFontSize(10);
-    
+
     // Summary statistics
     const summaryData = [
       `Total SOS Cases: ${emergencies.length}`,
@@ -488,10 +630,10 @@ function ResAdminDashboard() {
       `Completed: ${statusCounts.Completed}`,
       `Unassigned: ${unassignedEmergencies.length}`,
       `Available Responders: ${availableCount}`,
-      `Busy Responders: ${busyCount}`
+      `Busy Responders: ${busyCount}`,
     ];
-    
-    summaryData.forEach(line => {
+
+    summaryData.forEach((line) => {
       if (yPosition > pageHeight - margin) {
         pdf.addPage();
         yPosition = margin;
@@ -499,106 +641,123 @@ function ResAdminDashboard() {
       pdf.text(line, margin, yPosition);
       yPosition += lineHeight;
     });
-    
+
     yPosition += 10;
-    
+
     // Emergency types breakdown
     if (yPosition > pageHeight - 50) {
       pdf.addPage();
       yPosition = margin;
     }
-    
+
     pdf.setFontSize(16);
-    pdf.text('Emergency Types Breakdown', margin, yPosition);
+    pdf.text("Emergency Types Breakdown", margin, yPosition);
     yPosition += 10;
-    
+
     pdf.setFontSize(10);
-    emergencyTypeData.forEach(type => {
+    emergencyTypeData.forEach((type) => {
       if (yPosition > pageHeight - margin) {
         pdf.addPage();
         yPosition = margin;
       }
-      pdf.text(`${type.name}: ${type.value} cases (${((type.value / emergencies.length) * 100).toFixed(1)}%)`, margin + 5, yPosition);
+      pdf.text(
+        `${type.name}: ${type.value} cases (${((type.value / emergencies.length) * 100).toFixed(1)}%)`,
+        margin + 5,
+        yPosition
+      );
       yPosition += lineHeight;
     });
-    
+
     yPosition += 10;
-    
+
     // Detailed SOS cases
     if (yPosition > pageHeight - 50) {
       pdf.addPage();
       yPosition = margin;
     }
-    
+
     pdf.setFontSize(16);
-    pdf.text('Detailed SOS Cases', margin, yPosition);
+    pdf.text("Detailed SOS Cases", margin, yPosition);
     yPosition += 15;
-    
+
     pdf.setFontSize(8);
-    
+
     emergencies.forEach((emergency, index) => {
       // Check if we need a new page
       if (yPosition > pageHeight - 60) {
         pdf.addPage();
         yPosition = margin;
       }
-      
+
       // Case header
-      pdf.setFont(undefined, 'bold');
-      pdf.text(`Case ${index + 1}: ${emergency.name} (${emergency.age})`, margin, yPosition);
+      pdf.setFont(undefined, "bold");
+      pdf.text(
+        `Case ${index + 1}: ${emergency.name} (${emergency.age})`,
+        margin,
+        yPosition
+      );
       yPosition += lineHeight;
-      
+
       // Case details
-      pdf.setFont(undefined, 'normal');
+      pdf.setFont(undefined, "normal");
       const details = [
-        `Emergency: ${emergency.emergency || emergency.emergencyType || 'Unknown'}`,
+        `Emergency: ${emergency.emergency || emergency.emergencyType || "Unknown"}`,
         `Phone: ${emergency.number}`,
-        `Status: ${emergency.status || 'Pending'}`,
+        `Status: ${emergency.status || "Pending"}`,
         `Location: ${emergency.location?.latitude}, ${emergency.location?.longitude}`,
-        `Responder: ${emergency.assignedResponder ? emergency.assignedResponder.name : 'Not assigned'}`,
-        `Created: ${new Date(emergency.createdAt || emergency.timestamp).toLocaleString()}`
+        `Responder: ${emergency.assignedResponder ? emergency.assignedResponder.name : "Not assigned"}`,
+        `Created: ${new Date(emergency.createdAt || emergency.timestamp).toLocaleString()}`,
       ];
-      
-      details.forEach(detail => {
+
+      details.forEach((detail) => {
         pdf.text(detail, margin + 5, yPosition);
         yPosition += lineHeight - 2;
       });
-      
+
       yPosition += 5;
-      
+
       // Add separator line
       pdf.setDrawColor(200, 200, 200);
-      pdf.line(margin, yPosition, pdf.internal.pageSize.width - margin, yPosition);
+      pdf.line(
+        margin,
+        yPosition,
+        pdf.internal.pageSize.width - margin,
+        yPosition
+      );
       yPosition += 10;
     });
-    
+
     // Add footer
     const totalPages = pdf.internal.getNumberOfPages();
     for (let i = 1; i <= totalPages; i++) {
       pdf.setPage(i);
       pdf.setFontSize(8);
       pdf.setTextColor(150, 150, 150);
-      pdf.text(`Page ${i} of ${totalPages} - SwiftAid Emergency Management System`, 
-               pdf.internal.pageSize.width / 2, 
-               pdf.internal.pageSize.height - 10, 
-               { align: 'center' });
+      pdf.text(
+        `Page ${i} of ${totalPages} - SwiftAid Emergency Management System`,
+        pdf.internal.pageSize.width / 2,
+        pdf.internal.pageSize.height - 10,
+        { align: "center" }
+      );
     }
-    
+
     // Save the PDF
-    pdf.save(`swiftaid-report-${new Date().toISOString().split('T')[0]}.pdf`);
-    
-    toast.success('📄 PDF report generated successfully!');
+    pdf.save(`swiftaid-report-${new Date().toISOString().split("T")[0]}.pdf`);
+
+    toast.success("📄 PDF report generated successfully!");
   };
 
   const generateReports = async () => {
     try {
       // Generate CSV report (existing functionality)
-      const csvRes = await axios.get("http://localhost:3000/api/admin/generate-reports");
+      const csvRes = await axios.get(
+        "http://localhost:3000/api/admin/generate-reports"
+      );
       setReportLinks(csvRes.data);
-      
+
       // Generate PDF report (new functionality)
       generatePDFReport();
-      
+
       toast.success("📊 Reports generated successfully!");
     } catch (err) {
       console.error("Error generating reports:", err);
@@ -610,15 +769,26 @@ function ResAdminDashboard() {
   // Status badges with better styling
   const StatusBadge = ({ status }) => {
     const statusConfig = {
-      Pending: { color: "bg-yellow-100 text-yellow-800 border-yellow-300", label: "Pending" },
-      Assigned: { color: "bg-blue-100 text-blue-800 border-blue-300", label: "Assigned" },
-      Completed: { color: "bg-green-100 text-green-800 border-green-300", label: "Completed" }
+      Pending: {
+        color: "bg-yellow-100 text-yellow-800 border-yellow-300",
+        label: "Pending",
+      },
+      Assigned: {
+        color: "bg-blue-100 text-blue-800 border-blue-300",
+        label: "Assigned",
+      },
+      Completed: {
+        color: "bg-green-100 text-green-800 border-green-300",
+        label: "Completed",
+      },
     };
-    
+
     const config = statusConfig[status] || statusConfig.Pending;
-    
+
     return (
-      <span className={`px-3 py-1 rounded-full text-xs font-semibold border ${config.color}`}>
+      <span
+        className={`px-3 py-1 rounded-full text-xs font-semibold border ${config.color}`}
+      >
         {config.label}
       </span>
     );
@@ -628,40 +798,56 @@ function ResAdminDashboard() {
   const EmergencyBadge = ({ type }) => {
     const typeConfig = {
       Medical: { color: "bg-red-100 text-red-800 border-red-300", icon: "🏥" },
-      Fire: { color: "bg-orange-100 text-orange-800 border-orange-300", icon: "🔥" },
-      Police: { color: "bg-blue-100 text-blue-800 border-blue-300", icon: "🚔" },
-      road: { color: "bg-gray-100 text-gray-800 border-gray-300", icon: "🛣️" }
+      Fire: {
+        color: "bg-orange-100 text-orange-800 border-orange-300",
+        icon: "🔥",
+      },
+      Police: {
+        color: "bg-blue-100 text-blue-800 border-blue-300",
+        icon: "🚔",
+      },
+      road: { color: "bg-gray-100 text-gray-800 border-gray-300", icon: "🛣️" },
     };
-    
-    const config = typeConfig[type] || { color: "bg-gray-100 text-gray-800 border-gray-300", icon: "🚨" };
-    
+
+    const config = typeConfig[type] || {
+      color: "bg-gray-100 text-gray-800 border-gray-300",
+      icon: "🚨",
+    };
+
     return (
-      <span className={`px-3 py-1 rounded-full text-xs font-semibold border flex items-center gap-1 ${config.color}`}>
+      <span
+        className={`px-3 py-1 rounded-full text-xs font-semibold border flex items-center gap-1 ${config.color}`}
+      >
         <span>{config.icon}</span>
         <span>{type}</span>
       </span>
     );
   };
 
+  // Function to handle Resources button click
+  const handleResourcesClick = () => {
+    navigate("/resources");
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 text-slate-900 p-4 md:p-6">
-      <Toaster 
+      <Toaster
         position="top-right"
         toastOptions={{
           duration: 4000,
           style: {
-            background: '#363636',
-            color: '#fff',
-            borderRadius: '12px',
-            boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1)',
+            background: "#363636",
+            color: "#fff",
+            borderRadius: "12px",
+            boxShadow: "0 10px 25px -5px rgba(0, 0, 0, 0.1)",
           },
         }}
       />
       <audio ref={audioRef} src="/sos-alert.mp3" />
 
       {/* Enhanced Header */}
-      <header className="mb-8 text-center">
-        <div className="bg-white rounded-2xl shadow-lg p-6 max-w-4xl mx-auto border border-slate-200">
+      <header className="mb-8">
+        <div className="bg-white rounded-2xl shadow-lg p-6 max-w-7xl mx-auto border border-slate-200">
           <div className="flex flex-col md:flex-row items-center justify-between gap-4">
             <div className="flex items-center gap-4">
               <div className="bg-red-100 p-3 rounded-xl">
@@ -671,29 +857,57 @@ function ResAdminDashboard() {
                 <h1 className="text-3xl md:text-4xl font-bold bg-gradient-to-r from-red-600 to-red-800 bg-clip-text text-transparent">
                   SwiftAid Dispatcher
                 </h1>
-                <p className="text-slate-600 mt-1 font-medium">Manage SOS alerts & responders in real-time</p>
+                <p className="text-slate-600 mt-1 font-medium">
+                  Manage SOS alerts & responders in real-time
+                </p>
               </div>
             </div>
-            
-            <div className="bg-slate-50 rounded-xl p-4 border border-slate-200">
-              <div className="flex items-center gap-3">
-                <div className="flex items-center gap-2">
-                  <div className={`w-3 h-3 rounded-full ${autoAssign ? 'bg-green-500 animate-pulse' : 'bg-slate-400'}`}></div>
-                  <span className="font-semibold text-slate-700">Auto Assign</span>
+
+            <div className="flex flex-col sm:flex-row gap-4 items-center">
+              {/* Resources Button */}
+              <button
+                onClick={handleResourcesClick}
+                className="px-6 py-3 bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 text-white rounded-xl shadow-md hover:shadow-lg transition-all font-semibold flex items-center gap-2"
+              >
+                <span>📚</span>
+                Resources
+              </button>
+
+              <div className="bg-slate-50 rounded-xl p-4 border border-slate-200">
+                <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-2">
+                    <div
+                      className={`w-3 h-3 rounded-full ${autoAssign ? "bg-green-500 animate-pulse" : "bg-slate-400"}`}
+                    ></div>
+                    <span className="font-semibold text-slate-700">
+                      Auto Assign
+                    </span>
+                  </div>
+                  <label className="relative inline-flex items-center cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={autoAssign}
+                      onChange={toggleAutoAssign}
+                      className="sr-only peer"
+                    />
+                    <div className="w-12 h-6 bg-slate-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-6 peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-red-600"></div>
+                  </label>
+                  <span
+                    className={`font-semibold ${autoAssign ? "text-green-600" : "text-slate-500"}`}
+                  >
+                    {autoAssign ? "ON" : "OFF"}
+                  </span>
                 </div>
-                <label className="relative inline-flex items-center cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={autoAssign}
-                    onChange={toggleAutoAssign}
-                    className="sr-only peer"
-                  />
-                  <div className="w-12 h-6 bg-slate-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-6 peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-red-600"></div>
-                </label>
-                <span className={`font-semibold ${autoAssign ? "text-green-600" : "text-slate-500"}`}>
-                  {autoAssign ? "ON" : "OFF"}
-                </span>
               </div>
+
+              {/* Logout Button */}
+              <button
+                onClick={handleLogout}
+                className="px-6 py-3 bg-gradient-to-r from-slate-600 to-slate-700 hover:from-slate-700 hover:to-slate-800 text-white rounded-xl shadow-md hover:shadow-lg transition-all font-semibold flex items-center gap-2"
+              >
+                <span>🚪</span>
+                Logout
+              </button>
             </div>
           </div>
         </div>
@@ -703,17 +917,21 @@ function ResAdminDashboard() {
       <div className="flex justify-center mb-8">
         <div className="bg-white rounded-2xl shadow-lg p-2 border border-slate-200">
           <div className="flex gap-1">
-            {["overview", "sos", "map"].map(tab => (
+            {["overview", "sos", "map"].map((tab) => (
               <button
                 key={tab}
                 className={`px-6 py-3 rounded-xl font-semibold transition-all duration-200 ${
-                  activeTab === tab 
-                    ? "bg-red-600 text-white shadow-md" 
+                  activeTab === tab
+                    ? "bg-red-600 text-white shadow-md"
                     : "text-slate-600 hover:bg-slate-100 hover:text-slate-800"
                 }`}
                 onClick={() => setActiveTab(tab)}
               >
-                {tab === "overview" ? "📊 Overview" : tab === "sos" ? "🚨 SOS Management" : "🗺️ Live Map"}
+                {tab === "overview"
+                  ? "📊 Overview"
+                  : tab === "sos"
+                    ? "🚨 SOS Management"
+                    : "🗺️ Live Map"}
               </button>
             ))}
           </div>
@@ -727,8 +945,13 @@ function ResAdminDashboard() {
           <div className="bg-gradient-to-r from-red-500 via-red-600 to-red-700 text-white rounded-2xl shadow-xl p-8 mb-8 text-center relative overflow-hidden">
             <div className="absolute inset-0 bg-black/10"></div>
             <div className="relative z-10">
-              <h2 className="text-2xl md:text-3xl font-bold mb-3">💪 Stay Alert, Save Lives!</h2>
-              <p className="text-lg opacity-95 max-w-2xl mx-auto">Every second counts — your quick action can make the difference between life and death.</p>
+              <h2 className="text-2xl md:text-3xl font-bold mb-3">
+                💪 Stay Alert, Save Lives!
+              </h2>
+              <p className="text-lg opacity-95 max-w-2xl mx-auto">
+                Every second counts — your quick action can make the difference
+                between life and death.
+              </p>
             </div>
             <div className="absolute bottom-0 left-0 right-0 h-1 bg-white/30"></div>
           </div>
@@ -736,25 +959,52 @@ function ResAdminDashboard() {
           {/* Enhanced Summary Cards */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
             {[
-              { label: "Total SOS", value: emergencies.length, color: "bg-gradient-to-r from-slate-600 to-slate-700", icon: "📋" },
-              { label: "Pending", value: statusCounts.Pending, color: "bg-gradient-to-r from-amber-500 to-amber-600", icon: "⏳" },
-              { label: "Assigned", value: statusCounts.Assigned, color: "bg-gradient-to-r from-blue-500 to-blue-600", icon: "👨‍🚒" },
-              { label: "Completed", value: statusCounts.Completed, color: "bg-gradient-to-r from-green-500 to-green-600", icon: "✅" }
+              {
+                label: "Total SOS",
+                value: emergencies.length,
+                color: "bg-gradient-to-r from-slate-600 to-slate-700",
+                icon: "📋",
+              },
+              {
+                label: "Pending",
+                value: statusCounts.Pending,
+                color: "bg-gradient-to-r from-amber-500 to-amber-600",
+                icon: "⏳",
+              },
+              {
+                label: "Assigned",
+                value: statusCounts.Assigned,
+                color: "bg-gradient-to-r from-blue-500 to-blue-600",
+                icon: "👨‍🚒",
+              },
+              {
+                label: "Completed",
+                value: statusCounts.Completed,
+                color: "bg-gradient-to-r from-green-500 to-green-600",
+                icon: "✅",
+              },
             ].map((card, index) => (
-              <div key={index} className="bg-white rounded-2xl shadow-lg p-6 border border-slate-200 transition-transform hover:scale-[1.02] hover:shadow-xl">
+              <div
+                key={index}
+                className="bg-white rounded-2xl shadow-lg p-6 border border-slate-200 transition-transform hover:scale-[1.02] hover:shadow-xl"
+              >
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-slate-600 font-medium">{card.label}</p>
-                    <p className="text-3xl font-bold mt-2 text-slate-800">{card.value}</p>
+                    <p className="text-3xl font-bold mt-2 text-slate-800">
+                      {card.value}
+                    </p>
                   </div>
                   <div className={`p-3 rounded-xl ${card.color} text-white`}>
                     <span className="text-2xl">{card.icon}</span>
                   </div>
                 </div>
                 <div className="mt-4 h-2 bg-slate-100 rounded-full overflow-hidden">
-                  <div 
-                    className={`h-full rounded-full ${card.color.split(' ')[1]}`}
-                    style={{ width: `${(card.value / Math.max(emergencies.length, 1)) * 100}%` }}
+                  <div
+                    className={`h-full rounded-full ${card.color.split(" ")[1]}`}
+                    style={{
+                      width: `${(card.value / Math.max(emergencies.length, 1)) * 100}%`,
+                    }}
                   ></div>
                 </div>
               </div>
@@ -769,28 +1019,35 @@ function ResAdminDashboard() {
                 <div className="bg-red-100 p-2 rounded-lg">
                   <span className="text-xl">📊</span>
                 </div>
-                <h3 className="text-xl font-semibold text-slate-800">Emergency Type Distribution</h3>
+                <h3 className="text-xl font-semibold text-slate-800">
+                  Emergency Type Distribution
+                </h3>
               </div>
               <ResponsiveContainer width="100%" height={300}>
                 <PieChart>
-                  <Pie 
-                    data={emergencyTypeData} 
-                    dataKey="value" 
-                    cx="50%" 
-                    cy="50%" 
-                    outerRadius={100} 
-                    label={({ name, percent }) => `${name} (${(percent * 100).toFixed(0)}%)`}
+                  <Pie
+                    data={emergencyTypeData}
+                    dataKey="value"
+                    cx="50%"
+                    cy="50%"
+                    outerRadius={100}
+                    label={({ name, percent }) =>
+                      `${name} (${(percent * 100).toFixed(0)}%)`
+                    }
                   >
                     {emergencyTypeData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                      <Cell
+                        key={`cell-${index}`}
+                        fill={COLORS[index % COLORS.length]}
+                      />
                     ))}
                   </Pie>
-                  <Tooltip 
-                    formatter={(value) => [`${value} cases`, 'Count']}
-                    contentStyle={{ 
-                      borderRadius: '12px', 
-                      border: '1px solid #e2e8f0',
-                      boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1)'
+                  <Tooltip
+                    formatter={(value) => [`${value} cases`, "Count"]}
+                    contentStyle={{
+                      borderRadius: "12px",
+                      border: "1px solid #e2e8f0",
+                      boxShadow: "0 10px 25px -5px rgba(0, 0, 0, 0.1)",
                     }}
                   />
                   <Legend />
@@ -804,23 +1061,25 @@ function ResAdminDashboard() {
                 <div className="bg-blue-100 p-2 rounded-lg">
                   <span className="text-xl">👨‍🚒</span>
                 </div>
-                <h3 className="text-xl font-semibold text-slate-800">Responder Availability</h3>
+                <h3 className="text-xl font-semibold text-slate-800">
+                  Responder Availability
+                </h3>
               </div>
               <ResponsiveContainer width="100%" height={300}>
                 <BarChart data={responderAvailability}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
                   <XAxis dataKey="name" stroke="#64748b" />
                   <YAxis stroke="#64748b" />
-                  <Tooltip 
-                    formatter={(value) => [`${value} responders`, 'Count']}
-                    contentStyle={{ 
-                      borderRadius: '12px', 
-                      border: '1px solid #e2e8f0',
-                      boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1)'
+                  <Tooltip
+                    formatter={(value) => [`${value} responders`, "Count"]}
+                    contentStyle={{
+                      borderRadius: "12px",
+                      border: "1px solid #e2e8f0",
+                      boxShadow: "0 10px 25px -5px rgba(0, 0, 0, 0.1)",
                     }}
                   />
-                  <Bar 
-                    dataKey="value" 
+                  <Bar
+                    dataKey="value"
                     radius={[4, 4, 0, 0]}
                     fill="#3b82f6"
                     strokeWidth={1}
@@ -830,8 +1089,12 @@ function ResAdminDashboard() {
               </ResponsiveContainer>
               <div className="mt-4 grid grid-cols-2 gap-4">
                 <div className="text-center p-3 bg-green-50 rounded-lg border border-green-200">
-                  <p className="text-2xl font-bold text-green-700">{availableCount}</p>
-                  <p className="text-sm text-green-600 font-medium">Available</p>
+                  <p className="text-2xl font-bold text-green-700">
+                    {availableCount}
+                  </p>
+                  <p className="text-sm text-green-600 font-medium">
+                    Available
+                  </p>
                 </div>
                 <div className="text-center p-3 bg-red-50 rounded-lg border border-red-200">
                   <p className="text-2xl font-bold text-red-700">{busyCount}</p>
@@ -853,7 +1116,9 @@ function ResAdminDashboard() {
                 <div className="bg-red-100 p-2 rounded-lg">
                   <span className="text-xl">📋</span>
                 </div>
-                <h2 className="text-xl font-semibold text-slate-800">SOS Requests</h2>
+                <h2 className="text-xl font-semibold text-slate-800">
+                  SOS Requests
+                </h2>
                 <span className="bg-red-100 text-red-700 px-3 py-1 rounded-full text-sm font-semibold">
                   {filteredEmergencies.length} cases
                 </span>
@@ -891,13 +1156,18 @@ function ResAdminDashboard() {
                     e.status === "Pending"
                       ? "bg-amber-50 border-amber-500 hover:bg-amber-75"
                       : e.status === "Assigned"
-                      ? "bg-blue-50 border-blue-500 hover:bg-blue-75"
-                      : "bg-green-50 border-green-500 hover:bg-green-75"
+                        ? "bg-blue-50 border-blue-500 hover:bg-blue-75"
+                        : "bg-green-50 border-green-500 hover:bg-green-75"
                   }`}
                 >
                   <div className="flex justify-between items-start mb-3">
                     <div>
-                      <p className="font-semibold text-slate-800 text-lg">{e.name} <span className="text-slate-600 text-sm">({e.age})</span></p>
+                      <p className="font-semibold text-slate-800 text-lg">
+                        {e.name}{" "}
+                        <span className="text-slate-600 text-sm">
+                          ({e.age})
+                        </span>
+                      </p>
                       <p className="text-slate-600 text-sm mt-1 flex items-center gap-1">
                         <span>📞</span>
                         {e.number}
@@ -908,7 +1178,7 @@ function ResAdminDashboard() {
                       <StatusBadge status={e.status || "Pending"} />
                     </div>
                   </div>
-                  
+
                   <div className="flex items-center justify-between mt-4">
                     <div className="text-sm text-slate-600">
                       {e.assignedResponder ? (
@@ -923,7 +1193,7 @@ function ResAdminDashboard() {
                         </span>
                       )}
                     </div>
-                    
+
                     <div className="flex gap-2">
                       <button
                         className="px-3 py-2 rounded-lg bg-slate-600 text-white hover:bg-slate-700 transition-all duration-200 text-sm font-medium shadow-sm hover:shadow-md flex items-center gap-1"
@@ -970,9 +1240,11 @@ function ResAdminDashboard() {
               <div className="bg-green-100 p-2 rounded-lg">
                 <span className="text-xl">➕</span>
               </div>
-              <h2 className="text-xl font-semibold text-slate-800">Add Emergency Case</h2>
+              <h2 className="text-xl font-semibold text-slate-800">
+                Add Emergency Case
+              </h2>
             </div>
-            
+
             <form className="space-y-4" onSubmit={handleSubmit}>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <InputField
@@ -1045,7 +1317,9 @@ function ResAdminDashboard() {
                   readOnly
                   className="w-full p-3 border border-slate-300 rounded-xl bg-slate-50 text-slate-600"
                 />
-                <p className="text-slate-500 text-xs mt-1">Auto-generated from coordinates</p>
+                <p className="text-slate-500 text-xs mt-1">
+                  Auto-generated from coordinates
+                </p>
               </div>
 
               <button
@@ -1080,8 +1354,12 @@ function ResAdminDashboard() {
                   <span className="text-xl">🗺️</span>
                 </div>
                 <div>
-                  <h2 className="text-xl font-semibold text-slate-800">Live SOS Map</h2>
-                  <p className="text-slate-600 text-sm mt-1">Real-time tracking of all emergency cases</p>
+                  <h2 className="text-xl font-semibold text-slate-800">
+                    Live SOS Map
+                  </h2>
+                  <p className="text-slate-600 text-sm mt-1">
+                    Real-time tracking of all emergency cases
+                  </p>
                 </div>
               </div>
               <div className="flex gap-3">
@@ -1097,7 +1375,11 @@ function ResAdminDashboard() {
 
             {reportLinks.csv && (
               <div className="flex gap-4 mt-4 p-4 bg-slate-50 rounded-lg border border-slate-200">
-                <a href={reportLinks.csv} download className="text-blue-600 hover:text-blue-800 underline font-medium flex items-center gap-2">
+                <a
+                  href={reportLinks.csv}
+                  download
+                  className="text-blue-600 hover:text-blue-800 underline font-medium flex items-center gap-2"
+                >
                   <span>📊</span>
                   Download CSV Report
                 </a>
@@ -1113,7 +1395,11 @@ function ResAdminDashboard() {
           <div className="p-4">
             {isLoaded ? (
               <GoogleMap
-                mapContainerStyle={{ width: "100%", height: "500px", borderRadius: "12px" }}
+                mapContainerStyle={{
+                  width: "100%",
+                  height: "500px",
+                  borderRadius: "12px",
+                }}
                 center={{ lat: 7.8731, lng: 80.7718 }}
                 zoom={7}
                 onLoad={(map) => (mapRef.current = map)}
@@ -1122,15 +1408,18 @@ function ResAdminDashboard() {
                     {
                       featureType: "poi",
                       elementType: "labels",
-                      stylers: [{ visibility: "off" }]
-                    }
-                  ]
+                      stylers: [{ visibility: "off" }],
+                    },
+                  ],
                 }}
               >
                 {emergencies.map((e) => (
                   <Marker
                     key={e._id}
-                    position={{ lat: parseFloat(e.location.latitude), lng: parseFloat(e.location.longitude) }}
+                    position={{
+                      lat: parseFloat(e.location.latitude),
+                      lng: parseFloat(e.location.longitude),
+                    }}
                     title={`${e.emergency} — ${e.name}`}
                     onClick={() => openAssignModal(e)}
                     icon={{
@@ -1155,7 +1444,13 @@ function ResAdminDashboard() {
 
       {/* Assign Modal */}
       {mapModalOpen && selectedSOS && (
-        <AssignViaMapModal isOpen={mapModalOpen} onClose={() => setMapModalOpen(false)} sos={selectedSOS} onAssigned={fetchEmergencies} isLoaded={isLoaded} />
+        <AssignViaMapModal
+          isOpen={mapModalOpen}
+          onClose={() => setMapModalOpen(false)}
+          sos={selectedSOS}
+          onAssigned={fetchEmergencies}
+          isLoaded={isLoaded}
+        />
       )}
 
       {/* Enhanced Edit Modal */}
@@ -1166,9 +1461,11 @@ function ResAdminDashboard() {
               <div className="bg-blue-100 p-2 rounded-lg">
                 <span className="text-xl">✏️</span>
               </div>
-              <h2 className="text-xl font-bold text-slate-800">Edit SOS Case</h2>
+              <h2 className="text-xl font-bold text-slate-800">
+                Edit SOS Case
+              </h2>
             </div>
-            
+
             <div className="space-y-4">
               <InputField
                 label="Full Name"
@@ -1178,7 +1475,7 @@ function ResAdminDashboard() {
                 error={editFormErrors.name}
                 placeholder="Enter full name"
               />
-              
+
               <InputField
                 label="Age"
                 name="age"
@@ -1188,7 +1485,7 @@ function ResAdminDashboard() {
                 error={editFormErrors.age}
                 placeholder="Age"
               />
-              
+
               <InputField
                 label="Contact Number"
                 name="number"
@@ -1198,7 +1495,7 @@ function ResAdminDashboard() {
                 error={editFormErrors.number}
                 placeholder="Phone number"
               />
-              
+
               <SelectField
                 label="Emergency Type"
                 name="emergency"
@@ -1207,7 +1504,7 @@ function ResAdminDashboard() {
                 error={editFormErrors.emergency}
                 options={emergencyOptions}
               />
-              
+
               <InputField
                 label="Latitude"
                 name="latitude"
@@ -1217,7 +1514,7 @@ function ResAdminDashboard() {
                 error={editFormErrors.latitude}
                 placeholder="Latitude"
               />
-              
+
               <InputField
                 label="Longitude"
                 name="longitude"
@@ -1241,15 +1538,15 @@ function ResAdminDashboard() {
                 />
               </div>
             </div>
-            
+
             <div className="flex justify-end gap-3 mt-6 pt-4 border-t border-slate-200">
-              <button 
+              <button
                 className="px-5 py-2 rounded-xl bg-slate-300 hover:bg-slate-400 text-slate-800 font-medium transition-colors"
                 onClick={() => setEditingSOS(null)}
               >
                 Cancel
               </button>
-              <button 
+              <button
                 className="px-5 py-2 rounded-xl bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-medium transition-all shadow-md hover:shadow-lg flex items-center gap-2"
                 onClick={handleUpdateSOS}
               >

@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
   Home,
   Users,
@@ -14,14 +14,34 @@ import {
 
 const Navigation = () => {
   const location = useLocation();
+  const navigate = useNavigate();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   const isActive = (path) => location.pathname === path;
 
+  const handleLogout = () => {
+    if (confirm("Are you sure you want to logout?")) {
+      // Clear any stored tokens or user data
+      localStorage.removeItem("adminToken");
+      sessionStorage.removeItem("adminToken");
+      localStorage.removeItem("organizationToken");
+      sessionStorage.removeItem("organizationToken");
+      localStorage.removeItem("userToken");
+      sessionStorage.removeItem("userToken");
+
+      // Navigate to login page
+      navigate("/login");
+    }
+  };
+
   const navItems = [
     { name: "Home", path: "/", icon: Home },
     { name: "Resources", path: "/resources", icon: Package },
-    { name: "Organization Dashboard", path: "/organization/dashboard", icon: Users },
+    {
+      name: "Organization Dashboard",
+      path: "/organization/dashboard",
+      icon: Users,
+    },
     { name: "Emergency Cases", path: "/emergency-cases", icon: AlertTriangle },
     { name: "Admin Dashboard", path: "/admin/dashboard", icon: Shield },
     { name: "Admin Panel", path: "/admin/panel", icon: Settings },
@@ -65,7 +85,10 @@ const Navigation = () => {
           {/* Right side: User info and logout (Desktop) */}
           <div className="hidden lg:flex items-center space-x-4">
             <span className="text-sm text-gray-600">Welcome, Admin</span>
-            <button className="inline-flex items-center px-3 py-2 border border-transparent text-sm font-medium rounded-md text-gray-600 hover:text-gray-900 hover:bg-gray-50 transition-colors">
+            <button
+              onClick={handleLogout}
+              className="inline-flex items-center px-3 py-2 border border-transparent text-sm font-medium rounded-md text-gray-600 hover:text-red-600 hover:bg-red-50 transition-colors"
+            >
               <LogOut className="h-4 w-4 mr-2" />
               Logout
             </button>
@@ -113,7 +136,10 @@ const Navigation = () => {
           <div className="pt-4 pb-3 border-t border-gray-200">
             <div className="px-4 flex items-center justify-between">
               <span className="text-sm text-gray-600">Welcome, Admin</span>
-              <button className="inline-flex items-center px-3 py-2 text-sm font-medium rounded-md text-gray-600 hover:text-gray-900 hover:bg-gray-100">
+              <button
+                onClick={handleLogout}
+                className="inline-flex items-center px-3 py-2 text-sm font-medium rounded-md text-gray-600 hover:text-red-600 hover:bg-red-50"
+              >
                 <LogOut className="h-4 w-4 mr-2" />
                 Logout
               </button>

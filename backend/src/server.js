@@ -19,6 +19,9 @@ import responderRoutes from "./routes/responderRoutes.js";
 import settings from "./routes/setttings.js";
 import resourceRoutes from "./routes/resourceRoutes.js";
 import donationRoutes from "./routes/donationRoutes.js";
+import organizationRoute from "./routes/organizationRoute.js";
+import emergencyCaseRoute from "./routes/emergencyCaseRoute.js";
+import orgresourceRoutes from "./routes/orgresourceRoutes.js";
 
 // Controllers
 import { sendThankYouEmail } from "./controllers/donationController.js";
@@ -106,6 +109,12 @@ app.use("/api/responders", responderRoutes);
 app.use("/api/settings", settings);
 app.use("/api/resources", resourceRoutes);
 app.use("/api/donations", donationRoutes);
+app.use("/api/orgs", organizationRoute);
+app.use("/api/cases", emergencyCaseRoute);
+app.use("/api/org/resources", orgresourceRoutes);
+
+
+
 
 // Stripe Webhook
 app.post(

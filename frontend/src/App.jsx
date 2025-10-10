@@ -39,12 +39,15 @@ function App() {
         <Route path="/donations" element={<Donations />} />
 
         <Route path="/org" element={<HomePage />} />
-        <Route path="/organization/dashboard" element={<OrganizationDashboard />}/>
+        <Route
+          path="/organization/dashboard"
+          element={<OrganizationDashboard />}
+        />
         <Route path="/admin/dashboard" element={<OrgAdminDashboard />} />
         <Route path="/emergency-cases" element={<EmergencyCasesPage />} />
         <Route path="/emergency-cases/:id" element={<CaseDetailPage />} />
         <Route path="/admin/panel" element={<AdminPanel />} />
-        <Route path="/resources" element={<ResourceManagementPage />} />
+        <Route path="/resource" element={<ResourceManagementPage />} />
       </Routes>
     </div>
   );

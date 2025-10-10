@@ -8,7 +8,7 @@ import LandingPage from "./pages/LandingPage";
 import { RoleManagement } from "./pages/RoleManagement";
 import Emergency from "./pages/Emergency";
 import { AdminDashboard } from "./pages/AdminDashboard";
-import ResAdminDashboard from "./pages/ResAdminDashboard"
+import ResAdminDashboard from "./pages/ResAdminDashboard";
 import ResourceRequests from "./pages/ResourceRequests.jsx";
 import Donations from "./pages/Donations.jsx";
 import ResourceDashboard from "./pages/ResourceDashboard.jsx";
@@ -33,8 +33,8 @@ function App() {
         <Route path="/dashboard" element={<AdminDashboard />} />
         <Route path="/roles" element={<RoleManagement />} />
         <Route path="/requests" element={<Emergency />} />
-        <Route path="/res/dashboard" element={<ResAdminDashboard />} />
-        <Route path="/resource" element={<ResourceDashboard />} />
+        <Route path="/dispatcher" element={<ResAdminDashboard />} />
+        <Route path="/funds" element={<ResourceDashboard />} />
         <Route path="/resources" element={<ResourceRequests />} />
         <Route path="/donations" element={<Donations />} />
 
@@ -45,7 +45,6 @@ function App() {
         <Route path="/emergency-cases/:id" element={<CaseDetailPage />} />
         <Route path="/admin/panel" element={<AdminPanel />} />
         <Route path="/resources" element={<ResourceManagementPage />} />
-
       </Routes>
     </div>
   );

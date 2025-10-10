@@ -25,7 +25,7 @@ function App() {
         <Route path="/dashboard" element={<AdminDashboard />} />
         <Route path="/roles" element={<RoleManagement />} />
         <Route path="/requests" element={<Emergency />} />
-        <Route path="/responder" element={<ResAdminDashboard />} />
+        <Route path="/dispatcher" element={<ResAdminDashboard />} />
         <Route path="/funds" element={<ResourceDashboard />} />
         <Route path="/resources" element={<ResourceRequests />} />
         <Route path="/donations" element={<Donations />} />

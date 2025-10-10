@@ -21,6 +21,14 @@ import AdminPanel from "./pages/orgpages/AdminPanel";
 import ResourceManagementPage from "./pages/orgpages/ResourceManagementPage";
 import OrgAdminDashboard from "./pages/orgpages/OrgAdminDashboard.jsx";
 
+import NotificationDashboard from "./pages/NotificationDashboard.jsx";
+import AcceptedTasks from "./pages/AcceptedTasks.jsx";
+import CreatePoliceResponder from "./pages/CreatePoliceResponder.jsx";
+import CreateHospitalResponder from "./pages/CreateHospitalResponder.jsx";
+import CreateFirefighterResponder from "./pages/CreateFirefighterResponder.jsx";
+import LoginPage from "./pages/LoginPage.jsx";
+
+
 function App() {
   return (
     <div className="App">
@@ -45,6 +53,13 @@ function App() {
         <Route path="/emergency-cases/:id" element={<CaseDetailPage />} />
         <Route path="/admin/panel" element={<AdminPanel />} />
         <Route path="/resources" element={<ResourceManagementPage />} />
+
+      <Route path="/responder" element={<LoginPage />} />
+      <Route path="/notifications" element={<NotificationDashboard />} />
+      <Route path="/accepted-tasks" element={<AcceptedTasks />} />
+      <Route path="/create-police-responder" element={<CreatePoliceResponder />} />
+      <Route path="/create-hospital-responder" element={<CreateHospitalResponder />} />
+      <Route path="/create-firefighter-responder" element={<CreateFirefighterResponder />} />
       </Routes>
     </div>
   );

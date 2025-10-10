@@ -13,6 +13,14 @@ import ResourceRequests from "./pages/ResourceRequests.jsx";
 import Donations from "./pages/Donations.jsx";
 import ResourceDashboard from "./pages/ResourceDashboard.jsx";
 
+import HomePage from "./pages/orgpages/HomePage";
+import OrganizationDashboard from "./pages/orgpages/OrganizationDashboard";
+import EmergencyCasesPage from "./pages/orgpages/EmergencyCasesPage";
+import CaseDetailPage from "./pages/orgpages/CaseDetailPage";
+import AdminPanel from "./pages/orgpages/AdminPanel";
+import ResourceManagementPage from "./pages/orgpages/ResourceManagementPage";
+import OrgAdminDashboard from "./pages/orgpages/OrgAdminDashboard.jsx";
+
 function App() {
   return (
     <div className="App">
@@ -29,6 +37,14 @@ function App() {
         <Route path="/resource" element={<ResourceDashboard />} />
         <Route path="/resources" element={<ResourceRequests />} />
         <Route path="/donations" element={<Donations />} />
+
+        <Route path="/org" element={<HomePage />} />
+        <Route path="/organization/dashboard" element={<OrganizationDashboard />}/>
+        <Route path="/admin/dashboard" element={<OrgAdminDashboard />} />
+        <Route path="/emergency-cases" element={<EmergencyCasesPage />} />
+        <Route path="/emergency-cases/:id" element={<CaseDetailPage />} />
+        <Route path="/admin/panel" element={<AdminPanel />} />
+        <Route path="/resources" element={<ResourceManagementPage />} />
 
       </Routes>
     </div>
